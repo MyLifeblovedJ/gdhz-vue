@@ -1,0 +1,269 @@
+/* ========================================
+   动画样式库
+   ======================================== */
+
+/* ===== 呼吸动画 ===== */
+@keyframes breathe {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.02);
+    }
+}
+
+/* ===== 图标呼吸动画 ===== */
+@keyframes breathe-icon {
+
+    0%,
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 12px rgba(255, 71, 87, 0.8));
+    }
+
+    50% {
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 20px rgba(255, 71, 87, 1));
+    }
+}
+
+/* ===== 脉冲动画 (标记点) ===== */
+@keyframes marker-pulse-red {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px var(--alert-red);
+    }
+
+    50% {
+        box-shadow: 0 0 20px var(--alert-red), 0 0 30px rgba(255, 71, 87, 0.5);
+    }
+}
+
+/* ===== 预警脉冲 ===== */
+@keyframes alertPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 15px var(--glow-red);
+    }
+
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 0 30px var(--glow-red);
+    }
+}
+
+/* ===== 闪烁动画 ===== */
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* ===== 滚动字幕 ===== */
+@keyframes marquee-scroll {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* ===== 横幅收起动画 ===== */
+@keyframes slideUpCollapse {
+    from {
+        flex-basis: 56px;
+        opacity: 1;
+    }
+
+    to {
+        flex-basis: 0;
+        opacity: 0;
+    }
+}
+
+/* ===== 横幅展开动画 ===== */
+@keyframes slideDownExpand {
+    from {
+        flex-basis: 0;
+        opacity: 0;
+    }
+
+    to {
+        flex-basis: 56px;
+        opacity: 1;
+    }
+}
+
+/* ===== 淡入动画 ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ===== 从下方滑入 ===== */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== 从左方滑入 ===== */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ===== 下拉菜单动画 ===== */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== 动画工具类 ===== */
+.animate-fadeIn {
+    animation: fadeIn var(--transition-normal) forwards;
+}
+
+.animate-slideInUp {
+    animation: slideInUp var(--transition-slow) forwards;
+}
+
+.animate-slideInLeft {
+    animation: slideInLeft var(--transition-slow) forwards;
+}
+
+.animate-breathe {
+    animation: breathe 2s ease-in-out infinite;
+}
+
+.animate-pulse {
+    animation: alertPulse 2s infinite;
+}
+
+/* ===== 悬停过渡 ===== */
+.hover-lift {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+/* ===== 按压效果 ===== */
+.click-shrink:active {
+    transform: scale(0.97);
+}
+
+/* ===== 脉冲环动画（水波纹扩散效果） ===== */
+/* 红色告警 - 参考 ai_studio_code.html 的 pulse-red */
+@keyframes pulse-ring-red {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(255, 71, 87, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+    }
+}
+
+/* 橙黄色预警 */
+@keyframes pulse-ring-yellow {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 165, 2, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 8px rgba(255, 165, 2, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(255, 165, 2, 0);
+    }
+}
+
+/* 地图标记脉冲环（更紧凑，避免糊成一片） */
+@keyframes marker-pulse-ring-red {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.6);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 71, 87, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);
+    }
+}
+
+@keyframes marker-pulse-ring-yellow {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 165, 2, 0.6);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 165, 2, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 165, 2, 0);
+    }
+}
