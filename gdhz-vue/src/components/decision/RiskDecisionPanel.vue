@@ -37,9 +37,9 @@
         <i class="fa-solid fa-bolt"></i>
         重点风险
       </div>
-      <div class="risk-list-scroll" :class="{ 'no-scroll': riskDecisions.risks?.length <= 5 }">
-        <div 
-          v-for="risk in riskDecisions.risks" 
+      <div class="risk-list-scroll" :class="{ 'no-scroll': filteredRiskDecisions.risks?.length <= 5 }">
+        <div
+          v-for="risk in filteredRiskDecisions.risks"
           :key="risk.id"
           class="risk-item"
           :class="risk.level"
@@ -69,40 +69,6 @@
         </div>
       </div>
     </div>
-    
-    <!-- 决策建议（精简版） -->
-    <div class="decision-section">
-      <div class="section-title">
-        <i class="fa-solid fa-lightbulb"></i>
-        决策建议
-      </div>
-      
-      <!-- 建议应急响应等级 -->
-      <div class="decision-row">
-        <span class="decision-label">建议应急响应等级</span>
-        <div class="response-badge" :class="getResponseClass(riskDecisions.recommendations?.responseLevel)">
-          {{ riskDecisions.recommendations?.responseLevel }}级
-        </div>
-      </div>
-      
-      <!-- 建议应急响应方案 -->
-      <div class="decision-row clickable" @click="showResponsePlan">
-        <span class="decision-label">建议应急响应方案</span>
-        <div class="decision-action">
-          <span>查看方案</span>
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-      </div>
-      
-      <!-- 建议决策辅助报告 -->
-      <div class="decision-row clickable" @click="showDecisionReport">
-        <span class="decision-label">建议决策辅助报告</span>
-        <div class="decision-action">
-          <span>查看报告</span>
-          <i class="fa-solid fa-chevron-right"></i>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -110,19 +76,59 @@
 import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 
+// Props
+const props = defineProps({
+  // 灾害类型过滤，如 'surge'、'wave' 等，为空或 'all' 时显示全部
+  disasterType: {
+    type: String,
+    default: ''
+  }
+})
+
 const store = useAppStore()
 
-const riskDecisions = computed(() => store.riskDecisions)
+// 各灾害类型对应的风险类型映射
+const disasterRiskTypes = {
+  surge: ['dike_overflow', 'seawater_backflow', 'vessel_safety', 'infrastructure', 'flooding', 'saltification'],
+  wave: ['vessel_safety', 'coastal_erosion', 'infrastructure', 'offshore_platform'],
+  redtide: ['aquaculture', 'water_quality', 'ecosystem', 'tourism'],
+  tsunami: ['coastal_flooding', 'infrastructure', 'vessel_safety', 'evacuation'],
+  erosion: ['coastal_erosion', 'infrastructure', 'land_loss'],
+}
 
-// 风险统计
-const highRiskCount = computed(() => 
-  riskDecisions.value?.risks?.filter(r => r.level === 'high').length || 0
+// 根据灾害类型过滤风险数据
+const filteredRiskDecisions = computed(() => {
+  const originalData = store.riskDecisions
+  if (!originalData?.risks) return originalData
+
+  // 如果没有指定灾害类型或为 'all'，显示全部
+  if (!props.disasterType || props.disasterType === 'all') {
+    return originalData
+  }
+
+  // 获取该灾害类型对应的风险类型列表
+  const allowedRiskTypes = disasterRiskTypes[props.disasterType] || []
+
+  // 过滤风险列表
+  const filteredRisks = originalData.risks.filter(risk =>
+    allowedRiskTypes.includes(risk.type)
+  )
+
+  return {
+    ...originalData,
+    risks: filteredRisks
+  }
+})
+
+// 风险统计（基于过滤后的数据）
+const highRiskCount = computed(() =>
+  filteredRiskDecisions.value?.risks?.filter(r => r.level === 'high').length || 0
 )
-const mediumRiskCount = computed(() => 
-  riskDecisions.value?.risks?.filter(r => r.level === 'medium').length || 0
+const mediumRiskCount = computed(() =>
+  filteredRiskDecisions.value?.risks?.filter(r => r.level === 'medium').length || 0
 )
-const lowRiskCount = computed(() => 
-  riskDecisions.value?.risks?.filter(r => r.level === 'low').length || 0
+const lowRiskCount = computed(() =>
+  filteredRiskDecisions.value?.risks?.filter(r => r.level === 'low').length || 0
 )
 
 function getLevelText(level) {
@@ -130,22 +136,6 @@ function getLevelText(level) {
   return texts[level] || level
 }
 
-function getResponseClass(level) {
-  const classes = { I: 'level-1', II: 'level-2', III: 'level-3', IV: 'level-4' }
-  return classes[level] || ''
-}
-
-function showResponsePlan() {
-  // TODO: 打开应急响应方案弹窗
-  console.log('打开应急响应方案')
-  alert('应急响应方案：\n1. 启动防风防潮应急预案\n2. 组织沿海低洼地区人员转移\n3. 通知在海渔船回港避风\n4. 加强海堤巡查和应急值守\n5. 做好排涝泵站准备工作')
-}
-
-function showDecisionReport() {
-  // TODO: 打开决策辅助报告弹窗
-  console.log('打开决策辅助报告')
-  alert('决策辅助报告功能开发中...')
-}
 </script>
 
 <style scoped>
@@ -397,76 +387,4 @@ function showDecisionReport() {
   gap: 4px;
 }
 
-/* 决策建议 */
-.decision-section {
-  background: var(--bg-card);
-  border-radius: 8px;
-  padding: 12px;
-  border: 1px solid var(--border-subtle);
-}
-
-.decision-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.decision-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.decision-row:first-of-type {
-  padding-top: 0;
-}
-
-.decision-row.clickable {
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.decision-row.clickable:hover {
-  background: rgba(0, 180, 230, 0.08);
-  margin: 0 -12px;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-.decision-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.response-badge {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 6px;
-  color: #fff;
-}
-
-.response-badge.level-1 { background: linear-gradient(135deg, #EF4444, #DC2626); }
-.response-badge.level-2 { background: linear-gradient(135deg, #F97316, #EA580C); }
-.response-badge.level-3 { background: linear-gradient(135deg, #EAB308, #CA8A04); }
-.response-badge.level-4 { background: linear-gradient(135deg, #3B82F6, #2563EB); }
-
-.decision-action {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent-cyan);
-  font-size: 12px;
-}
-
-.decision-action i {
-  font-size: 10px;
-  transition: transform 0.2s;
-}
-
-.decision-row.clickable:hover .decision-action i {
-  transform: translateX(3px);
-}
 </style>

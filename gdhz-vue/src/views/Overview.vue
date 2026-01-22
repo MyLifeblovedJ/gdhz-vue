@@ -1,15 +1,12 @@
 <template>
   <div class="page-container">
-    <!-- 左侧边栏 - 决策核心（原右侧边栏） -->
+    <!-- 左侧边栏 - 决策核心（可收缩） -->
     <RightSidebar @risk-click="handleRiskClick" />
 
-    <!-- 中间主内容区（包含横幅、统计条、地图） -->
+    <!-- 中间主内容区（包含横幅和地图） -->
     <div class="main-content-area">
       <!-- 预警横幅 -->
       <AlertBanner />
-
-      <!-- 统计条 -->
-      <StatBar />
 
       <!-- 地图容器 -->
       <MapContainer
@@ -17,6 +14,13 @@
         :current-basemap="currentBasemap"
         @device-click="handleDeviceClick"
       >
+        <!-- Windy 风格悬浮工具栏 -->
+        <FloatingToolbar
+          @device-click="handleDeviceClick"
+          @layer-toggle="handleLayerToggle"
+          @model-click="handleModelClick"
+        />
+
         <!-- 台风信息面板 -->
         <TyphoonInfo />
 
@@ -36,27 +40,23 @@
       </MapContainer>
     </div>
 
-    <!-- 右侧边栏 - 操作面板（原左侧边栏） -->
-    <LeftSidebar
-      @device-click="handleDeviceClick"
-      @layer-toggle="handleLayerToggle"
-      @model-click="handleModelClick"
-    />
+    <!-- 右侧边栏 - 实时数据监控（可收缩） -->
+    <RealtimeDataPanel @station-click="handleStationClick" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAppStore } from '../stores/app'
-import LeftSidebar from '../components/layout/LeftSidebar.vue'
 import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
 import TyphoonInfo from '../components/map/TyphoonInfo.vue'
+import FloatingToolbar from '../components/map/FloatingToolbar.vue'
 import RightSidebar from '../components/layout/RightSidebar.vue'
+import RealtimeDataPanel from '../components/layout/RealtimeDataPanel.vue'
 import BottomControls from '../components/layout/BottomControls.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
-import StatBar from '../components/layout/StatBar.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
@@ -79,6 +79,11 @@ function handleLayerToggle({ layerId, checked }) {
 
 function handleModelClick(model) {
   console.log('Model clicked:', model)
+}
+
+function handleStationClick(station) {
+  console.log('Station clicked:', station)
+  mapRef.value?.flyToStation(station.id)
 }
 
 function handleZoomIn() {

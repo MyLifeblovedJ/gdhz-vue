@@ -10,13 +10,16 @@
     ></canvas>
     
     <!-- 海浪热力图Canvas图层 -->
-    <canvas 
+    <canvas
       v-show="layerVisibility.wave_heatmap"
-      ref="waveCanvas" 
+      ref="waveCanvas"
       class="wave-canvas"
     ></canvas>
-    
-    <slot></slot>
+
+    <!-- UI 覆盖层（确保在地图和 Canvas 上方） -->
+    <div class="map-ui-overlay">
+      <slot></slot>
+    </div>
   </div>
 </template>
 
@@ -926,6 +929,21 @@ onUnmounted(() => {
 .wave-canvas {
   z-index: 399;
   opacity: 0.6;
+}
+
+/* UI 覆盖层 - 确保所有 UI 元素在地图和 Canvas 上方 */
+.map-ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 500;
+}
+
+.map-ui-overlay > * {
+  pointer-events: auto;
 }
 
 /* 台风旋转标志样式 */

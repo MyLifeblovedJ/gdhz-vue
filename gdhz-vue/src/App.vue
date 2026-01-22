@@ -40,10 +40,10 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* 页面淡入淡出动画 - 更流畅 */
+/* 页面淡入淡出动画 - 快速切换减少黑屏感知 */
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 0.25s ease-out;
+  transition: opacity 0.1s ease-out;
 }
 
 .page-fade-enter-from,

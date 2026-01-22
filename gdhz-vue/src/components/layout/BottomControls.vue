@@ -1,16 +1,6 @@
 <template>
   <div class="bottom-controls-wrapper">
-    <!-- 台风登陆倒计时 (简洁醒目) -->
-    <Transition name="fade-slide">
-      <div class="countdown-floater" v-if="typhoonCountdown">
-        <i class="fa-solid fa-hurricane"></i>
-        <span class="countdown-name">{{ typhoonCountdown.name }}</span>
-        <span class="countdown-sep">预计在</span>
-        <span class="countdown-loc">{{ typhoonCountdown.location }}</span>
-        <span class="countdown-sep">登陆</span>
-        <span class="countdown-time">{{ typhoonCountdown.timeLeft }}</span>
-      </div>
-    </Transition>
+
 
     <div class="bottom-controls">
       <!-- 时间轴 -->
@@ -98,21 +88,7 @@ const showDropdown = ref(false)
 const currentBasemap = ref('dark')
 let playInterval = null
 
-// 台风登陆倒计时
-const typhoonCountdown = computed(() => {
-  const typhoon = store.typhoonData
-  if (!typhoon) return null
-  
-  // 模拟：假设台风将于12小时后登陆
-  const landingHours = 12
-  const hours = Math.floor(landingHours)
-  
-  return {
-    name: typhoon.name || '天鸽',
-    location: '珠海金湾',
-    timeLeft: `${hours}小时`
-  }
-})
+
 
 // 计算属性
 const currentTimeLabel = computed(() => {

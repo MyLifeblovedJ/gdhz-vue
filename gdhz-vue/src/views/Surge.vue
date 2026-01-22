@@ -1,65 +1,77 @@
 <template>
   <div class="page-container">
-    <!-- 风暴潮页面：去掉观测资源概览 -->
-    <LeftSidebar 
-      :show-resource-overview="false"
-      @device-click="handleDeviceClick"
-      @layer-toggle="handleLayerToggle"
-    />
-    <MapContainer 
-      ref="mapRef"
-      :current-basemap="currentBasemap"
-      @device-click="handleDeviceClick"
-    >
-      <RightSidebar />
-      <BottomControls 
-        @zoom-in="handleZoomIn"
-        @zoom-out="handleZoomOut"
-        @reset-view="handleResetView"
-        @locate="handleLocate"
-        @basemap-change="handleBasemapChange"
-      />
-      <DetailPopup 
-        v-if="selectedDevice"
-        :device="selectedDevice"
-        @close="selectedDevice = null"
-      />
-      
-      <!-- 风暴潮专属组件 -->
-      <div class="surge-info-panel">
-        <div class="panel-title">
-          <i class="fa-solid fa-water"></i>
-          风暴潮监测
+    <!-- 左侧边栏 - 决策核心（可收缩） -->
+    <RightSidebar disaster-type="surge" @risk-click="handleRiskClick" />
+
+    <!-- 中间主内容区（包含地图） -->
+    <div class="main-content-area">
+      <!-- 地图容器 -->
+      <MapContainer
+        ref="mapRef"
+        :current-basemap="currentBasemap"
+        @device-click="handleDeviceClick"
+      >
+        <!-- Windy 风格悬浮工具栏 -->
+        <FloatingToolbar
+          @device-click="handleDeviceClick"
+          @layer-toggle="handleLayerToggle"
+        />
+
+        <MapLegend />
+        <BottomControls
+          @zoom-in="handleZoomIn"
+          @zoom-out="handleZoomOut"
+          @reset-view="handleResetView"
+          @locate="handleLocate"
+          @basemap-change="handleBasemapChange"
+        />
+        <DetailPopup
+          v-if="selectedDevice"
+          :device="selectedDevice"
+          @close="selectedDevice = null"
+        />
+
+        <!-- 风暴潮专属信息面板 -->
+        <div class="surge-info-panel">
+          <div class="panel-title">
+            <i class="fa-solid fa-water"></i>
+            风暴潮监测
+          </div>
+          <div class="surge-stats">
+            <div class="surge-stat-item">
+              <span class="label">当前预警等级</span>
+              <span class="value level-red">I级 (红色)</span>
+            </div>
+            <div class="surge-stat-item">
+              <span class="label">预计最大增水</span>
+              <span class="value">180 cm</span>
+            </div>
+            <div class="surge-stat-item">
+              <span class="label">影响区域</span>
+              <span class="value">珠江口外海域</span>
+            </div>
+            <div class="surge-stat-item">
+              <span class="label">预警发布时间</span>
+              <span class="value">今日 10:00</span>
+            </div>
+          </div>
         </div>
-        <div class="surge-stats">
-          <div class="surge-stat-item">
-            <span class="label">当前预警等级</span>
-            <span class="value level-red">I级 (红色)</span>
-          </div>
-          <div class="surge-stat-item">
-            <span class="label">预计最大增水</span>
-            <span class="value">180 cm</span>
-          </div>
-          <div class="surge-stat-item">
-            <span class="label">影响区域</span>
-            <span class="value">珠江口外海域</span>
-          </div>
-          <div class="surge-stat-item">
-            <span class="label">预警发布时间</span>
-            <span class="value">今日 10:00</span>
-          </div>
-        </div>
-      </div>
-    </MapContainer>
+      </MapContainer>
+    </div>
+
+    <!-- 右侧边栏 - 实时数据监控（可收缩） -->
+    <RealtimeDataPanel @station-click="handleStationClick" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAppStore } from '../stores/app'
-import LeftSidebar from '../components/layout/LeftSidebar.vue'
 import MapContainer from '../components/map/MapContainer.vue'
+import MapLegend from '../components/map/MapLegend.vue'
+import FloatingToolbar from '../components/map/FloatingToolbar.vue'
 import RightSidebar from '../components/layout/RightSidebar.vue'
+import RealtimeDataPanel from '../components/layout/RealtimeDataPanel.vue'
 import BottomControls from '../components/layout/BottomControls.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
 
@@ -71,6 +83,11 @@ const selectedDevice = ref(null)
 function handleDeviceClick(device) {
   selectedDevice.value = device
   mapRef.value?.flyToDevice(device.id)
+}
+
+function handleRiskClick(risk) {
+  console.log('Risk clicked:', risk)
+  mapRef.value?.flyToRisk(risk)
 }
 
 function handleLayerToggle({ layerId, checked }) {
@@ -97,6 +114,11 @@ function handleBasemapChange(basemapId) {
   currentBasemap.value = basemapId
 }
 
+function handleStationClick(station) {
+  console.log('Station clicked:', station)
+  mapRef.value?.flyToStation(station.id)
+}
+
 onMounted(() => {
   store.initializeData()
 })
@@ -110,11 +132,21 @@ onMounted(() => {
   position: relative;
 }
 
+/* 中间主内容区 */
+.main-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
 /* 风暴潮专属信息面板 */
 .surge-info-panel {
   position: absolute;
   top: 10px;
-  left: 10px;
+  left: 90px;  /* 为悬浮工具栏留出空间 */
   width: 260px;
   background: var(--bg-panel);
   backdrop-filter: blur(12px);

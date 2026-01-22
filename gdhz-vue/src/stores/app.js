@@ -33,6 +33,15 @@ export const useAppStore = defineStore('app', () => {
     const isBannerCollapsed = ref(false)
     const isBannerAnimating = ref(false)
 
+    // 左侧边栏收缩状态
+    const isLeftSidebarCollapsed = ref(false)
+
+    // 右侧边栏收缩状态
+    const isRightSidebarCollapsed = ref(false)
+
+    // 悬浮工具栏激活的面板 (null | 'layers' | 'devices' | 'models')
+    const activeFloatingPanel = ref(null)
+
     // 当前页面
     const currentPage = ref('overview')
 
@@ -254,6 +263,39 @@ export const useAppStore = defineStore('app', () => {
         currentPage.value = page
     }
 
+    /**
+     * 切换左侧边栏状态
+     */
+    function toggleLeftSidebar() {
+        isLeftSidebarCollapsed.value = !isLeftSidebarCollapsed.value
+    }
+
+    /**
+     * 切换右侧边栏状态
+     */
+    function toggleRightSidebar() {
+        isRightSidebarCollapsed.value = !isRightSidebarCollapsed.value
+    }
+
+    /**
+     * 设置悬浮面板激活状态
+     */
+    function setActiveFloatingPanel(panel) {
+        // 如果点击同一个面板，则关闭；否则切换到新面板
+        if (activeFloatingPanel.value === panel) {
+            activeFloatingPanel.value = null
+        } else {
+            activeFloatingPanel.value = panel
+        }
+    }
+
+    /**
+     * 关闭悬浮面板
+     */
+    function closeFloatingPanel() {
+        activeFloatingPanel.value = null
+    }
+
     return {
         // 状态
         devices,
@@ -269,6 +311,9 @@ export const useAppStore = defineStore('app', () => {
         currentTime,
         isBannerCollapsed,
         isBannerAnimating,
+        isLeftSidebarCollapsed,
+        isRightSidebarCollapsed,
+        activeFloatingPanel,
         currentPage,
         layerVisibility,
         selectedDevice,
@@ -295,5 +340,9 @@ export const useAppStore = defineStore('app', () => {
         collapseBannerWithAnimation,
         updateCurrentTime,
         setCurrentPage,
+        toggleLeftSidebar,
+        toggleRightSidebar,
+        setActiveFloatingPanel,
+        closeFloatingPanel,
     }
 })

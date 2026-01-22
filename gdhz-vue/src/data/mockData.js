@@ -372,6 +372,271 @@ export const mockRiskData = [
     { city: '阳江', value: 50 },
 ]
 
+// ===== 实时监控数据 =====
+export const mockRealtimeData = {
+    // 数据概览卡片
+    overview: {
+        tideLevel: {
+            label: '当前潮位',
+            value: 2.85,
+            unit: 'm',
+            trend: 'up',  // up, down, stable
+            station: '珠海香洲站',
+            threshold: { warn: 2.5, alarm: 3.0 },
+        },
+        waveHeight: {
+            label: '最大浪高',
+            value: 4.2,
+            unit: 'm',
+            trend: 'up',
+            station: '大万山岛',
+            threshold: { warn: 3.5, alarm: 5.0 },
+        },
+        windSpeed: {
+            label: '风速',
+            value: 22.5,
+            unit: 'm/s',
+            direction: 'ESE',  // 风向
+            trend: 'stable',
+            station: '担杆岛',
+            threshold: { warn: 17.0, alarm: 25.0 },
+        },
+        temperature: {
+            label: '海温',
+            value: 24.8,
+            unit: '°C',
+            trend: 'down',
+            station: '珠江口浮标',
+            threshold: { warn: 28.0, alarm: 30.0 },
+        },
+    },
+
+    // 重点监测站点列表
+    keyStations: [
+        { id: 'st001', name: '珠海香洲站', type: 'tide', lat: 22.27, lng: 113.57 },
+        { id: 'st002', name: '深圳蛇口站', type: 'tide', lat: 22.48, lng: 113.92 },
+        { id: 'st003', name: '大万山岛', type: 'wave', lat: 21.90, lng: 113.70 },
+        { id: 'st004', name: '担杆岛', type: 'wind', lat: 22.20, lng: 114.30 },
+        { id: 'st005', name: '湛江港站', type: 'tide', lat: 21.27, lng: 110.35 },
+    ],
+
+    // 数据质量指标
+    dataQuality: {
+        completeness: 96.5,  // 数据完整率 %
+        lastUpdate: new Date().toISOString(),
+        activeStations: 186,
+        totalStations: 220,
+    },
+}
+
+// 生成多站点历史数据（用于对比图表）
+export function generateMultiStationData(hours = 6) {
+    const stations = mockRealtimeData.keyStations
+    const now = Date.now()
+    const interval = 600000  // 10分钟间隔
+
+    return stations.map(station => {
+        const data = []
+        for (let i = hours * 6; i >= 0; i--) {
+            const time = new Date(now - i * interval)
+            // 根据站点类型生成不同范围的数据
+            let baseValue, amplitude
+            switch (station.type) {
+                case 'tide':
+                    baseValue = 2.0
+                    amplitude = 1.2
+                    break
+                case 'wave':
+                    baseValue = 2.5
+                    amplitude = 2.0
+                    break
+                case 'wind':
+                    baseValue = 15
+                    amplitude = 10
+                    break
+                default:
+                    baseValue = 20
+                    amplitude = 5
+            }
+            // 添加周期性变化和随机波动
+            const value = baseValue + amplitude * Math.sin(i / 6 * Math.PI / 2) + (Math.random() - 0.5) * amplitude * 0.3
+            data.push({
+                time: time.toISOString(),
+                value: Math.max(0, Number(value.toFixed(2))),
+            })
+        }
+        return {
+            stationId: station.id,
+            stationName: station.name,
+            type: station.type,
+            data,
+        }
+    })
+}
+
+// 异常警报数据
+export const mockDataAlerts = [
+    {
+        id: 'DA001',
+        type: 'threshold_exceed',
+        level: 'high',
+        station: '珠海香洲站',
+        stationId: 'st001',
+        element: '潮位',
+        message: '潮位超过警戒值 0.35m',
+        value: 2.85,
+        threshold: 2.5,
+        time: new Date(Date.now() - 5 * 60000).toISOString(),
+    },
+    {
+        id: 'DA002',
+        type: 'threshold_exceed',
+        level: 'medium',
+        station: '大万山岛',
+        stationId: 'st003',
+        element: '浪高',
+        message: '浪高超过预警值 0.7m',
+        value: 4.2,
+        threshold: 3.5,
+        time: new Date(Date.now() - 12 * 60000).toISOString(),
+    },
+    {
+        id: 'DA003',
+        type: 'rapid_change',
+        level: 'medium',
+        station: '担杆岛',
+        stationId: 'st004',
+        element: '风速',
+        message: '风速快速上升 +5.2m/s/h',
+        value: 22.5,
+        changeRate: 5.2,
+        time: new Date(Date.now() - 18 * 60000).toISOString(),
+    },
+    {
+        id: 'DA004',
+        type: 'data_gap',
+        level: 'low',
+        station: '阳江站',
+        stationId: 'st006',
+        element: '全要素',
+        message: '数据中断超过15分钟',
+        lastData: new Date(Date.now() - 20 * 60000).toISOString(),
+        time: new Date(Date.now() - 20 * 60000).toISOString(),
+    },
+    {
+        id: 'DA005',
+        type: 'threshold_exceed',
+        level: 'high',
+        station: '湛江港站',
+        stationId: 'st005',
+        element: '潮位',
+        message: '潮位超过警戒值 0.28m',
+        value: 2.78,
+        threshold: 2.5,
+        time: new Date(Date.now() - 25 * 60000).toISOString(),
+    },
+    {
+        id: 'DA006',
+        type: 'sensor_fault',
+        level: 'low',
+        station: '茂名站',
+        stationId: 'st007',
+        element: '温度传感器',
+        message: '传感器读数异常，可能需要校准',
+        time: new Date(Date.now() - 35 * 60000).toISOString(),
+    },
+]
+
+// ===== 重点关注区域 =====
+export const mockFocusAreas = [
+    {
+        id: 'FA001',
+        name: '珠江口海域',
+        level: 'high',
+        reason: '台风"摩羯"外围影响，预计风暴潮增水120-180cm',
+        affectedCities: ['珠海', '深圳', '中山'],
+        population: 285,  // 万人
+        keyFacilities: ['珠海港', '蛇口港', '前海经济区'],
+    },
+    {
+        id: 'FA002',
+        name: '粤东沿海',
+        level: 'medium',
+        reason: '海浪预警橙色，近岸浪高4-5m',
+        affectedCities: ['汕头', '汕尾', '揭阳'],
+        population: 156,
+        keyFacilities: ['汕头港', '海门渔港'],
+    },
+    {
+        id: 'FA003',
+        name: '湛江湾',
+        level: 'medium',
+        reason: '天文大潮叠加，潮位接近警戒线',
+        affectedCities: ['湛江'],
+        population: 98,
+        keyFacilities: ['湛江港', '湛江钢铁'],
+    },
+]
+
+// ===== 预测趋势 =====
+export const mockPredictions = {
+    summary: '未来24小时内，受台风外围影响，粤中、粤东沿海风浪较大，需重点防范。',
+    items: [
+        {
+            time: '今日 18:00',
+            event: '珠江口风暴潮峰值',
+            level: 'high',
+            detail: '预计最大增水150-180cm，与天文潮叠加',
+        },
+        {
+            time: '今日 20:00',
+            event: '粤东海域浪高峰值',
+            level: 'medium',
+            detail: '最大浪高可达5-6m，不宜出海',
+        },
+        {
+            time: '明日 06:00',
+            event: '风力减弱',
+            level: 'low',
+            detail: '沿海风力降至6-7级，海况逐步好转',
+        },
+        {
+            time: '明日 12:00',
+            event: '预警有望解除',
+            level: 'low',
+            detail: '各项指标回落至正常范围',
+        },
+    ],
+}
+
+// ===== 应急资源概览 =====
+export const mockResources = {
+    rescueTeams: {
+        label: '救援队伍',
+        total: 42,
+        deployed: 18,
+        unit: '支',
+    },
+    rescueBoats: {
+        label: '救援船只',
+        total: 156,
+        available: 128,
+        unit: '艘',
+    },
+    shelters: {
+        label: '避险场所',
+        total: 89,
+        activated: 23,
+        capacity: 12.5,  // 万人
+        unit: '处',
+    },
+    evacuated: {
+        label: '已转移人员',
+        value: 3.2,
+        unit: '万人',
+    },
+}
+
 // ===== 历史数据生成函数 =====
 export function generateHistoryData(deviceId, elementKey, startTime, endTime, interval = 'hour') {
     const data = []
