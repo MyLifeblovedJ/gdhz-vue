@@ -1,44 +1,47 @@
 <template>
   <div class="page-container">
-    <!-- 左侧边栏 - 贯通布局 -->
-    <LeftSidebar 
-      @device-click="handleDeviceClick"
-      @layer-toggle="handleLayerToggle"
-      @model-click="handleModelClick"
-    />
-    
+    <!-- 左侧边栏 - 决策核心（原右侧边栏） -->
+    <RightSidebar @risk-click="handleRiskClick" />
+
     <!-- 中间主内容区（包含横幅、统计条、地图） -->
     <div class="main-content-area">
       <!-- 预警横幅 -->
       <AlertBanner />
-      
+
       <!-- 统计条 -->
       <StatBar />
-      
+
       <!-- 地图容器 -->
-      <MapContainer 
+      <MapContainer
         ref="mapRef"
         :current-basemap="currentBasemap"
         @device-click="handleDeviceClick"
       >
+        <!-- 台风信息面板 -->
+        <TyphoonInfo />
+
         <MapLegend />
-        <BottomControls 
+        <BottomControls
           @zoom-in="handleZoomIn"
           @zoom-out="handleZoomOut"
           @reset-view="handleResetView"
           @locate="handleLocate"
           @basemap-change="handleBasemapChange"
         />
-        <DetailPopup 
+        <DetailPopup
           v-if="selectedDevice"
           :device="selectedDevice"
           @close="selectedDevice = null"
         />
       </MapContainer>
     </div>
-    
-    <!-- 右侧边栏 - 贯通布局 -->
-    <RightSidebar @risk-click="handleRiskClick" />
+
+    <!-- 右侧边栏 - 操作面板（原左侧边栏） -->
+    <LeftSidebar
+      @device-click="handleDeviceClick"
+      @layer-toggle="handleLayerToggle"
+      @model-click="handleModelClick"
+    />
   </div>
 </template>
 
@@ -48,6 +51,7 @@ import { useAppStore } from '../stores/app'
 import LeftSidebar from '../components/layout/LeftSidebar.vue'
 import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
+import TyphoonInfo from '../components/map/TyphoonInfo.vue'
 import RightSidebar from '../components/layout/RightSidebar.vue'
 import BottomControls from '../components/layout/BottomControls.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
@@ -75,7 +79,6 @@ function handleLayerToggle({ layerId, checked }) {
 
 function handleModelClick(model) {
   console.log('Model clicked:', model)
-  // TODO: 打开模型配置面板
 }
 
 function handleZoomIn() {
@@ -111,14 +114,13 @@ onMounted(() => {
   position: relative;
 }
 
-/* 右侧主内容区 - 包含横幅和地图 */
+/* 中间主内容区 - 包含横幅和地图 */
 .main-content-area {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  position: relative; /* 用于展开按钮定位 */
+  position: relative;
 }
 </style>
-

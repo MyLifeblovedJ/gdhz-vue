@@ -78,7 +78,7 @@ function handleImageError(e) {
   width: 340px;
   flex-shrink: 0;
   background: var(--bg-deepest);
-  border-left: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   padding: 8px 10px;
@@ -95,12 +95,12 @@ function handleImageError(e) {
 
 @keyframes sidebar-risk-pulse {
   0%, 100% {
-    border-left-color: var(--border-subtle);
-    box-shadow: inset 2px 0 10px rgba(239, 68, 68, 0.05);
+    border-right-color: var(--border-subtle);
+    box-shadow: inset -2px 0 10px rgba(239, 68, 68, 0.05);
   }
   50% {
-    border-left-color: rgba(239, 68, 68, 0.6);
-    box-shadow: inset 3px 0 20px rgba(239, 68, 68, 0.15);
+    border-right-color: rgba(239, 68, 68, 0.6);
+    box-shadow: inset -3px 0 20px rgba(239, 68, 68, 0.15);
   }
 }
 

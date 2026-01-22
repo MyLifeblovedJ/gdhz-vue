@@ -233,7 +233,7 @@ onMounted(() => {
   width: 340px;
   flex-shrink: 0;
   background: var(--bg-deepest);
-  border-right: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
