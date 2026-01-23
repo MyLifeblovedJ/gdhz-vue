@@ -18,14 +18,6 @@
       >
         <i class="fa-solid fa-satellite-dish"></i>
       </button>
-      <button
-        class="toolbar-btn models"
-        :class="{ active: activePanel === 'models' }"
-        @click="togglePanel('models')"
-        title="模型集成"
-      >
-        <i class="fa-solid fa-brain"></i>
-      </button>
     </div>
 
     <!-- 面板容器 -->
@@ -46,7 +38,6 @@
         <div class="panel-content">
           <LayerControl v-if="activePanel === 'layers'" @layer-toggle="handleLayerToggle" />
           <DeviceExplorer v-if="activePanel === 'devices'" @device-click="handleDeviceClick" />
-          <ModelIntegration v-if="activePanel === 'models'" @model-click="handleModelClick" />
         </div>
       </div>
     </Transition>
@@ -58,9 +49,8 @@ import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
-import ModelIntegration from '../model/ModelIntegration.vue'
 
-const emit = defineEmits(['device-click', 'layer-toggle', 'model-click'])
+const emit = defineEmits(['device-click', 'layer-toggle'])
 
 const store = useAppStore()
 
@@ -73,10 +63,6 @@ const panelConfig = {
   devices: {
     title: '观测设备',
     icon: 'fa-solid fa-satellite-dish'
-  },
-  models: {
-    title: '模型集成',
-    icon: 'fa-solid fa-brain'
   }
 }
 
@@ -98,10 +84,6 @@ function handleLayerToggle(data) {
 
 function handleDeviceClick(device) {
   emit('device-click', device)
-}
-
-function handleModelClick(model) {
-  emit('model-click', model)
 }
 </script>
 

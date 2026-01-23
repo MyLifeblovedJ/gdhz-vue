@@ -1,35 +1,19 @@
 <template>
-  <div class="realtime-panel">
-    <!-- 1. 态势研判总结（核心区域） -->
-    <div class="summary-section">
-      <div class="summary-header">
-        <i class="fa-solid fa-lightbulb"></i>
-        <span>态势研判</span>
-        <span class="update-badge">
-          <i class="fa-solid fa-sync-alt" :class="{ spinning: isRefreshing }"></i>
-          {{ lastUpdateText }}
-        </span>
+  <div class="data-panel-sidebar">
+    <!-- 1. 观测数据概览 -->
+    <div class="panel observation-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-eye"></i>
+          观测数据概览
+        </div>
       </div>
-      <div class="summary-content">
-        <div class="summary-conclusion" :class="overallRiskLevel">
-          <div class="conclusion-icon">
-            <i :class="conclusionIcon"></i>
-          </div>
-          <div class="conclusion-text">
-            <div class="conclusion-title">{{ conclusionTitle }}</div>
-            <div class="conclusion-desc">{{ conclusionDesc }}</div>
-          </div>
-        </div>
-        <div class="key-findings">
-          <div v-for="(finding, idx) in keyFindings" :key="idx" class="finding-item" :class="finding.level">
-            <i :class="finding.icon"></i>
-            <span>{{ finding.text }}</span>
-          </div>
-        </div>
+      <div class="panel-content">
+        <ObservationOverview />
       </div>
     </div>
 
-    <!-- 2. 关键监测指标（固定高度，内部滚动） -->
+    <!-- 2. 关键监测指标 -->
     <div class="panel data-panel">
       <div class="panel-header">
         <div class="panel-title">
@@ -67,108 +51,21 @@
       </div>
     </div>
 
-    <!-- 3. 数据异常（像预警一样，固定高度内部滚动） -->
-    <div class="panel alert-panel">
-      <div class="panel-header">
+    <!-- 3. 潮位预报/观测对比 -->
+    <div class="panel tide-panel" :class="{ collapsed: tideCollapsed }">
+      <div class="panel-header" @click="tideCollapsed = !tideCollapsed">
         <div class="panel-title">
-          <i class="fa-solid fa-bell"></i>
-          数据异常
-          <span class="alert-count">{{ dataAlerts.length }}</span>
-        </div>
-      </div>
-      <div class="panel-content">
-        <div class="alert-scroll-container">
-          <div
-            v-for="alert in dataAlerts"
-            :key="alert.id"
-            class="alert-item"
-            :class="alert.level"
-            @click="handleAlertClick(alert)"
-          >
-            <div class="alert-icon-wrap">
-              <i :class="getAlertIcon(alert.type)"></i>
-            </div>
-            <div class="alert-content">
-              <div class="alert-message">{{ alert.message }}</div>
-              <div class="alert-meta">
-                <span class="alert-station">{{ alert.station }}</span>
-                <span class="alert-time">{{ formatTime(alert.time) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="dataAlerts.length > 3" class="scroll-hint">
-          共 {{ dataAlerts.length }} 条异常，滚动查看更多
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. 重点关注区域 -->
-    <div class="panel focus-panel" :class="{ collapsed: focusCollapsed }">
-      <div class="panel-header" @click="focusCollapsed = !focusCollapsed">
-        <div class="panel-title">
-          <i class="fa-solid fa-location-dot"></i>
-          重点关注区域
-          <span class="badge warn">{{ focusAreas.filter(a => a.level === 'high').length }}高风险</span>
+          <i class="fa-solid fa-water"></i>
+          潮位预报/观测对比
         </div>
         <i class="fa-solid fa-chevron-down toggle-icon"></i>
       </div>
       <div class="panel-content">
-        <div class="focus-list">
-          <div
-            v-for="area in focusAreas"
-            :key="area.id"
-            class="focus-item"
-            :class="area.level"
-          >
-            <div class="focus-header">
-              <span class="focus-name">{{ area.name }}</span>
-              <span class="focus-level" :class="area.level">
-                {{ area.level === 'high' ? '高风险' : '中风险' }}
-              </span>
-            </div>
-            <div class="focus-reason">{{ area.reason }}</div>
-            <div class="focus-meta">
-              <span><i class="fa-solid fa-users"></i> {{ area.population }}万人</span>
-              <span><i class="fa-solid fa-city"></i> {{ area.affectedCities.join('、') }}</span>
-            </div>
-          </div>
-        </div>
+        <TideChart />
       </div>
     </div>
 
-    <!-- 5. 预测趋势 -->
-    <div class="panel prediction-panel" :class="{ collapsed: predictionCollapsed }">
-      <div class="panel-header" @click="predictionCollapsed = !predictionCollapsed">
-        <div class="panel-title">
-          <i class="fa-solid fa-chart-line"></i>
-          预测趋势
-        </div>
-        <i class="fa-solid fa-chevron-down toggle-icon"></i>
-      </div>
-      <div class="panel-content">
-        <div class="prediction-summary">{{ predictions.summary }}</div>
-        <div class="prediction-timeline">
-          <div
-            v-for="(item, idx) in predictions.items"
-            :key="idx"
-            class="timeline-item"
-            :class="item.level"
-          >
-            <div class="timeline-dot"></div>
-            <div class="timeline-content">
-              <div class="timeline-header">
-                <span class="timeline-time">{{ item.time }}</span>
-                <span class="timeline-event">{{ item.event }}</span>
-              </div>
-              <div class="timeline-detail">{{ item.detail }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6. 应急资源概览 -->
+    <!-- 3. 应急资源概览 -->
     <div class="panel resource-panel" :class="{ collapsed: resourceCollapsed }">
       <div class="panel-header" @click="resourceCollapsed = !resourceCollapsed">
         <div class="panel-title">
@@ -220,7 +117,7 @@
       </div>
     </div>
 
-    <!-- 7. 设备与数据统计 -->
+    <!-- 4. 设备与数据统计 -->
     <div class="stats-section">
       <div class="stats-header">
         <i class="fa-solid fa-chart-pie"></i>
@@ -256,25 +153,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useAppStore } from '../../stores/app'
-import { mockRealtimeData, mockDataAlerts, mockFocusAreas, mockPredictions, mockResources } from '../../data/mockData'
+import ObservationOverview from '../data/ObservationOverview.vue'
+import TideChart from '../data/TideChart.vue'
+import { mockRealtimeData, mockResources } from '../../data/mockData'
 
 const store = useAppStore()
-const emit = defineEmits(['station-click'])
 
 // 面板折叠状态
-const focusCollapsed = ref(false)
-const predictionCollapsed = ref(false)
+const tideCollapsed = ref(false)
 const resourceCollapsed = ref(false)
-const isRefreshing = ref(false)
 
 // 计算属性
 const realtimeData = computed(() => mockRealtimeData)
-const dataAlerts = computed(() => mockDataAlerts)
 const dataQuality = computed(() => mockRealtimeData.dataQuality)
-const focusAreas = computed(() => mockFocusAreas)
-const predictions = computed(() => mockPredictions)
 const resources = computed(() => mockResources)
 
 // 设备统计
@@ -293,109 +186,6 @@ const normalCount = computed(() => {
 const warnCount = computed(() => {
   const overview = realtimeData.value.overview
   return Object.values(overview).filter(item => item.value >= item.threshold.warn).length
-})
-
-const lastUpdateText = computed(() => {
-  const date = new Date(dataQuality.value.lastUpdate)
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-})
-
-// 计算整体风险等级和总结
-const overallRiskLevel = computed(() => {
-  const overview = realtimeData.value.overview
-  let highCount = 0
-  let warnCount = 0
-
-  Object.values(overview).forEach(item => {
-    if (item.value >= item.threshold.alarm) highCount++
-    else if (item.value >= item.threshold.warn) warnCount++
-  })
-
-  if (highCount > 0) return 'high'
-  if (warnCount > 0) return 'medium'
-  return 'low'
-})
-
-const conclusionIcon = computed(() => {
-  switch (overallRiskLevel.value) {
-    case 'high': return 'fa-solid fa-circle-exclamation'
-    case 'medium': return 'fa-solid fa-triangle-exclamation'
-    default: return 'fa-solid fa-circle-check'
-  }
-})
-
-const conclusionTitle = computed(() => {
-  switch (overallRiskLevel.value) {
-    case 'high': return '当前态势紧张，需立即关注'
-    case 'medium': return '部分指标异常，建议密切监控'
-    default: return '当前态势平稳，各项指标正常'
-  }
-})
-
-const conclusionDesc = computed(() => {
-  const overview = realtimeData.value.overview
-  const alerts = []
-
-  if (overview.tideLevel.value >= overview.tideLevel.threshold.warn) {
-    alerts.push(`潮位偏高${(overview.tideLevel.value - overview.tideLevel.threshold.warn).toFixed(2)}m`)
-  }
-  if (overview.waveHeight.value >= overview.waveHeight.threshold.warn) {
-    alerts.push(`浪高超警戒`)
-  }
-  if (overview.windSpeed.value >= overview.windSpeed.threshold.warn) {
-    alerts.push(`风力较大`)
-  }
-
-  if (alerts.length === 0) {
-    return '所有监测站点运行正常，未发现异常情况。'
-  }
-  return alerts.join('，') + '，请注意防范。'
-})
-
-// 关键发现列表
-const keyFindings = computed(() => {
-  const findings = []
-  const overview = realtimeData.value.overview
-
-  if (overview.tideLevel.value >= overview.tideLevel.threshold.alarm) {
-    findings.push({
-      icon: 'fa-solid fa-water',
-      text: `${overview.tideLevel.station}潮位已达${overview.tideLevel.value}m，超过警戒`,
-      level: 'high'
-    })
-  } else if (overview.tideLevel.value >= overview.tideLevel.threshold.warn) {
-    findings.push({
-      icon: 'fa-solid fa-water',
-      text: `${overview.tideLevel.station}潮位接近警戒值`,
-      level: 'medium'
-    })
-  }
-
-  if (overview.waveHeight.value >= overview.waveHeight.threshold.warn) {
-    findings.push({
-      icon: 'fa-solid fa-wind',
-      text: `${overview.waveHeight.station}浪高${overview.waveHeight.value}m，不宜出海`,
-      level: overview.waveHeight.value >= overview.waveHeight.threshold.alarm ? 'high' : 'medium'
-    })
-  }
-
-  if (overview.windSpeed.value >= overview.windSpeed.threshold.warn) {
-    findings.push({
-      icon: 'fa-solid fa-tornado',
-      text: `${overview.windSpeed.station}风速${overview.windSpeed.value}m/s，注意防风`,
-      level: overview.windSpeed.value >= overview.windSpeed.threshold.alarm ? 'high' : 'medium'
-    })
-  }
-
-  if (findings.length === 0) {
-    findings.push({
-      icon: 'fa-solid fa-check',
-      text: '各监测站点数据正常，海况良好',
-      level: 'low'
-    })
-  }
-
-  return findings
 })
 
 // 方法
@@ -418,52 +208,10 @@ function getTrendIcon(trend) {
     default: return 'fa-solid fa-minus'
   }
 }
-
-function getAlertIcon(type) {
-  switch (type) {
-    case 'threshold_exceed': return 'fa-solid fa-triangle-exclamation'
-    case 'rapid_change': return 'fa-solid fa-bolt'
-    case 'data_gap': return 'fa-solid fa-link-slash'
-    case 'sensor_fault': return 'fa-solid fa-wrench'
-    default: return 'fa-solid fa-circle-exclamation'
-  }
-}
-
-function formatTime(timeStr) {
-  const date = new Date(timeStr)
-  const now = new Date()
-  const diff = Math.floor((now - date) / 60000)
-  if (diff < 1) return '刚刚'
-  if (diff < 60) return `${diff}分钟前`
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-}
-
-function handleAlertClick(alert) {
-  emit('station-click', { id: alert.stationId, name: alert.station })
-}
-
-// 模拟数据刷新
-let refreshInterval = null
-function startRefresh() {
-  refreshInterval = setInterval(() => {
-    isRefreshing.value = true
-    setTimeout(() => {
-      isRefreshing.value = false
-    }, 500)
-  }, 10000)
-}
-
-onMounted(() => {
-  startRefresh()
-})
-
-onUnmounted(() => {
-  if (refreshInterval) clearInterval(refreshInterval)
-})
 </script>
 
 <style scoped>
-.realtime-panel {
+.data-panel-sidebar {
   width: 340px;
   flex-shrink: 0;
   background: var(--bg-deepest);
@@ -477,20 +225,20 @@ onUnmounted(() => {
 }
 
 /* 侧边栏滚动条 */
-.realtime-panel::-webkit-scrollbar {
+.data-panel-sidebar::-webkit-scrollbar {
   width: 4px;
 }
 
-.realtime-panel::-webkit-scrollbar-track {
+.data-panel-sidebar::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.realtime-panel::-webkit-scrollbar-thumb {
+.data-panel-sidebar::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
   border-radius: 2px;
 }
 
-.realtime-panel::-webkit-scrollbar-thumb:hover {
+.data-panel-sidebar::-webkit-scrollbar-thumb:hover {
   background: #10b981;
 }
 
@@ -520,7 +268,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: #10b981;
 }
@@ -592,14 +340,14 @@ onUnmounted(() => {
 }
 
 .conclusion-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .conclusion-desc {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -615,8 +363,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
-  padding: 4px 6px;
+  font-size: 12px;
+  padding: 6px 8px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -674,7 +422,7 @@ onUnmounted(() => {
 
 .panel-title {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--accent-cyan);
   letter-spacing: 0.5px;
@@ -854,204 +602,15 @@ onUnmounted(() => {
   color: #ef4444;
 }
 
-/* 数据异常 - 红色主题 */
-.alert-panel::before {
-  background: linear-gradient(90deg, transparent, #ef4444 30%, #ef4444 70%, transparent);
+/* 模型能力展示 - 紫色主题 */
+.model-panel::before {
+  background: linear-gradient(90deg, transparent, #8b5cf6 30%, #8b5cf6 70%, transparent);
 }
 
-.alert-panel .panel-title {
-  color: #ef4444;
+.model-panel .panel-title {
+  color: #8b5cf6;
 }
 
-.alert-panel .panel-header {
-  cursor: default;
-}
-
-.alert-panel .panel-header:hover {
-  background: transparent;
-}
-
-.alert-scroll-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 150px;  /* 约2-3条的高度 */
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.alert-scroll-container::-webkit-scrollbar {
-  width: 3px;
-}
-
-.alert-scroll-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 2px;
-}
-
-.alert-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(239, 68, 68, 0.5);
-  border-radius: 2px;
-}
-
-.scroll-hint {
-  text-align: center;
-  font-size: 9px;
-  color: var(--text-muted);
-  padding-top: 6px;
-  border-top: 1px solid var(--border-subtle);
-  margin-top: 6px;
-}
-
-.alert-item {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: rgba(30, 40, 60, 0.4);
-  flex-shrink: 0;
-}
-
-.alert-item:hover {
-  background: rgba(40, 50, 70, 0.6);
-}
-
-.alert-item.high {
-  border-left: 2px solid #ef4444;
-}
-
-.alert-item.medium {
-  border-left: 2px solid #f59e0b;
-}
-
-.alert-item.low {
-  border-left: 2px solid #6b7280;
-}
-
-.alert-icon-wrap {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.alert-item.high .alert-icon-wrap {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.alert-item.medium .alert-icon-wrap {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
-}
-
-.alert-item.low .alert-icon-wrap {
-  background: rgba(107, 114, 128, 0.2);
-  color: #9ca3af;
-}
-
-.alert-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.alert-message {
-  font-size: 10px;
-  color: var(--text-secondary);
-  line-height: 1.3;
-}
-
-.alert-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 9px;
-  color: var(--text-muted);
-}
-
-/* 重点关注区域 */
-.focus-panel::before {
-  background: linear-gradient(90deg, transparent, #ef4444 30%, #ef4444 70%, transparent);
-}
-
-.focus-panel .panel-title {
-  color: #ef4444;
-}
-
-.focus-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.focus-item {
-  padding: 10px;
-  border-radius: 6px;
-  background: rgba(30, 40, 60, 0.4);
-}
-
-.focus-item.high {
-  border-left: 3px solid #ef4444;
-  background: rgba(239, 68, 68, 0.05);
-}
-
-.focus-item.medium {
-  border-left: 3px solid #f59e0b;
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.focus-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.focus-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.focus-level {
-  font-size: 9px;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.focus-level.high {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-.focus-level.medium {
-  background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
-}
-
-.focus-reason {
-  font-size: 10px;
-  color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 6px;
-}
-
-.focus-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 9px;
-  color: var(--text-muted);
-}
-
-.focus-meta i {
-  margin-right: 4px;
-}
 
 /* 预测趋势 */
 .prediction-panel::before {

@@ -173,11 +173,6 @@
     <CollapsiblePanel id="panel-devices" title="观测设备" icon="fa-satellite-dish">
       <DeviceExplorer @device-click="handleDeviceClick" />
     </CollapsiblePanel>
-
-    <!-- 模型集成 -->
-    <CollapsiblePanel id="panel-models" title="模型集成" icon="fa-brain">
-      <ModelIntegration @model-click="handleModelClick" />
-    </CollapsiblePanel>
   </aside>
 </template>
 
@@ -186,10 +181,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useAppStore } from '../../stores/app'
 import CollapsiblePanel from '../common/CollapsiblePanel.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
-import ModelIntegration from '../model/ModelIntegration.vue'
 
 // Emits
-const emit = defineEmits(['device-click', 'layer-toggle', 'model-click'])
+const emit = defineEmits(['device-click', 'layer-toggle'])
 
 const store = useAppStore()
 
@@ -216,11 +210,6 @@ function toggleLayer(layerId, checked) {
 
 function handleDeviceClick(device) {
   emit('device-click', device)
-}
-
-function handleModelClick(model) {
-  emit('model-click', model)
-  console.log('Model clicked:', model.name)
 }
 
 onMounted(() => {
