@@ -287,6 +287,92 @@ export const mockTyphoonData = {
     },
 }
 
+// ===== 历史灾害匹配数据 =====
+export const mockHistoricalMatches = {
+    current: {
+        name: '天鸽',
+        category: '超强台风',
+        maxWindSpeed: 55,
+        minPressure: 935,
+        landingLocation: '珠海金湾区',
+        estimatedLanding: '2026-01-13 14:00'
+    },
+    matches: [
+        {
+            id: 'TY1822',
+            name: '山竹',
+            year: 2018,
+            similarity: 0.93,
+            category: '超强台风',
+            maxWindSpeed: 62,
+            minPressure: 910,
+            landingLocation: '台山市海宴镇',
+            landingTime: '2018-09-16 17:00',
+            affectedAreas: ['江门', '阳江', '茂名', '珠海'],
+            casualties: {
+                deaths: 6,
+                injured: 165,
+                missing: 2
+            },
+            economicLoss: 52.0,
+            details: {
+                maxStormSurge: 3.15,
+                maxWaveHeight: 14.0,
+                evacuation: 320000,
+                affectedPopulation: 4300000
+            }
+        },
+        {
+            id: 'TY1509',
+            name: '彩虹',
+            year: 2015,
+            similarity: 0.82,
+            category: '超强台风',
+            maxWindSpeed: 62,
+            minPressure: 910,
+            landingLocation: '湛江坡头区',
+            landingTime: '2015-10-04 14:10',
+            affectedAreas: ['湛江', '茂名', '阳江'],
+            casualties: {
+                deaths: 5,
+                injured: 213,
+                missing: 1
+            },
+            economicLoss: 32.8,
+            details: {
+                maxStormSurge: 2.15,
+                maxWaveHeight: 9.2,
+                evacuation: 435000,
+                affectedPopulation: 2800000
+            }
+        },
+        {
+            id: 'TY0814',
+            name: '黑格比',
+            year: 2008,
+            similarity: 0.76,
+            category: '强台风',
+            maxWindSpeed: 48,
+            minPressure: 960,
+            landingLocation: '电白区',
+            landingTime: '2008-09-24 04:20',
+            affectedAreas: ['茂名', '阳江', '江门'],
+            casualties: {
+                deaths: 3,
+                injured: 127,
+                missing: 0
+            },
+            economicLoss: 18.6,
+            details: {
+                maxStormSurge: 1.95,
+                maxWaveHeight: 7.3,
+                evacuation: 187000,
+                affectedPopulation: 1900000
+            }
+        }
+    ]
+}
+
 // ===== 船舶数据 =====
 export const mockVesselData = Array.from({ length: 150 }, (_, i) => ({
     id: `V${String(i + 1).padStart(4, '0')}`,

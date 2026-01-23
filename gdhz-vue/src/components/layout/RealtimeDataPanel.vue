@@ -65,59 +65,21 @@
       </div>
     </div>
 
-    <!-- 3. 应急资源概览 -->
-    <div class="panel resource-panel" :class="{ collapsed: resourceCollapsed }">
-      <div class="panel-header" @click="resourceCollapsed = !resourceCollapsed">
+    <!-- 4. 历史灾害匹配 -->
+    <div class="panel disaster-panel" :class="{ collapsed: disasterCollapsed }">
+      <div class="panel-header" @click="disasterCollapsed = !disasterCollapsed">
         <div class="panel-title">
-          <i class="fa-solid fa-truck-medical"></i>
-          应急资源
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          历史灾害匹配
         </div>
         <i class="fa-solid fa-chevron-down toggle-icon"></i>
       </div>
       <div class="panel-content">
-        <div class="resource-grid">
-          <div class="resource-item">
-            <div class="resource-label">{{ resources.rescueTeams.label }}</div>
-            <div class="resource-value">
-              <span class="deployed">{{ resources.rescueTeams.deployed }}</span>
-              <span class="total">/{{ resources.rescueTeams.total }}{{ resources.rescueTeams.unit }}</span>
-            </div>
-            <div class="resource-bar">
-              <div class="resource-fill" :style="{ width: (resources.rescueTeams.deployed / resources.rescueTeams.total * 100) + '%' }"></div>
-            </div>
-          </div>
-          <div class="resource-item">
-            <div class="resource-label">{{ resources.rescueBoats.label }}</div>
-            <div class="resource-value">
-              <span class="available">{{ resources.rescueBoats.available }}</span>
-              <span class="total">/{{ resources.rescueBoats.total }}{{ resources.rescueBoats.unit }}</span>
-            </div>
-            <div class="resource-bar">
-              <div class="resource-fill green" :style="{ width: (resources.rescueBoats.available / resources.rescueBoats.total * 100) + '%' }"></div>
-            </div>
-          </div>
-          <div class="resource-item">
-            <div class="resource-label">{{ resources.shelters.label }}</div>
-            <div class="resource-value">
-              <span class="activated">{{ resources.shelters.activated }}</span>
-              <span class="total">/{{ resources.shelters.total }}{{ resources.shelters.unit }}</span>
-            </div>
-            <div class="resource-bar">
-              <div class="resource-fill purple" :style="{ width: (resources.shelters.activated / resources.shelters.total * 100) + '%' }"></div>
-            </div>
-          </div>
-          <div class="resource-item highlight">
-            <div class="resource-label">{{ resources.evacuated.label }}</div>
-            <div class="resource-value large">
-              <span class="value">{{ resources.evacuated.value }}</span>
-              <span class="unit">{{ resources.evacuated.unit }}</span>
-            </div>
-          </div>
-        </div>
+        <HistoricalDisasterMatch />
       </div>
     </div>
 
-    <!-- 4. 设备与数据统计 -->
+    <!-- 5. 设备与数据统计 -->
     <div class="stats-section">
       <div class="stats-header">
         <i class="fa-solid fa-chart-pie"></i>
@@ -157,18 +119,18 @@ import { ref, computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 import ObservationOverview from '../data/ObservationOverview.vue'
 import TideChart from '../data/TideChart.vue'
-import { mockRealtimeData, mockResources } from '../../data/mockData'
+import HistoricalDisasterMatch from '../data/HistoricalDisasterMatch.vue'
+import { mockRealtimeData } from '../../data/mockData'
 
 const store = useAppStore()
 
 // 面板折叠状态
 const tideCollapsed = ref(false)
-const resourceCollapsed = ref(false)
+const disasterCollapsed = ref(false)
 
 // 计算属性
 const realtimeData = computed(() => mockRealtimeData)
 const dataQuality = computed(() => mockRealtimeData.dataQuality)
-const resources = computed(() => mockResources)
 
 // 设备统计
 const deviceStats = computed(() => store.stats)
@@ -492,23 +454,6 @@ function getTrendIcon(trend) {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  max-height: 200px;  /* 约2行卡片高度 */
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.data-cards-scroll::-webkit-scrollbar {
-  width: 3px;
-}
-
-.data-cards-scroll::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 2px;
-}
-
-.data-cards-scroll::-webkit-scrollbar-thumb {
-  background: var(--accent-cyan);
-  border-radius: 2px;
 }
 
 .data-card {
@@ -702,90 +647,13 @@ function getTrendIcon(trend) {
   line-height: 1.4;
 }
 
-/* 应急资源 */
-.resource-panel::before {
-  background: linear-gradient(90deg, transparent, #f97316 30%, #f97316 70%, transparent);
+/* 历史灾害匹配 */
+.disaster-panel::before {
+  background: linear-gradient(90deg, transparent, #eab308 30%, #eab308 70%, transparent);
 }
 
-.resource-panel .panel-title {
-  color: #f97316;
-}
-
-.resource-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.resource-item {
-  padding: 8px;
-  background: rgba(30, 40, 60, 0.4);
-  border-radius: 6px;
-}
-
-.resource-item.highlight {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05));
-  border: 1px solid rgba(249, 115, 22, 0.3);
-}
-
-.resource-label {
-  font-size: 9px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.resource-value {
-  font-size: 12px;
-  color: var(--text-primary);
-}
-
-.resource-value .deployed,
-.resource-value .available,
-.resource-value .activated {
-  font-weight: 700;
-  color: #f97316;
-}
-
-.resource-value .total {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.resource-value.large {
-  font-size: 16px;
-}
-
-.resource-value.large .value {
-  font-weight: 700;
-  color: #f97316;
-}
-
-.resource-value.large .unit {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.resource-bar {
-  height: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  margin-top: 6px;
-  overflow: hidden;
-}
-
-.resource-fill {
-  height: 100%;
-  background: #f97316;
-  border-radius: 2px;
-  transition: width 0.5s;
-}
-
-.resource-fill.green {
-  background: #10b981;
-}
-
-.resource-fill.purple {
-  background: #8b5cf6;
+.disaster-panel .panel-title {
+  color: #eab308;
 }
 
 /* 设备与数据统计区域 */
