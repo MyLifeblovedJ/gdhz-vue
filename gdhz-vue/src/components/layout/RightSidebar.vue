@@ -32,6 +32,12 @@
               </div>
             </div>
           </div>
+          <!-- 历史预警入口 -->
+          <div class="history-entry" @click="handleViewHistory">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>查看历史预警记录</span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
         </div>
         <div v-if="store.alerts.length > 3" class="alerts-more">
           共 {{ store.alerts.length }} 条预警，滚动查看更多
@@ -343,6 +349,10 @@ function handleViewPlan() {
   console.log('查看应急预案')
   alert('正在加载应急预案...')
 }
+
+function handleViewHistory() {
+  alert('历史预警查询功能开发中...')
+}
 </script>
 
 <style scoped>
@@ -396,6 +406,41 @@ function handleViewPlan() {
     border-right-color: rgba(239, 68, 68, 0.6);
     box-shadow: inset -3px 0 20px rgba(239, 68, 68, 0.15);
   }
+}
+
+/* 历史预警入口 */
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  border: 1px dashed var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.history-entry:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.history-entry span {
+  flex: 1;
+}
+
+.history-entry i:first-child {
+  font-size: 12px;
+}
+
+.history-entry i:last-child {
+  font-size: 10px;
+  opacity: 0.6;
 }
 
 /* ===== 态势研判面板 ===== */

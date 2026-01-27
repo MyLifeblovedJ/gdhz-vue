@@ -1,6 +1,6 @@
 <template>
   <Transition name="slide-fade">
-    <div v-if="typhoon" class="typhoon-info-panel">
+    <div v-if="typhoon" class="typhoon-info-panel" :class="{ embedded: embedded }">
       <!-- Header -->
       <div class="panel-header">
         <div class="typhoon-icon">
@@ -79,6 +79,13 @@
 import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 
+const props = defineProps({
+  embedded: {
+    type: Boolean,
+    default: false
+  }
+})
+
 const store = useAppStore()
 
 const typhoon = computed(() => store.typhoonData)
@@ -117,6 +124,18 @@ function formatTime(timeStr) {
   padding: 16px;
   font-size: 13px;
   overflow: hidden;
+  transition: all 0.3s;
+}
+
+.typhoon-info-panel.embedded {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 0;
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.05); /* Match other sidebar cards */
 }
 
 /* Header */

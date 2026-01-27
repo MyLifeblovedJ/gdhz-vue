@@ -22,12 +22,12 @@ const routes = [
         }
     },
     {
-        path: '/storm-wave',
-        name: 'StormWave',
-        component: () => import('../views/StormWave.vue'),
+        path: '/sea-condition',
+        name: 'SeaCondition',
+        component: () => import('../views/SeaCondition.vue'),
         meta: {
-            title: '风暴潮·海浪联合预警',
-            pageKey: 'storm-wave',
+            title: '风浪潮',
+            pageKey: 'sea-condition',
             showBanner: true,
             bannerDefaultCollapsed: true,
         }
