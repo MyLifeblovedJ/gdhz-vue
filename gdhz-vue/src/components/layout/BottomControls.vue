@@ -112,9 +112,16 @@ function timelineStep(direction) {
 function togglePlay() {
   isPlaying.value = !isPlaying.value
   if (isPlaying.value) {
+    // 先清理可能存在的旧定时器，防止重复创建
+    if (playInterval) {
+      clearInterval(playInterval)
+    }
     playInterval = setInterval(() => timelineStep(1), 1000)
   } else {
-    clearInterval(playInterval)
+    if (playInterval) {
+      clearInterval(playInterval)
+      playInterval = null
+    }
   }
 }
 
@@ -163,7 +170,12 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
-  if (playInterval) clearInterval(playInterval)
+  // 确保清理定时器并重置状态
+  if (playInterval) {
+    clearInterval(playInterval)
+    playInterval = null
+  }
+  isPlaying.value = false
 })
 </script>
 

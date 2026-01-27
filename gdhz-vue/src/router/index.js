@@ -7,8 +7,6 @@ import { useAppStore } from '../stores/app'
 
 // 页面组件 (懒加载)
 const Overview = () => import('../views/Overview.vue')
-const Surge = () => import('../views/Surge.vue')
-const Wave = () => import('../views/Wave.vue')
 const Placeholder = () => import('../views/Placeholder.vue')
 
 const routes = [
@@ -24,24 +22,14 @@ const routes = [
         }
     },
     {
-        path: '/surge',
-        name: 'Surge',
-        component: Surge,
+        path: '/storm-wave',
+        name: 'StormWave',
+        component: () => import('../views/StormWave.vue'),
         meta: {
-            title: '风暴潮',
-            pageKey: 'surge',
+            title: '风暴潮·海浪联合预警',
+            pageKey: 'storm-wave',
             showBanner: true,
-            bannerDefaultCollapsed: true,  // 默认关闭横幅
-        }
-    },
-    {
-        path: '/wave',
-        name: 'Wave',
-        component: Wave,
-        meta: {
-            title: '海浪',
-            pageKey: 'wave',
-            showBanner: true,
+            bannerDefaultCollapsed: true,
         }
     },
     {

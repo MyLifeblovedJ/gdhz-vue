@@ -381,6 +381,12 @@ function getValueColor(status) {
   display: flex;
   flex-direction: column;
   padding-right: 4px;
+  /* 启用 GPU 加速，优化滚动性能 */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+  /* 限制重绘区域 */
+  contain: layout style paint;
 }
 
 .device-list::-webkit-scrollbar {
@@ -400,7 +406,10 @@ function getValueColor(status) {
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
   font-size: 12px;
-  transition: all var(--transition-fast);
+  /* 优化：只过渡需要的属性，避免 transition: all */
+  transition: background-color 0.15s ease, padding 0.15s ease;
+  /* 限制重绘区域 */
+  contain: layout style;
 }
 
 .device-item:hover {

@@ -388,8 +388,7 @@ export const mockVesselData = Array.from({ length: 150 }, (_, i) => ({
 // ===== 导航菜单 =====
 export const navItems = [
     { key: 'overview', label: '态势感知', path: '/' },
-    { key: 'surge', label: '风暴潮', path: '/surge' },
-    { key: 'wave', label: '海浪', path: '/wave' },
+    { key: 'storm-wave', label: '风暴潮·海浪', path: '/storm-wave' },
     { key: 'redtide', label: '赤潮', path: '/redtide' },
     { key: 'tsunami', label: '海啸', path: '/tsunami' },
     { key: 'saltwater', label: '咸潮入侵', path: '/saltwater' },

@@ -184,6 +184,10 @@ function getTrendIcon(trend) {
   gap: 10px;
   overflow-y: auto;
   z-index: 50;
+  /* 启用 GPU 加速，优化滚动性能 */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 侧边栏滚动条 */
@@ -346,7 +350,7 @@ function getTrendIcon(trend) {
 /* 面板通用样式 */
 .panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(12px);
+  /* backdrop-filter 已移除以提升滚动性能 */
   border: 1px solid var(--border-normal);
   border-radius: var(--border-radius);
   overflow: hidden;

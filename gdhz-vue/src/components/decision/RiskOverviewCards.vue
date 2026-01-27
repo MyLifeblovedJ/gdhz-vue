@@ -200,8 +200,11 @@ function handleLocate(risk) {
   border-radius: 10px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  /* 优化：只过渡需要的属性 */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
+  /* 限制重绘区域 */
+  contain: layout style;
 }
 
 .risk-card.high {
@@ -336,7 +339,10 @@ function handleLocate(risk) {
   background: rgba(30, 40, 60, 0.4);
   border-left: 3px solid;
   cursor: pointer;
-  transition: all 0.2s;
+  /* 优化：只过渡需要的属性 */
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  /* 限制重绘区域 */
+  contain: layout style;
 }
 
 .risk-item.high { border-left-color: #ef4444; }
@@ -406,6 +412,9 @@ function handleLocate(risk) {
 .risk-list.scrollable {
   max-height: 180px;
   overflow-y: auto;
+  /* 启用 GPU 加速 */
+  transform: translateZ(0);
+  contain: layout style paint;
 }
 
 .risk-list.scrollable::-webkit-scrollbar {
@@ -428,24 +437,12 @@ function handleLocate(risk) {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(10, 20, 35, 0.4);
+  background: rgba(10, 20, 35, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  backdrop-filter: blur(8px) saturate(1.2);
-  animation: overlay-fade-in 0.3s ease;
-}
-
-@keyframes overlay-fade-in {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0px);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(8px) saturate(1.2);
-  }
+  /* backdrop-filter 已移除以提升性能 */
 }
 
 /* 弹窗主体 */

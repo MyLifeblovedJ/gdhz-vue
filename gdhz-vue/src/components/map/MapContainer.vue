@@ -802,33 +802,62 @@ function flyToDevice(deviceId) {
   }
 }
 
-// 监听设备数据变化
+// 监听设备数据变化 - 使用浅层监听提升性能
 watch(() => store.devices, () => {
   renderDevices()
-}, { deep: true })
+})
 
 // 监听底图变化
 watch(() => props.currentBasemap, (newBasemap) => {
   switchBasemap(newBasemap)
 })
 
-// 监听图层可见性变化
-watch(layerVisibility, (newVal) => {
+// 监听图层可见性变化 - 分别监听各个属性，避免深度监听的性能开销
+watch(() => layerVisibility.value.typhoon, () => {
   renderTyphoon()
+})
+
+watch(() => layerVisibility.value.typhoon_history_track, () => {
+  renderTyphoon()
+})
+
+watch(() => layerVisibility.value.typhoon_forecast_track, () => {
+  renderTyphoon()
+})
+
+watch(() => layerVisibility.value.typhoon_probability_range, () => {
+  renderTyphoon()
+})
+
+watch(() => layerVisibility.value.typhoon_wind_circle, () => {
+  renderTyphoon()
+})
+
+watch(() => layerVisibility.value.typhoon_marker, () => {
+  renderTyphoon()
+})
+
+watch(() => layerVisibility.value.vessels, () => {
   renderVessels()
-  
-  // 控制风粒子动画
-  if (newVal.wind_particle) {
+})
+
+watch(() => layerVisibility.value.wind_particle, (newVal) => {
+  if (newVal) {
     startWindAnimation()
   } else if (windAnimationFrame) {
     cancelAnimationFrame(windAnimationFrame)
+    windAnimationFrame = null
+    // 清空画布
+    if (windCanvas.value) {
+      const ctx = windCanvas.value.getContext('2d')
+      ctx.clearRect(0, 0, windCanvas.value.width, windCanvas.value.height)
+    }
   }
-  
-  // 更新热力图
-  if (newVal.wave_heatmap !== undefined) {
-    renderWaveHeatmap()
-  }
-}, { deep: true })
+})
+
+watch(() => layerVisibility.value.wave_heatmap, () => {
+  renderWaveHeatmap()
+})
 
 // 暴露方法给父组件
 defineExpose({
@@ -854,14 +883,58 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // 停止所有动画
   if (windAnimationFrame) {
     cancelAnimationFrame(windAnimationFrame)
+    windAnimationFrame = null
   }
   if (waveAnimationFrame) {
     cancelAnimationFrame(waveAnimationFrame)
+    waveAnimationFrame = null
   }
+
+  // 移除事件监听器
   window.removeEventListener('resize', resizeCanvas)
-  map?.remove()
+
+  // 清理热力图图层
+  if (waveHeatmapLayer && map) {
+    map.removeLayer(waveHeatmapLayer)
+    waveHeatmapLayer = null
+  }
+
+  // 清理所有标记图层
+  Object.values(markerLayers).forEach(layer => {
+    layer.clearLayers()
+  })
+  markerLayers = {}
+  markers = {}
+
+  // 清理台风图层
+  if (typhoonLayer) {
+    typhoonLayer.clearLayers()
+    typhoonLayer = null
+  }
+
+  // 清理船舶图层
+  if (vesselLayer) {
+    vesselLayer.clearLayers()
+    vesselLayer = null
+  }
+
+  // 清理高亮图层
+  if (highlightLayer) {
+    highlightLayer.clearLayers()
+    highlightLayer = null
+  }
+
+  // 清理底图图层引用
+  basemapLayers = {}
+
+  // 最后移除地图实例
+  if (map) {
+    map.remove()
+    map = null
+  }
 })
 </script>
 

@@ -227,6 +227,10 @@ onMounted(() => {
   flex-direction: column;
   overflow-y: auto;
   z-index: 50;
+  /* 启用 GPU 加速，优化滚动性能 */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 图层树 - 固定高度并启用内部滚动 */

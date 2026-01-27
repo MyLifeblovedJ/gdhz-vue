@@ -153,7 +153,7 @@ function handleResize() {
 
 watch(() => props.data, () => {
   updateChart()
-}, { deep: true })
+})
 
 watch(() => props.elementKey, () => {
   updateChart()

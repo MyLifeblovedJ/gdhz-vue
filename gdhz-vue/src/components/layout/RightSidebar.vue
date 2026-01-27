@@ -358,6 +358,10 @@ function handleViewPlan() {
   overflow-y: auto;
   z-index: 50;
   transition: border-color 0.5s, box-shadow 0.5s;
+  /* 启用 GPU 加速，优化滚动性能 */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* 侧边栏滚动条 */
@@ -663,7 +667,7 @@ function handleViewPlan() {
 /* ===== 面板通用样式 ===== */
 .panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(12px);
+  /* backdrop-filter 已移除以提升滚动性能 */
   border: 1px solid var(--border-normal);
   border-radius: var(--border-radius);
   overflow: hidden;
@@ -762,6 +766,9 @@ function handleViewPlan() {
   max-height: 280px;  /* 约3条预警的高度 */
   overflow-y: auto;
   padding-right: 4px;
+  /* 启用 GPU 加速，优化滚动性能 */
+  transform: translateZ(0);
+  contain: layout style paint;
 }
 
 .alerts-scroll-container::-webkit-scrollbar {
@@ -794,8 +801,11 @@ function handleViewPlan() {
   padding: 10px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  /* 优化：只过渡需要的属性 */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   flex-shrink: 0;
+  /* 限制重绘区域 */
+  contain: layout style;
 }
 
 .alert-card.red {
