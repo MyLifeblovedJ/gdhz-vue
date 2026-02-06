@@ -105,11 +105,27 @@
         <i class="fa-solid fa-chevron-down toggle-icon" :class="{ rotated: !decisionCollapsed }"></i>
       </div>
       <div class="panel-content" v-show="!decisionCollapsed">
-        <!-- 应急响应状态 -->
-        <div class="response-status level-2">
-          <div class="response-info">
-            <span class="response-label">当前响应等级</span>
-            <span class="response-value">II级（二级响应）</span>
+        <!-- 应急响应状态（亮色卡片） -->
+        <div class="response-card" :class="responseLevel.class">
+          <div class="response-glow"></div>
+          <div class="response-icon-wrap">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="pulse-ring"></div>
+          </div>
+          <div class="response-main">
+            <div class="response-level">
+              <span class="level-text">{{ responseLevel.text }}</span>
+              <span class="level-indicator">
+                <span class="dot active"></span>
+                <span class="dot" :class="{ active: ['I', 'II', 'III'].includes(responseLevel.levelKey) }"></span>
+                <span class="dot" :class="{ active: ['I', 'II'].includes(responseLevel.levelKey) }"></span>
+                <span class="dot" :class="{ active: responseLevel.levelKey === 'I' }"></span>
+              </span>
+            </div>
+            <div class="response-desc">{{ responseLevel.desc }}</div>
+          </div>
+          <div class="response-action">
+            <span class="action-label">建议响应</span>
           </div>
         </div>
 
@@ -156,6 +172,19 @@ const updateTime = ref('--:--:--')
 
 // 预测趋势
 const predictions = computed(() => mockPredictions)
+
+// 应急响应等级
+const responseLevel = computed(() => {
+  // 这里可以根据实际数据动态获取
+  const level = 'II'
+  const levels = {
+    'I': { text: 'I级响应', class: 'level-1', desc: '特别重大灾害，全省联动', levelKey: 'I' },
+    'II': { text: 'II级响应', class: 'level-2', desc: '重大灾害，省级协调', levelKey: 'II' },
+    'III': { text: 'III级响应', class: 'level-3', desc: '较大灾害，市级主导', levelKey: 'III' },
+    'IV': { text: 'IV级响应', class: 'level-4', desc: '一般灾害，县级处置', levelKey: 'IV' },
+  }
+  return levels[level] || levels['III']
+})
 
 // 重点防御区域
 const defenseAreas = [
@@ -525,32 +554,186 @@ onMounted(() => {
   color: #10b981;
 }
 
-.response-status {
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-
-.response-status.level-2 {
-  background: rgba(249, 115, 22, 0.1);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-}
-
-.response-info {
+/* 应急响应卡片（亮色设计） */
+.response-card {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s;
+  margin-bottom: 12px;
 }
 
-.response-label {
+.response-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* 各等级颜色 */
+.response-card.level-1 {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.08));
+  border: 2px solid rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.response-card.level-1 .response-glow {
+  background: radial-gradient(ellipse at top left, rgba(239, 68, 68, 0.4), transparent 70%);
+}
+
+.response-card.level-2 {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.25), rgba(249, 115, 22, 0.08));
+  border: 2px solid rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.response-card.level-2 .response-glow {
+  background: radial-gradient(ellipse at top left, rgba(249, 115, 22, 0.4), transparent 70%);
+}
+
+.response-card.level-3 {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(234, 179, 8, 0.08));
+  border: 2px solid rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.response-card.level-3 .response-glow {
+  background: radial-gradient(ellipse at top left, rgba(234, 179, 8, 0.4), transparent 70%);
+}
+
+.response-card.level-4 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.response-card.level-4 .response-glow {
+  background: radial-gradient(ellipse at top left, rgba(59, 130, 246, 0.3), transparent 70%);
+}
+
+/* 图标区域 */
+.response-icon-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.level-1 .response-icon-wrap { background: rgba(239, 68, 68, 0.3); }
+.level-2 .response-icon-wrap { background: rgba(249, 115, 22, 0.3); }
+.level-3 .response-icon-wrap { background: rgba(234, 179, 8, 0.3); }
+.level-4 .response-icon-wrap { background: rgba(59, 130, 246, 0.3); }
+
+.response-icon-wrap i {
+  font-size: 20px;
+  z-index: 1;
+}
+
+.level-1 .response-icon-wrap i { color: #ef4444; }
+.level-2 .response-icon-wrap i { color: #f97316; }
+.level-3 .response-icon-wrap i { color: #eab308; }
+.level-4 .response-icon-wrap i { color: #3b82f6; }
+
+/* 脉冲动画 */
+.pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  transform: translate(-50%, -50%);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.level-1 .pulse-ring { border: 2px solid rgba(239, 68, 68, 0.6); }
+.level-2 .pulse-ring { border: 2px solid rgba(249, 115, 22, 0.6); }
+.level-3 .pulse-ring { border: 2px solid rgba(234, 179, 8, 0.6); }
+.level-4 .pulse-ring { border: 2px solid rgba(59, 130, 246, 0.4); }
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* 主要内容 */
+.response-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.response-level {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.level-text {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.level-1 .level-text { color: #ef4444; }
+.level-2 .level-text { color: #f97316; }
+.level-3 .level-text { color: #eab308; }
+.level-4 .level-text { color: #60a5fa; }
+
+/* 等级指示灯 */
+.level-indicator {
+  display: flex;
+  gap: 4px;
+}
+
+.level-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: all 0.3s;
+}
+
+.level-indicator .dot.active {
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.level-1 .level-indicator { color: #ef4444; }
+.level-2 .level-indicator { color: #f97316; }
+.level-3 .level-indicator { color: #eab308; }
+.level-4 .level-indicator { color: #60a5fa; }
+
+.response-desc {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.response-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: #f97316;
+/* 右侧标签 */
+.response-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.action-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .decision-points {

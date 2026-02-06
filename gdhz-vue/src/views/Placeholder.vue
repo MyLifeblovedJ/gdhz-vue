@@ -56,7 +56,7 @@ import DetailPopup from '../components/common/DetailPopup.vue'
 const route = useRoute()
 const store = useAppStore()
 const mapRef = ref(null)
-const currentBasemap = ref('dark')
+const currentBasemap = ref('satellite')
 const selectedDevice = ref(null)
 
 const pageTitle = computed(() => route.meta.title || '页面')

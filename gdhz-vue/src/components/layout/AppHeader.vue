@@ -1,88 +1,76 @@
 <template>
   <header class="app-header">
-    <div class="header-left">
-      <h1 class="app-title">
-        <!-- 海浪场景图标 -->
-        <div class="sys-logo">
-          <svg viewBox="0 0 48 48" class="logo-svg">
-            <defs>
-              <!-- 天空渐变 -->
-              <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#001830"/>
-                <stop offset="100%" stop-color="#003366"/>
-              </linearGradient>
-              <!-- 海浪渐变 1 -->
-              <linearGradient id="wave1-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#00c8ff"/>
-                <stop offset="100%" stop-color="#0088cc"/>
-              </linearGradient>
-              <!-- 海浪渐变 2 -->
-              <linearGradient id="wave2-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#0099dd"/>
-                <stop offset="100%" stop-color="#006699"/>
-              </linearGradient>
-              <!-- 海浪渐变 3 -->
-              <linearGradient id="wave3-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#0077aa"/>
-                <stop offset="100%" stop-color="#004466"/>
-              </linearGradient>
-              <!-- 太阳光晕 -->
-              <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stop-color="#ffffcc"/>
-                <stop offset="50%" stop-color="#ffdd66"/>
-                <stop offset="100%" stop-color="#ff8800" stop-opacity="0"/>
-              </radialGradient>
-            </defs>
-            
-            <!-- 背景圆形 -->
-            <circle cx="24" cy="24" r="22" fill="url(#sky-grad)" stroke="#00a8ff" stroke-width="1" stroke-opacity="0.5"/>
-            
-            <!-- 太阳/月亮 -->
-            <circle cx="34" cy="12" r="5" fill="url(#sun-glow)" class="sun-pulse"/>
-            <circle cx="34" cy="12" r="3" fill="#ffeeaa"/>
-            
-            <!-- 海浪第一层（前景） -->
-            <path d="M2 32 Q8 28 14 32 T26 32 T38 32 T46 32 L46 46 L2 46 Z" 
-                  fill="url(#wave1-grad)" class="wave-layer wave-1"/>
-            
-            <!-- 海浪第二层（中景） -->
-            <path d="M2 36 Q10 32 18 36 T34 36 T46 36 L46 46 L2 46 Z" 
-                  fill="url(#wave2-grad)" class="wave-layer wave-2"/>
-            
-            <!-- 海浪第三层（远景） -->
-            <path d="M2 40 Q12 36 22 40 T42 40 T46 40 L46 46 L2 46 Z" 
-                  fill="url(#wave3-grad)" class="wave-layer wave-3"/>
-            
-            <!-- 海鸥剪影 -->
-            <path d="M12 18 Q14 16 16 18 M13 17 L14 16 L15 17" 
-                  fill="none" stroke="#80d0ff" stroke-width="0.8" stroke-linecap="round"/>
-            <path d="M20 14 Q22 12 24 14 M21 13 L22 12 L23 13" 
-                  fill="none" stroke="#60c0ff" stroke-width="0.6" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <span class="title-text">广东省海洋灾害综合决策系统</span>
-      </h1>
-      <nav class="nav-bar">
-        <router-link
-          v-for="item in navItems"
-          :key="item.key"
-          :to="item.path"
-          class="nav-item"
-          :class="{ active: currentPage === item.key }"
-        >
-          {{ item.label }}
-        </router-link>
-      </nav>
+    <!-- 左侧品牌区 -->
+    <div class="header-brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 48 48" class="logo-svg">
+          <defs>
+            <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#001830"/>
+              <stop offset="100%" stop-color="#003366"/>
+            </linearGradient>
+            <linearGradient id="wave1-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#00c8ff"/>
+              <stop offset="100%" stop-color="#0088cc"/>
+            </linearGradient>
+            <linearGradient id="wave2-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#0099dd"/>
+              <stop offset="100%" stop-color="#006699"/>
+            </linearGradient>
+            <linearGradient id="wave3-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#0077aa"/>
+              <stop offset="100%" stop-color="#004466"/>
+            </linearGradient>
+            <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffcc"/>
+              <stop offset="50%" stop-color="#ffdd66"/>
+              <stop offset="100%" stop-color="#ff8800" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="24" cy="24" r="22" fill="url(#sky-grad)" stroke="#00a8ff" stroke-width="1" stroke-opacity="0.5"/>
+          <circle cx="34" cy="12" r="5" fill="url(#sun-glow)" class="sun-pulse"/>
+          <circle cx="34" cy="12" r="3" fill="#ffeeaa"/>
+          <path d="M2 32 Q8 28 14 32 T26 32 T38 32 T46 32 L46 46 L2 46 Z" fill="url(#wave1-grad)" class="wave-layer wave-1"/>
+          <path d="M2 36 Q10 32 18 36 T34 36 T46 36 L46 46 L2 46 Z" fill="url(#wave2-grad)" class="wave-layer wave-2"/>
+          <path d="M2 40 Q12 36 22 40 T42 40 T46 40 L46 46 L2 46 Z" fill="url(#wave3-grad)" class="wave-layer wave-3"/>
+          <path d="M12 18 Q14 16 16 18 M13 17 L14 16 L15 17" fill="none" stroke="#80d0ff" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M20 14 Q22 12 24 14 M21 13 L22 12 L23 13" fill="none" stroke="#60c0ff" stroke-width="0.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">广东省海洋灾害综合决策系统</span>
+        <span class="brand-subtitle">OCEAN DISASTER DECISION SYSTEM</span>
+      </div>
     </div>
-    <div class="header-right">
-      <div class="system-time">
-        <div class="time-main">
-          <div class="time-date">{{ formattedDate }}</div>
-          <div class="time-lunar">{{ lunarInfo }}</div>
+
+    <!-- 中间导航区 -->
+    <nav class="header-nav">
+      <router-link
+        v-for="item in navItems"
+        :key="item.key"
+        :to="item.path"
+        class="nav-btn"
+        :class="{ active: currentPage === item.key }"
+      >
+        <span class="nav-text">{{ item.label }}</span>
+        <span class="nav-glow"></span>
+      </router-link>
+    </nav>
+
+    <!-- 右侧工具区 -->
+    <div class="header-tools">
+      <div class="tool-datetime">
+        <div class="dt-clock">
+          <i class="fa-regular fa-clock"></i>
+          <span>{{ formattedTime }}</span>
         </div>
-        <div class="time-weather" :title="weatherLocation">
-          <i :class="weatherIcon"></i>
-          <span>{{ weatherLocation }} {{ weatherText }} <span class="weather-temp">{{ weatherTemp }}</span></span>
+        <div class="dt-date">{{ formattedDate }}</div>
+      </div>
+      <div class="tool-weather" :title="weatherLocation">
+        <i :class="weatherIcon"></i>
+        <div class="weather-info">
+          <span class="weather-temp">{{ weatherTemp }}</span>
+          <span class="weather-desc">{{ weatherText }}</span>
         </div>
       </div>
     </div>
@@ -188,14 +176,18 @@ const fetchWeather = async () => {
   }
 }
 
-const formattedDate = computed(() => {
-  return now.value.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+// 时间格式化
+const formattedTime = computed(() => {
+  return now.value.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit'
   })
+})
+
+const formattedDate = computed(() => {
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const d = now.value
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
 })
 
 const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
@@ -235,57 +227,49 @@ onUnmounted(() => {
 
 <style scoped>
 .app-header {
-  flex: 0 0 80px;
+  height: 64px;
+  flex-shrink: 0;
   z-index: 100;
-  background: linear-gradient(to bottom,
-    var(--bg-deepest) 0%,
-    rgba(2, 8, 16, 0.9) 70%,
-    transparent 100%);
+  background: linear-gradient(180deg, rgba(0, 20, 40, 0.98) 0%, rgba(0, 15, 35, 0.95) 100%);
+  border-bottom: 1px solid rgba(0, 200, 255, 0.15);
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 15px 10px 15px 22px; /* 左侧对齐内容(22px)，右侧对齐面板边缘(10px) */
+  padding: 0 24px;
   position: relative;
 }
 
-.app-header::after {
+.app-header::before {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 5%;
-  right: 5%;
+  left: 0;
+  right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+  background: linear-gradient(90deg, transparent, rgba(0, 200, 255, 0.4), transparent);
 }
 
-.header-left {
+/* 左侧品牌区 */
+.header-brand {
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-shrink: 0;
 }
 
-.app-title {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 0;
-  white-space: nowrap;
-}
-
-/* 图标容器 */
-.sys-logo {
+.brand-logo {
   width: 46px;
   height: 46px;
   flex-shrink: 0;
 }
 
-.logo-svg {
+.brand-logo .logo-svg {
   width: 100%;
   height: 100%;
   filter: drop-shadow(0 0 10px rgba(0, 180, 255, 0.4));
 }
 
-/* 太阳呼吸 */
+/* 太阳呼吸动画 */
 .sun-pulse {
   animation: sun-breathe 3s ease-in-out infinite;
   transform-origin: center;
@@ -296,7 +280,7 @@ onUnmounted(() => {
   50% { opacity: 1; transform: scale(1.1); }
 }
 
-/* 海浪动画 - 三层错开 */
+/* 海浪动画 */
 .wave-layer {
   animation: wave-flow 3s ease-in-out infinite;
 }
@@ -310,132 +294,141 @@ onUnmounted(() => {
   50% { transform: translateX(2px); }
 }
 
-/* 系统标题 */
-.title-text {
-  font-family: 'Noto Sans SC', sans-serif;
-  font-size: 26px;
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: 3px;
-  /* 银白金属渐变 */
-  background: linear-gradient(180deg, 
-    #ffffff 0%,
-    #c8e4ff 50%,
-    #90c8f0 100%);
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #fff, #80d4ff);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-/* 导航栏 */
-.nav-bar {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 6px 8px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 25px;
-  border: 1px solid var(--border-subtle);
-  backdrop-filter: blur(8px);
+.brand-subtitle {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: rgba(100, 180, 220, 0.6);
+  text-transform: uppercase;
 }
 
-.nav-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-item {
-  padding: 10px 18px;
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-decoration: none;
-}
-
-.nav-item:hover {
-  color: var(--text-secondary);
-  background: rgba(0, 229, 255, 0.08);
-  transform: translateY(-1px);
-}
-
-.nav-item.active,
-.nav-item.router-link-active {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(0, 229, 255, 0.05));
-  color: var(--accent-cyan);
-  font-weight: 600;
-  border: 1px solid var(--accent-cyan);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.3), inset 0 0 10px rgba(0, 229, 255, 0.08);
-}
-
-.nav-item:active {
-  transform: scale(0.97);
-}
-
-/* 头部右侧 - 与右侧边栏宽度对齐 */
-.header-right {
-  width: 340px; /* 与右侧边栏宽度一致 */
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* 右对齐，与下方预警面板右边缘对齐 */
-  gap: 8px;
-  padding-right: 15px; /* 向左偏移，预留温度显示空间 */
-}
-
-.system-time {
+/* 中间导航区 */
+.header-nav {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  background: transparent;
-  padding: 6px 11px;
+  gap: 4px;
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.time-main {
+.nav-btn {
+  position: relative;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.nav-btn:hover {
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0, 180, 255, 0.3), rgba(0, 220, 255, 0.15));
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+}
+
+.nav-btn.active .nav-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+}
+
+.nav-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* 右侧工具区 */
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.tool-datetime {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  min-width: 110px;
+  gap: 2px;
 }
 
-.time-date {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.5px;
-}
-
-.time-lunar {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
-  text-align: right;
-}
-
-.time-weather {
+.dt-clock {
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: var(--text-muted);
-  font-size: 11px;
-  padding-left: 10px;
-  border-left: 1px solid var(--border-subtle);
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
 }
 
-.time-weather i {
-  color: #ffd43b;
+.dt-clock i {
   font-size: 14px;
+  color: #00d4ff;
+}
+
+.dt-date {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.tool-weather {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tool-weather > i {
+  font-size: 20px;
+  color: #ffd43b;
+}
+
+.weather-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .weather-temp {
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.weather-desc {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
 }
 </style>
+

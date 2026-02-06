@@ -45,88 +45,12 @@
       </div>
     </div>
 
-    <!-- 2. 态势研判（从右侧移来） -->
-    <div class="panel situation-panel" :class="{ collapsed: situationCollapsed }">
-      <div class="panel-header" @click="situationCollapsed = !situationCollapsed">
-        <div class="panel-title">
-          <i class="fa-solid fa-lightbulb"></i>
-          态势研判
-          <span class="status-badge" :class="overallRiskLevel">
-            {{ getStatusText(overallRiskLevel) }}
-          </span>
-        </div>
-        <i class="fa-solid fa-chevron-down toggle-icon"></i>
-      </div>
-      <div class="panel-content">
-        <div class="summary-conclusion" :class="overallRiskLevel">
-          <div class="conclusion-icon">
-            <i :class="conclusionIcon"></i>
-          </div>
-          <div class="conclusion-text">
-            <div class="conclusion-title">{{ conclusionTitle }}</div>
-            <div class="conclusion-desc">{{ conclusionDesc }}</div>
-          </div>
-        </div>
-        <div class="key-findings">
-          <div v-for="(finding, idx) in keyFindings" :key="idx" class="finding-item" :class="finding.level">
-            <i :class="finding.icon"></i>
-            <span>{{ finding.text }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- 3. 预测趋势（默认折叠只显示摘要） -->
-    <div class="panel prediction-panel">
-      <div class="panel-header" @click="predictionCollapsed = !predictionCollapsed">
-        <div class="panel-title">
-          <i class="fa-solid fa-chart-line"></i>
-          预测趋势
-        </div>
-        <i class="fa-solid fa-chevron-down toggle-icon" :class="{ rotated: !predictionCollapsed }"></i>
-      </div>
-      <div class="panel-content">
-        <!-- 摘要始终显示 -->
-        <div class="prediction-summary">{{ predictions.summary }}</div>
-        <!-- 时间线可折叠 -->
-        <Transition name="slide-timeline">
-          <div v-if="!predictionCollapsed" class="prediction-timeline">
-            <div
-              v-for="(item, idx) in predictions.items.slice(0, 3)"
-              :key="idx"
-              class="timeline-item"
-              :class="item.level"
-            >
-              <div class="timeline-dot"></div>
-              <div class="timeline-content">
-                <div class="timeline-header">
-                  <span class="timeline-time">{{ item.time }}</span>
-                  <span class="timeline-event">{{ item.event }}</span>
-                </div>
-                <div class="timeline-detail">{{ item.detail }}</div>
-              </div>
-            </div>
-          </div>
-        </Transition>
-        <div v-if="predictionCollapsed" class="expand-hint" @click="predictionCollapsed = false">
-          <i class="fa-solid fa-chevron-down"></i>
-          点击展开详细时间线
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. 重点风险区域（卡片化设计） -->
-    <div class="panel risk-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fa-solid fa-location-dot"></i>
-          重点风险区域
-        </div>
-      </div>
-      <div class="panel-content">
-        <RiskOverviewCards />
-      </div>
-    </div>
+    <!-- 2. AI态势摘要（融合态势研判+预测趋势+重点风险） -->
+    <AISituationSummary 
+      @risk-click="handleRiskClick"
+      @refresh="handleAIRefresh"
+    />
 
     <!-- 5. 决策建议 -->
     <div class="panel decision-panel" :class="{ collapsed: decisionCollapsed }">
@@ -138,13 +62,21 @@
         <i class="fa-solid fa-chevron-down toggle-icon"></i>
       </div>
       <div class="panel-content">
-        <!-- 应急响应状态 -->
-        <div class="response-status" :class="responseLevel.class">
-          <div class="response-info">
-            <span class="response-label">当前响应等级</span>
-            <span class="response-value">{{ responseLevel.text }}</span>
+        <!-- 应急响应状态（亮色卡片） -->
+        <div class="response-card" :class="responseLevel.class">
+          <div class="response-header">
+            <span class="response-title">当前响应等级</span>
+            <div class="level-dots">
+              <span class="dot" :class="{ active: responseLevel.levelKey === 'I' }"></span>
+              <span class="dot" :class="{ active: ['I', 'II'].includes(responseLevel.levelKey) }"></span>
+              <span class="dot" :class="{ active: ['I', 'II', 'III'].includes(responseLevel.levelKey) }"></span>
+              <span class="dot active"></span>
+            </div>
           </div>
-          <div class="response-desc">{{ responseLevel.desc }}</div>
+          <div class="response-body">
+            <i class="fa-solid fa-shield-halved level-icon"></i>
+            <span class="level-name">{{ responseLevel.short }}</span>
+          </div>
         </div>
 
         <!-- 决策要点列表 -->
@@ -177,7 +109,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAppStore } from '../../stores/app'
-import RiskOverviewCards from '../decision/RiskOverviewCards.vue'
+import AISituationSummary from '../decision/AISituationSummary.vue'
 import { mockRealtimeData, mockPredictions } from '../../data/mockData'
 
 const store = useAppStore()
@@ -311,10 +243,10 @@ function getStatusText(level) {
 const responseLevel = computed(() => {
   const level = store.riskDecisions?.recommendations?.responseLevel || 'IV'
   const levels = {
-    'I': { text: 'I级（一级响应）', class: 'level-1', desc: '特别重大灾害，全省联动' },
-    'II': { text: 'II级（二级响应）', class: 'level-2', desc: '重大灾害，省级协调' },
-    'III': { text: 'III级（三级响应）', class: 'level-3', desc: '较大灾害，市级主导' },
-    'IV': { text: 'IV级（四级响应）', class: 'level-4', desc: '一般灾害，县级处置' },
+    'I': { short: 'I级响应', class: 'level-1', levelKey: 'I' },
+    'II': { short: 'II级响应', class: 'level-2', levelKey: 'II' },
+    'III': { short: 'III级响应', class: 'level-3', levelKey: 'III' },
+    'IV': { short: 'IV级响应', class: 'level-4', levelKey: 'IV' },
   }
   return levels[level] || levels['IV']
 })
@@ -352,6 +284,16 @@ function handleViewPlan() {
 
 function handleViewHistory() {
   alert('历史预警查询功能开发中...')
+}
+
+// AI态势摘要事件处理
+function handleRiskClick(risk) {
+  console.log('定位到风险区域:', risk.name, risk.lat, risk.lng)
+  emit('risk-click', risk)
+}
+
+function handleAIRefresh() {
+  console.log('AI态势摘要刷新')
 }
 </script>
 
@@ -942,60 +884,115 @@ function handleViewHistory() {
   color: #10b981;
 }
 
-/* 应急响应状态（弱化） */
-.response-status {
-  padding: 10px 12px;
-  border-radius: 6px;
+/* 应急响应卡片（亮色设计） */
+.response-card {
+  position: relative;
+  padding: 12px 14px;
+  border-radius: 10px;
   margin-bottom: 12px;
+  overflow: hidden;
 }
 
-.response-status.level-1 {
-  background: rgba(239, 68, 68, 0.1);
-  border-left: 3px solid #ef4444;
+/* 各等级颜色 */
+.response-card.level-1 {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
 }
 
-.response-status.level-2 {
-  background: rgba(249, 115, 22, 0.1);
-  border-left: 3px solid #f97316;
+.response-card.level-2 {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.05));
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  box-shadow: 0 0 16px rgba(249, 115, 22, 0.25);
 }
 
-.response-status.level-3 {
-  background: rgba(234, 179, 8, 0.1);
-  border-left: 3px solid #eab308;
+.response-card.level-3 {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(234, 179, 8, 0.05));
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  box-shadow: 0 0 16px rgba(234, 179, 8, 0.25);
 }
 
-.response-status.level-4 {
-  background: rgba(59, 130, 246, 0.1);
-  border-left: 3px solid #3b82f6;
+.response-card.level-4 {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03));
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
 }
 
-.response-info {
+/* 顶部：标题 + 指示灯 */
+.response-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
-.response-label {
+.response-title {
   font-size: 10px;
   color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
-.response-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
+/* 等级指示灯 */
+.level-dots {
+  display: flex;
+  gap: 5px;
 }
 
-.response-status.level-1 .response-value { color: #ef4444; }
-.response-status.level-2 .response-value { color: #f97316; }
-.response-status.level-3 .response-value { color: #eab308; }
-.response-status.level-4 .response-value { color: #3b82f6; }
-
-.response-desc {
-  font-size: 10px;
-  color: var(--text-muted);
+.level-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
 }
+
+.level-1 .level-dots .dot.active {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.level-2 .level-dots .dot.active {
+  background: #f97316;
+  box-shadow: 0 0 8px #f97316;
+}
+
+.level-3 .level-dots .dot.active {
+  background: #eab308;
+  box-shadow: 0 0 8px #eab308;
+}
+
+.level-4 .level-dots .dot.active {
+  background: #3b82f6;
+  box-shadow: 0 0 6px #3b82f6;
+}
+
+/* 底部：图标 + 等级名称 */
+.response-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.level-icon {
+  font-size: 22px;
+}
+
+.level-1 .level-icon { color: #ef4444; }
+.level-2 .level-icon { color: #f97316; }
+.level-3 .level-icon { color: #eab308; }
+.level-4 .level-icon { color: #3b82f6; }
+
+.level-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.level-1 .level-name { color: #ef4444; }
+.level-2 .level-name { color: #f97316; }
+.level-3 .level-name { color: #eab308; }
+.level-4 .level-name { color: #60a5fa; }
 
 /* 决策要点列表 */
 .decision-points {

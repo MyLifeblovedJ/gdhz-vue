@@ -40,7 +40,8 @@ export const useAppStore = defineStore('app', () => {
     const isRightSidebarCollapsed = ref(false)
 
     // 悬浮工具栏激活的面板 (null | 'layers' | 'devices' | 'models')
-    const activeFloatingPanel = ref(null)
+    // 默认展开观测设备面板
+    const activeFloatingPanel = ref('devices')
 
     // 当前页面
     const currentPage = ref('overview')

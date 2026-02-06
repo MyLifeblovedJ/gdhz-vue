@@ -60,7 +60,7 @@ import AlertBanner from '../components/layout/AlertBanner.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
-const currentBasemap = ref('dark')
+const currentBasemap = ref('satellite')
 const selectedDevice = ref(null)
 
 function handleDeviceClick(device) {

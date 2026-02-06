@@ -10,7 +10,7 @@
         class="search-input"
       >
       <button 
-        v-if="searchKeyword || selectedCategory || selectedStatus"
+        v-if="searchKeyword || selectedCategory || selectedStatus !== null"
         class="reset-btn"
         @click="resetFilters"
         title="重置筛选"
@@ -46,14 +46,14 @@
     <div class="status-filter-row">
       <button 
         class="status-btn"
-        :class="{ active: selectedStatus === '' }"
+        :class="{ active: effectiveStatus === '' }"
         @click="selectedStatus = ''"
       >
         全部
       </button>
       <button 
         class="status-btn online"
-        :class="{ active: selectedStatus === 'online' }"
+        :class="{ active: effectiveStatus === 'online' }"
         @click="selectedStatus = 'online'"
       >
         <span class="status-dot online"></span>
@@ -61,7 +61,7 @@
       </button>
       <button 
         class="status-btn warn"
-        :class="{ active: selectedStatus === 'warn' }"
+        :class="{ active: effectiveStatus === 'warn' }"
         @click="selectedStatus = 'warn'"
       >
         <span class="status-dot warn"></span>
@@ -69,7 +69,7 @@
       </button>
       <button 
         class="status-btn alarm"
-        :class="{ active: selectedStatus === 'alarm' }"
+        :class="{ active: effectiveStatus === 'alarm' }"
         @click="selectedStatus = 'alarm'"
       >
         <span class="status-dot alarm"></span>
@@ -77,7 +77,7 @@
       </button>
       <button 
         class="status-btn offline"
-        :class="{ active: selectedStatus === 'offline' }"
+        :class="{ active: effectiveStatus === 'offline' }"
         @click="selectedStatus = 'offline'"
       >
         <span class="status-dot offline"></span>
@@ -117,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { deviceTypeTree } from '../../data/deviceConfig'
 
@@ -125,11 +125,25 @@ const emit = defineEmits(['device-click'])
 
 const store = useAppStore()
 
+// 计算默认应该选中的状态：告警 > 预警 > 在线
+const defaultStatus = computed(() => {
+  const devices = store.devices
+  if (devices.some(d => d.status === 'alarm')) return 'alarm'
+  if (devices.some(d => d.status === 'warn')) return 'warn'
+  if (devices.some(d => d.status === 'online')) return 'online'
+  return ''
+})
+
 // 状态
 const searchKeyword = ref('')
 const selectedCategory = ref('')
-const selectedStatus = ref('')
+const selectedStatus = ref(null) // 初始为 null，表示尚未手动选择
 const selectedDevice = ref(null)
+
+// 当 selectedStatus 为 null 时，使用计算出的默认状态
+const effectiveStatus = computed(() => {
+  return selectedStatus.value === null ? defaultStatus.value : selectedStatus.value
+})
 
 // 设备分类
 const deviceCategories = computed(() => {
@@ -163,9 +177,9 @@ const filteredDevices = computed(() => {
     }
   }
   
-  // 按状态筛选
-  if (selectedStatus.value) {
-    result = result.filter(d => d.status === selectedStatus.value)
+  // 按状态筛选（使用 effectiveStatus 来筛选）
+  if (effectiveStatus.value) {
+    result = result.filter(d => d.status === effectiveStatus.value)
   }
   
   // 按关键词搜索
@@ -203,7 +217,7 @@ function getShortName(name) {
 function resetFilters() {
   searchKeyword.value = ''
   selectedCategory.value = ''
-  selectedStatus.value = ''
+  selectedStatus.value = null  // 重置为 null，恢复自动选择
 }
 
 // 点击设备

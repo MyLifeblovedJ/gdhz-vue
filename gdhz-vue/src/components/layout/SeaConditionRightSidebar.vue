@@ -100,35 +100,45 @@
       </div>
     </div>
 
-
-
-    <!-- 3. 潮位预报/观测对比 -->
+    <!-- 2. 潮位趋势分析 -->
     <div class="panel tide-panel" :class="{ collapsed: tideCollapsed }">
       <div class="panel-header" @click="tideCollapsed = !tideCollapsed">
         <div class="panel-title">
-          <i class="fa-solid fa-water"></i>
-          潮位预报/观测对比
+          <i class="fa-solid fa-chart-area"></i>
+          潮位趋势分析
         </div>
+        <select v-model="selectedStation" class="station-select" @click.stop>
+          <option 
+            v-for="station in tideTrendData.stations" 
+            :key="station.id" 
+            :value="station.id"
+          >
+            {{ station.name }}
+            <template v-if="station.isAtRisk">⚠</template>
+          </option>
+        </select>
         <i class="fa-solid fa-chevron-down toggle-icon"></i>
       </div>
       <div class="panel-content">
-        <TideChart />
-      </div>
-    </div>
-
-
-
-    <!-- 5. 历史灾害匹配 -->
-    <div class="panel disaster-panel" :class="{ collapsed: disasterCollapsed }">
-      <div class="panel-header" @click="disasterCollapsed = !disasterCollapsed">
-        <div class="panel-title">
-          <i class="fa-solid fa-clock-rotate-left"></i>
-          历史灾害匹配
+        <div class="chart-container" ref="chartContainer"></div>
+        <div class="tide-info">
+          <div class="tide-info-item">
+            <span class="label">站点</span>
+            <span class="value">{{ currentStationData?.name || '加载中...' }}</span>
+          </div>
+          <div class="tide-info-item peak">
+            <span class="label">峰值</span>
+            <span class="value">{{ currentPeakInfo?.value }}m @ {{ currentPeakInfo?.time }}</span>
+          </div>
+          <div class="tide-info-item warning">
+            <span class="label">超警戒</span>
+            <span class="value">+{{ currentPeakInfo?.overWarning }}m</span>
+          </div>
+          <div class="tide-info-item">
+            <span class="label">影响区域</span>
+            <span class="value">{{ currentAffectedDistricts?.join('、') }}</span>
+          </div>
         </div>
-        <i class="fa-solid fa-chevron-down toggle-icon"></i>
-      </div>
-      <div class="panel-content">
-        <HistoricalDisasterMatch />
       </div>
     </div>
 
@@ -157,17 +167,11 @@
 import { ref, computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 import ObservationOverview from '../data/ObservationOverview.vue'
-import TideChart from '../data/TideChart.vue'
-import HistoricalDisasterMatch from '../data/HistoricalDisasterMatch.vue'
 import AstroTideQueryModal from '../common/AstroTideQueryModal.vue'
 import { mockRealtimeData } from '../../data/mockData'
 
 const store = useAppStore()
 const emit = defineEmits(['station-click'])
-
-// 面板折叠状态
-const tideCollapsed = ref(false)
-const disasterCollapsed = ref(false)
 
 // 计算属性
 const realtimeData = computed(() => mockRealtimeData)
@@ -197,11 +201,172 @@ const focusCount = computed(() => {
 // 弹窗状态
 const showQueryModal = ref(false)
 
+// 潮位趋势面板折叠状态
+const tideCollapsed = ref(false)
+
+// 潮位趋势分析数据
+import { mockAISummaryData } from '../../data/aiSummaryData'
+const tideTrendData = computed(() => mockAISummaryData.tideAnalysis)
+
+// 站点选择
+const selectedStation = ref('zhuhai')
+const chartContainer = ref(null)
+let chartInstance = null
+
+// 当前站点数据
+const currentStationData = computed(() => {
+  return tideTrendData.value.stations.find(s => s.id === selectedStation.value)
+})
+
+const currentTideData = computed(() => {
+  return tideTrendData.value.stationData[selectedStation.value]
+})
+
+const currentPeakInfo = computed(() => {
+  return currentTideData.value?.peakInfo
+})
+
+const currentAffectedDistricts = computed(() => {
+  return currentTideData.value?.affectedDistricts
+})
+
+// 图表渲染
+import * as echarts from 'echarts'
+import { onMounted, watch, nextTick } from 'vue'
+
+function renderTideChart() {
+  if (!chartContainer.value) return
+  
+  if (!chartInstance) {
+    chartInstance = echarts.init(chartContainer.value)
+  }
+  
+  const data = currentTideData.value
+  if (!data) return
+  
+  const allTimes = [...new Set([
+    ...data.observation.map(d => d.time),
+    ...data.prediction.map(d => d.time)
+  ])].sort()
+  
+  const option = {
+    grid: {
+      left: 40,
+      right: 12,
+      top: 30,
+      bottom: 20
+    },
+    xAxis: {
+      type: 'category',
+      data: allTimes,
+      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
+      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9 },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 3.5,
+      axisLine: { show: false },
+      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9, formatter: '{value}m' },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
+    },
+    series: [
+      // 警戒线
+      {
+        name: '警戒线',
+        type: 'line',
+        data: allTimes.map(() => data.warningLevel),
+        lineStyle: { color: '#ef4444', width: 1, type: 'dashed' },
+        symbol: 'none',
+        z: 1
+      },
+      // 观测曲线
+      {
+        name: '观测值',
+        type: 'line',
+        data: allTimes.map(t => {
+          const point = data.observation.find(d => d.time === t)
+          return point ? point.value : null
+        }),
+        lineStyle: { color: '#10b981', width: 2.5 },
+        symbol: 'circle',
+        symbolSize: 6,
+        itemStyle: { color: '#10b981' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+            { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
+          ])
+        },
+        z: 3
+      },
+      // 预测曲线
+      {
+        name: '预测值',
+        type: 'line',
+        data: allTimes.map(t => {
+          const point = data.prediction.find(d => d.time === t)
+          return point ? point.value : null
+        }),
+        lineStyle: { color: '#8b5cf6', width: 2, type: 'dashed' },
+        symbol: 'circle',
+        symbolSize: 5,
+        itemStyle: { color: '#8b5cf6' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(139, 92, 246, 0.2)' },
+            { offset: 1, color: 'rgba(139, 92, 246, 0.02)' }
+          ])
+        },
+        z: 2
+      }
+    ],
+    legend: {
+      data: ['观测值', '预测值', '警戒线'],
+      top: 0,
+      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+      itemWidth: 15,
+      itemHeight: 8
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(20, 30, 50, 0.9)',
+      borderColor: 'rgba(6, 182, 212, 0.3)',
+      textStyle: { color: '#fff', fontSize: 11 }
+    }
+  }
+  
+  chartInstance.setOption(option)
+}
+
+onMounted(() => {
+  nextTick(() => {
+    if (!tideCollapsed.value) {
+      renderTideChart()
+    }
+  })
+})
+
+watch(selectedStation, () => {
+  nextTick(() => renderTideChart())
+})
+
+watch(tideCollapsed, (collapsed) => {
+  if (!collapsed) {
+    nextTick(() => {
+      if (chartInstance) {
+        chartInstance.resize()
+      } else {
+        renderTideChart()
+      }
+    })
+  }
+})
+
 function handleAstroQuery(params) {
   console.log('Query Astro Tide:', params)
-  // 这里可以调用接口获取数据，或者更新 TideChart
-  // 暂时仅做演示，展开下方图表
-  tideCollapsed.value = false
+  // 这里可以调用接口获取数据
 }
 
 // 计算今日最高潮
@@ -689,5 +854,77 @@ function getTrendIcon(trend) {
   font-size: 10px;
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+/* 潮位趋势面板样式 */
+.tide-panel::before {
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #3b82f6 70%, transparent);
+}
+
+.tide-panel .panel-title {
+  color: #3b82f6;
+}
+
+.station-select {
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 3px 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+  color: #60a5fa;
+  font-size: 10px;
+  cursor: pointer;
+  outline: none;
+}
+
+.station-select:focus {
+  border-color: #3b82f6;
+}
+
+.station-select option {
+  background: #1e293b;
+  color: #fff;
+}
+
+.chart-container {
+  height: 160px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tide-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 0 0 0;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 10px;
+}
+
+.tide-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.tide-info-item .label {
+  color: var(--text-muted);
+}
+
+.tide-info-item .value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tide-info-item.peak .value {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.tide-info-item.warning .value {
+  color: #ef4444;
+  font-weight: 600;
 }
 </style>
