@@ -1,0 +1,62 @@
+<svg width="420" height="980" viewBox="0 0 420 980" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#071422"/>
+      <stop offset="100%" stop-color="#0c1d32"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10243b"/>
+      <stop offset="100%" stop-color="#0d2034"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="420" height="980" fill="url(#bg)"/>
+  <text x="24" y="36" fill="#8ad6ff" font-size="15" font-family="Arial">态势感知首页 - 右侧边栏重构预览 V1（常态）</text>
+
+  <rect x="16" y="54" width="388" height="760" rx="12" fill="url(#panel)" stroke="#1f405f"/>
+  <rect x="28" y="70" width="364" height="40" rx="8" fill="#123456" stroke="#2f5f87"/>
+  <text x="42" y="96" fill="#b9ebff" font-size="16" font-weight="700" font-family="Arial">关键指标检测</text>
+
+  <rect x="28" y="120" width="364" height="210" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="144" fill="#9be0ff" font-size="14" font-family="Arial">▾ 风浪潮（风暴潮 / 海浪 / 天文潮）</text>
+  <rect x="40" y="154" width="108" height="30" rx="6" fill="#1b3f2f" stroke="#2d9b70"/>
+  <text x="50" y="174" fill="#8df0c5" font-size="12" font-family="Arial">当前潮位 2.85m</text>
+  <rect x="156" y="154" width="108" height="30" rx="6" fill="#3f2f1b" stroke="#b48a3a"/>
+  <text x="166" y="174" fill="#ffd88b" font-size="12" font-family="Arial">有效波高 4.2m</text>
+  <rect x="272" y="154" width="108" height="30" rx="6" fill="#402326" stroke="#c95a67"/>
+  <text x="282" y="174" fill="#ffb0b8" font-size="12" font-family="Arial">超警戒 +0.7m</text>
+  <rect x="40" y="192" width="340" height="122" rx="6" fill="#0e1d2f" stroke="#2f5f87"/>
+  <polyline points="52,286 90,264 128,244 166,210 204,188 242,206 280,234 318,258 356,276" fill="none" stroke="#39d18d" stroke-width="2"/>
+  <polyline points="52,286 90,272 128,258 166,236 204,196 242,216 280,246 318,270 356,286" fill="none" stroke="#8f6bff" stroke-width="2" stroke-dasharray="5,4"/>
+  <line x1="40" y1="222" x2="380" y2="222" stroke="#e45b67" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="44" y="218" fill="#e7a0a7" font-size="10" font-family="Arial">警戒线</text>
+
+  <rect x="28" y="340" width="364" height="190" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="364" fill="#9be0ff" font-size="14" font-family="Arial">▾ 海岸侵蚀（视频优先）</text>
+  <rect x="40" y="374" width="340" height="118" rx="6" fill="#0a0f19" stroke="#2f5f87"/>
+  <polygon points="198,420 198,446 224,433" fill="#b6d7ff"/>
+  <text x="150" y="470" fill="#87a9cc" font-size="12" font-family="Arial">海岸侵蚀监控直播流</text>
+  <rect x="40" y="500" width="108" height="22" rx="5" fill="#3f2f1b" stroke="#b48a3a"/>
+  <text x="48" y="515" fill="#ffd88b" font-size="11" font-family="Arial">侵蚀速率 1.8m/年</text>
+  <rect x="156" y="500" width="108" height="22" rx="5" fill="#1c334f" stroke="#4f81b8"/>
+  <text x="164" y="515" fill="#a9d0ff" font-size="11" font-family="Arial">岸线变化 -3.4m</text>
+  <rect x="272" y="500" width="108" height="22" rx="5" fill="#402326" stroke="#c95a67"/>
+  <text x="280" y="515" fill="#ffb0b8" font-size="11" font-family="Arial">风险等级 中-高</text>
+
+  <rect x="28" y="540" width="364" height="50" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="570" fill="#9be0ff" font-size="14" font-family="Arial">▸ 咸潮入侵</text>
+
+  <rect x="28" y="600" width="364" height="50" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="630" fill="#9be0ff" font-size="14" font-family="Arial">▸ 海水入侵</text>
+
+  <rect x="16" y="828" width="388" height="136" rx="12" fill="#0f2339" stroke="#2f5f87"/>
+  <text x="30" y="852" fill="#b9ebff" font-size="15" font-family="Arial">设备与数据（保留）</text>
+  <rect x="30" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="122" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="214" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="306" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <text x="44" y="884" fill="#d2eaff" font-size="12" font-family="Arial">设备总数</text>
+  <text x="132" y="884" fill="#d2eaff" font-size="12" font-family="Arial">在线设备</text>
+  <text x="224" y="884" fill="#d2eaff" font-size="12" font-family="Arial">预警设备</text>
+  <text x="320" y="884" fill="#d2eaff" font-size="12" font-family="Arial">数据总量</text>
+</svg>

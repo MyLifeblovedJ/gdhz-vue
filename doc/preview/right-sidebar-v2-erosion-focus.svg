@@ -1,0 +1,44 @@
+<svg width="420" height="980" viewBox="0 0 420 980" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06131d"/>
+      <stop offset="100%" stop-color="#132335"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="420" height="980" fill="url(#bg2)"/>
+  <text x="24" y="36" fill="#8ad6ff" font-size="15" font-family="Arial">态势感知首页 - 右侧边栏重构预览 V2（海岸侵蚀重点）</text>
+
+  <rect x="16" y="54" width="388" height="760" rx="12" fill="#0f2235" stroke="#1f405f"/>
+  <rect x="28" y="70" width="364" height="40" rx="8" fill="#123456" stroke="#2f5f87"/>
+  <text x="42" y="96" fill="#b9ebff" font-size="16" font-weight="700" font-family="Arial">关键指标检测</text>
+
+  <rect x="28" y="120" width="364" height="50" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="150" fill="#9be0ff" font-size="14" font-family="Arial">▸ 风浪潮（风暴潮 / 海浪 / 天文潮）</text>
+
+  <rect x="28" y="178" width="364" height="350" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="202" fill="#9be0ff" font-size="14" font-family="Arial">▾ 海岸侵蚀（视频主画面）</text>
+  <rect x="40" y="214" width="340" height="210" rx="6" fill="#060a11" stroke="#4f81b8"/>
+  <polygon points="192,300 192,340 232,320" fill="#dbe9ff"/>
+  <text x="110" y="404" fill="#96b7db" font-size="13" font-family="Arial">直播状态：在线 | 延迟 1.2s | 摄像头 C-07</text>
+
+  <rect x="40" y="434" width="165" height="34" rx="6" fill="#402326" stroke="#c95a67"/>
+  <text x="50" y="456" fill="#ffb0b8" font-size="12" font-family="Arial">侵蚀速率 2.2m/年（告警）</text>
+  <rect x="215" y="434" width="165" height="34" rx="6" fill="#1c334f" stroke="#4f81b8"/>
+  <text x="225" y="456" fill="#a9d0ff" font-size="12" font-family="Arial">岸线后退 4.1m（近24h）</text>
+
+  <rect x="40" y="476" width="340" height="38" rx="6" fill="#1c334f" stroke="#4f81b8"/>
+  <text x="52" y="500" fill="#c6defd" font-size="12" font-family="Arial">处置建议：沿岸加密巡查 + 无人机复核 + 堤脚防护补强</text>
+
+  <rect x="28" y="538" width="364" height="50" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="568" fill="#9be0ff" font-size="14" font-family="Arial">▸ 咸潮入侵</text>
+
+  <rect x="28" y="598" width="364" height="50" rx="8" fill="#112a40" stroke="#2d597f"/>
+  <text x="40" y="628" fill="#9be0ff" font-size="14" font-family="Arial">▸ 海水入侵</text>
+
+  <rect x="16" y="828" width="388" height="136" rx="12" fill="#0f2339" stroke="#2f5f87"/>
+  <text x="30" y="852" fill="#b9ebff" font-size="15" font-family="Arial">设备与数据（保留）</text>
+  <rect x="30" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="122" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="214" y="862" width="84" height="48" rx="8" fill="#143149"/>
+  <rect x="306" y="862" width="84" height="48" rx="8" fill="#143149"/>
+</svg>

@@ -55,21 +55,21 @@ export const mockAISummaryData = {
                 id: 'zhuhai',
                 name: '珠海香洲站',
                 district: '香洲区',
-                warningLevel: 3.5,
+                warningLevels: { blue: 2.5, yellow: 3.0, orange: 3.5, red: 4.0 },
                 isAtRisk: true
             },
             {
                 id: 'dawan',
                 name: '大万山岛站',
                 district: '香洲区',
-                warningLevel: 3.2,
+                warningLevels: { blue: 2.3, yellow: 2.8, orange: 3.2, red: 3.6 },
                 isAtRisk: true
             },
             {
                 id: 'doumen',
                 name: '斗门站',
                 district: '斗门区',
-                warningLevel: 3.3,
+                warningLevels: { blue: 2.4, yellow: 2.9, orange: 3.3, red: 3.8 },
                 isAtRisk: false
             }
         ],
@@ -93,6 +93,18 @@ export const mockAISummaryData = {
                     { time: '07:00', value: 3.3 },
                     { time: '08:00', value: 2.9 }
                 ],
+                surgeData: [
+                    { time: '02:00', value: 0.15 },
+                    { time: '03:00', value: 0.25 },
+                    { time: '04:00', value: 0.40 },
+                    { time: '04:30', value: 0.50 },
+                    { time: '05:00', value: 0.60 },
+                    { time: '05:30', value: 0.72 },
+                    { time: '06:00', value: 0.65 },
+                    { time: '06:30', value: 0.50 },
+                    { time: '07:00', value: 0.35 },
+                    { time: '08:00', value: 0.20 }
+                ],
                 peakInfo: {
                     value: 4.2,
                     time: '05:30',
@@ -115,6 +127,17 @@ export const mockAISummaryData = {
                     { time: '06:30', value: 3.3 },
                     { time: '07:00', value: 2.9 }
                 ],
+                surgeData: [
+                    { time: '02:00', value: 0.10 },
+                    { time: '03:00', value: 0.20 },
+                    { time: '04:00', value: 0.30 },
+                    { time: '04:30', value: 0.40 },
+                    { time: '05:00', value: 0.50 },
+                    { time: '05:30', value: 0.58 },
+                    { time: '06:00', value: 0.48 },
+                    { time: '06:30', value: 0.35 },
+                    { time: '07:00', value: 0.22 }
+                ],
                 peakInfo: {
                     value: 3.8,
                     time: '05:30',
@@ -135,6 +158,16 @@ export const mockAISummaryData = {
                     { time: '05:30', value: 3.4 },
                     { time: '06:00', value: 3.2 },
                     { time: '06:30', value: 2.9 }
+                ],
+                surgeData: [
+                    { time: '02:00', value: 0.08 },
+                    { time: '03:00', value: 0.15 },
+                    { time: '04:00', value: 0.22 },
+                    { time: '04:30', value: 0.30 },
+                    { time: '05:00', value: 0.38 },
+                    { time: '05:30', value: 0.42 },
+                    { time: '06:00', value: 0.35 },
+                    { time: '06:30', value: 0.25 }
                 ],
                 peakInfo: {
                     value: 3.4,

@@ -61,7 +61,6 @@ import SeaConditionLeftSidebar from '../components/layout/SeaConditionLeftSideba
 import SeaConditionRightSidebar from '../components/layout/SeaConditionRightSidebar.vue'
 import BottomControls from '../components/layout/BottomControls.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
-import TimelineController from '../components/map/TimelineController.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
 
 const store = useAppStore()

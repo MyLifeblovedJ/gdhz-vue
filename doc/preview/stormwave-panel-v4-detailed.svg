@@ -1,0 +1,73 @@
+<svg width="440" height="1120" viewBox="0 0 440 1120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#071422"/>
+      <stop offset="100%" stop-color="#0d2138"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10263f"/>
+      <stop offset="100%" stop-color="#0d2035"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="440" height="1120" fill="url(#bg)"/>
+  <text x="20" y="34" fill="#9bdcff" font-size="15" font-family="Arial">态势感知右侧 - 风浪潮（风暴潮/海浪/天文潮）详细版预览 V4</text>
+
+  <rect x="14" y="50" width="412" height="940" rx="12" fill="url(#panel)" stroke="#275176"/>
+  <rect x="26" y="66" width="388" height="44" rx="8" fill="#15395c" stroke="#3873a4"/>
+  <text x="38" y="94" fill="#c7efff" font-size="16" font-weight="700" font-family="Arial">关键指标检测</text>
+
+  <rect x="26" y="122" width="388" height="510" rx="8" fill="#112b43" stroke="#2e638d"/>
+  <text x="38" y="147" fill="#9fe3ff" font-size="14" font-family="Arial">▾ 风浪潮（风暴潮 / 海浪 / 天文潮）</text>
+
+  <rect x="38" y="158" width="120" height="34" rx="6" fill="#243c22" stroke="#4ca86a"/>
+  <text x="48" y="180" fill="#aef6c6" font-size="12" font-family="Arial">总潮位 3.86m</text>
+  <rect x="166" y="158" width="120" height="34" rx="6" fill="#3e3018" stroke="#b38a36"/>
+  <text x="176" y="180" fill="#ffd98f" font-size="12" font-family="Arial">浪高 4.8m</text>
+  <rect x="294" y="158" width="120" height="34" rx="6" fill="#402225" stroke="#cb5e69"/>
+  <text x="304" y="180" fill="#ffb8bf" font-size="12" font-family="Arial">风速 23.4m/s</text>
+
+  <text x="38" y="214" fill="#b8d9f4" font-size="12" font-family="Arial">预警站点（按 红&gt;橙&gt;黄&gt;蓝 排序）</text>
+
+  <rect x="38" y="222" width="364" height="74" rx="6" fill="#3a1e20" stroke="#d35c66"/>
+  <text x="48" y="243" fill="#ffd8dc" font-size="12" font-family="Arial">红色 | 珠海香洲站 | 预测+实测重叠</text>
+  <text x="48" y="262" fill="#ffd8dc" font-size="12" font-family="Arial">预计最高潮位 4.32m @ 05:30 | 当前实测 3.86m</text>
+  <text x="48" y="281" fill="#ffd8dc" font-size="12" font-family="Arial">浪高 5.1m 风速 25.0m/s | 影响：香洲区、斗门区</text>
+
+  <rect x="38" y="304" width="364" height="74" rx="6" fill="#3f2b17" stroke="#d08a3f"/>
+  <text x="48" y="325" fill="#ffe4bf" font-size="12" font-family="Arial">橙色 | 大万山岛站 | 预测预警</text>
+  <text x="48" y="344" fill="#ffe4bf" font-size="12" font-family="Arial">预计最高潮位 3.92m @ 05:40 | 当前实测 3.38m</text>
+  <text x="48" y="363" fill="#ffe4bf" font-size="12" font-family="Arial">浪高 4.7m 风速 22.8m/s | 影响：万山群岛海域</text>
+
+  <rect x="38" y="386" width="364" height="74" rx="6" fill="#3c351b" stroke="#c8ab4e"/>
+  <text x="48" y="407" fill="#fff0c8" font-size="12" font-family="Arial">黄色 | 斗门站 | 实测预警</text>
+  <text x="48" y="426" fill="#fff0c8" font-size="12" font-family="Arial">预计最高潮位 3.44m @ 05:50 | 当前实测 3.31m</text>
+  <text x="48" y="445" fill="#fff0c8" font-size="12" font-family="Arial">浪高 3.9m 风速 18.6m/s | 影响：斗门区、金湾区</text>
+
+  <text x="38" y="480" fill="#b8d9f4" font-size="12" font-family="Arial">潮位趋势图（4色警戒线 + 总潮位 + 风暴潮增水）</text>
+  <rect x="38" y="488" width="364" height="132" rx="6" fill="#0d1f31" stroke="#37688f"/>
+  <line x1="46" y1="538" x2="394" y2="538" stroke="#f05b64" stroke-width="1.6" stroke-dasharray="4,3"/>
+  <line x1="46" y1="550" x2="394" y2="550" stroke="#f39a41" stroke-width="1.4" stroke-dasharray="4,3"/>
+  <line x1="46" y1="562" x2="394" y2="562" stroke="#e8c44f" stroke-width="1.3" stroke-dasharray="4,3"/>
+  <line x1="46" y1="574" x2="394" y2="574" stroke="#5ca4ff" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <polyline points="52,598 88,584 124,560 160,528 196,510 232,526 268,548 304,572 340,592 376,602" fill="none" stroke="#38d791" stroke-width="2.3"/>
+  <polyline points="52,602 88,598 124,586 160,568 196,556 232,564 268,578 304,590 340,600 376,606" fill="none" stroke="#9b7bff" stroke-width="2"/>
+  <text x="48" y="504" fill="#9fd0f6" font-size="10" font-family="Arial">总潮位</text>
+  <text x="98" y="504" fill="#c6b1ff" font-size="10" font-family="Arial">风暴潮增水</text>
+
+  <rect x="26" y="644" width="388" height="58" rx="8" fill="#112b43" stroke="#2e638d"/>
+  <text x="38" y="678" fill="#9fe3ff" font-size="14" font-family="Arial">▸ 海岸侵蚀（视频主）</text>
+
+  <rect x="26" y="712" width="388" height="58" rx="8" fill="#112b43" stroke="#2e638d"/>
+  <text x="38" y="746" fill="#9fe3ff" font-size="14" font-family="Arial">▸ 咸潮入侵</text>
+
+  <rect x="26" y="780" width="388" height="58" rx="8" fill="#112b43" stroke="#2e638d"/>
+  <text x="38" y="814" fill="#9fe3ff" font-size="14" font-family="Arial">▸ 海水入侵</text>
+
+  <rect x="14" y="1002" width="412" height="104" rx="12" fill="#0f253d" stroke="#2f638f"/>
+  <text x="28" y="1028" fill="#c7efff" font-size="15" font-family="Arial">设备与数据（保留在底部）</text>
+  <rect x="28" y="1038" width="90" height="48" rx="8" fill="#153753"/>
+  <rect x="126" y="1038" width="90" height="48" rx="8" fill="#153753"/>
+  <rect x="224" y="1038" width="90" height="48" rx="8" fill="#153753"/>
+  <rect x="322" y="1038" width="90" height="48" rx="8" fill="#153753"/>
+</svg>

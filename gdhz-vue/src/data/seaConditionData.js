@@ -457,20 +457,108 @@ export const mockAstronomicalTide = {
     },
 }
 
-// ===== 重点潮位站预报 (新增：支持滑动列表) =====
+// ===== 重点潮位站预报（含四色预警和预报/观测双状态） =====
 export const mockTideForecastStations = [
-    { name: '珠海站', maxLevel: 2.95, time: '16:45', state: '超警' },
-    { name: '三灶站', maxLevel: 2.88, time: '16:30', state: '正常' },
-    { name: '南水站', maxLevel: 3.12, time: '17:15', state: '超警' },
-    { name: '赤湾站', maxLevel: 3.05, time: '17:00', state: '超警' },
-    { name: '黄埔站', maxLevel: 2.76, time: '18:20', state: '正常' },
-    { name: '横门站', maxLevel: 2.92, time: '17:40', state: '需关注' }
+    {
+        name: '南水站', maxLevel: 3.12, time: '17:15', surgeHeight: 0.72,
+        warningColor: 'red', forecastWarning: true, observedWarning: true,
+        currentLevel: 3.05, observedTime: '14:30', state: '超警',
+        warningLevel: 2.50,
+        trendData: [1.8, 1.6, 1.5, 1.6, 1.8, 2.0, 2.2, 2.1, 1.9, 2.0, 2.3, 2.5, 2.7, 2.9, 3.05, 3.10, 3.12, 3.08, 2.95, 2.80, 2.60, 2.40, 2.20, 2.00]
+    },
+    {
+        name: '赤湾站', maxLevel: 3.05, time: '17:00', surgeHeight: 0.65,
+        warningColor: 'red', forecastWarning: true, observedWarning: false,
+        currentLevel: 2.78, observedTime: '14:30', state: '超警',
+        warningLevel: 2.45,
+        trendData: [1.7, 1.5, 1.4, 1.5, 1.7, 1.9, 2.1, 2.0, 1.8, 1.9, 2.2, 2.4, 2.6, 2.78, 2.90, 3.02, 3.05, 3.00, 2.88, 2.70, 2.50, 2.30, 2.10, 1.90]
+    },
+    {
+        name: '珠海站', maxLevel: 2.95, time: '16:45', surgeHeight: 0.63,
+        warningColor: 'orange', forecastWarning: true, observedWarning: true,
+        currentLevel: 2.85, observedTime: '14:30', state: '超警',
+        warningLevel: 2.40,
+        trendData: [1.6, 1.5, 1.4, 1.5, 1.6, 1.8, 2.0, 1.9, 1.7, 1.8, 2.1, 2.3, 2.5, 2.7, 2.85, 2.92, 2.95, 2.90, 2.78, 2.60, 2.40, 2.25, 2.05, 1.85]
+    },
+    {
+        name: '横门站', maxLevel: 2.92, time: '17:40', surgeHeight: 0.55,
+        warningColor: 'orange', forecastWarning: true, observedWarning: false,
+        currentLevel: 2.60, observedTime: '14:30', state: '需关注',
+        warningLevel: 2.35,
+        trendData: [1.5, 1.4, 1.3, 1.4, 1.5, 1.7, 1.9, 1.8, 1.6, 1.7, 2.0, 2.2, 2.4, 2.60, 2.75, 2.85, 2.92, 2.88, 2.72, 2.55, 2.35, 2.15, 1.95, 1.80]
+    },
+    {
+        name: '三灶站', maxLevel: 2.88, time: '16:30', surgeHeight: 0.48,
+        warningColor: 'yellow', forecastWarning: true, observedWarning: false,
+        currentLevel: 2.45, observedTime: '14:30', state: '正常',
+        warningLevel: 2.30,
+        trendData: [1.5, 1.3, 1.2, 1.3, 1.5, 1.7, 1.9, 1.8, 1.6, 1.7, 1.9, 2.1, 2.3, 2.45, 2.65, 2.80, 2.88, 2.82, 2.70, 2.50, 2.30, 2.10, 1.95, 1.75]
+    },
+    {
+        name: '黄埔站', maxLevel: 2.76, time: '18:20', surgeHeight: 0.36,
+        warningColor: 'blue', forecastWarning: true, observedWarning: false,
+        currentLevel: 2.30, observedTime: '14:30', state: '正常',
+        warningLevel: 2.20,
+        trendData: [1.4, 1.3, 1.2, 1.3, 1.4, 1.6, 1.8, 1.7, 1.5, 1.6, 1.8, 2.0, 2.2, 2.30, 2.45, 2.60, 2.72, 2.76, 2.70, 2.55, 2.35, 2.15, 1.95, 1.80]
+    }
 ]
 
-// ===== 近岸海浪重点数据 (新增) =====
+// ===== 近岸海浪重点数据 =====
 export const mockNearshoreWave = {
     station: '香洲港近岸',
     height: 3.5, // m
     appearTime: '15:30',
     direction: 'SE'
 }
+
+// ===== 浪高预报站（与潮位站同构） =====
+export const mockWaveForecastStations = [
+    {
+        name: '万山岛浮标', maxHeight: 6.5, time: '16:00',
+        warningColor: 'red', forecastWarning: true, observedWarning: true,
+        currentHeight: 5.8, observedTime: '14:20', direction: 'SE',
+        state: '超警',
+        warningLevel: 4.0,
+        trendData: [2.0, 2.2, 2.5, 2.8, 3.2, 3.6, 4.0, 4.3, 4.8, 5.2, 5.5, 5.8, 6.0, 6.3, 6.5, 6.3, 6.0, 5.5, 5.0, 4.5, 4.0, 3.5, 3.0, 2.5]
+    },
+    {
+        name: '担杆岛浮标', maxHeight: 5.2, time: '16:30',
+        warningColor: 'orange', forecastWarning: true, observedWarning: true,
+        currentHeight: 4.5, observedTime: '14:20', direction: 'SE',
+        state: '超警',
+        warningLevel: 3.5,
+        trendData: [1.5, 1.8, 2.0, 2.3, 2.6, 3.0, 3.3, 3.6, 3.9, 4.2, 4.5, 4.8, 5.0, 5.2, 5.1, 4.8, 4.5, 4.0, 3.5, 3.0, 2.7, 2.4, 2.0, 1.8]
+    },
+    {
+        name: '香洲港近岸', maxHeight: 3.8, time: '15:45',
+        warningColor: 'orange', forecastWarning: true, observedWarning: false,
+        currentHeight: 3.2, observedTime: '14:20', direction: 'ESE',
+        state: '需关注',
+        warningLevel: 2.5,
+        trendData: [1.2, 1.4, 1.5, 1.8, 2.0, 2.3, 2.5, 2.8, 3.0, 3.2, 3.5, 3.8, 3.7, 3.5, 3.2, 2.9, 2.6, 2.3, 2.0, 1.8, 1.6, 1.4, 1.3, 1.2]
+    },
+    {
+        name: '大亚湾浮标', maxHeight: 3.5, time: '17:00',
+        warningColor: 'yellow', forecastWarning: true, observedWarning: false,
+        currentHeight: 2.8, observedTime: '14:20', direction: 'SE',
+        state: '正常',
+        warningLevel: 2.5,
+        trendData: [1.0, 1.2, 1.3, 1.5, 1.8, 2.0, 2.2, 2.5, 2.6, 2.8, 3.0, 3.2, 3.3, 3.5, 3.4, 3.2, 3.0, 2.7, 2.4, 2.1, 1.8, 1.5, 1.3, 1.1]
+    },
+    {
+        name: '阳江近岸', maxHeight: 4.0, time: '15:30',
+        warningColor: 'yellow', forecastWarning: true, observedWarning: false,
+        currentHeight: 3.0, observedTime: '14:10', direction: 'S',
+        state: '需关注',
+        warningLevel: 2.8,
+        trendData: [1.5, 1.7, 2.0, 2.3, 2.6, 2.8, 3.0, 3.3, 3.6, 3.8, 4.0, 3.9, 3.7, 3.4, 3.1, 2.8, 2.5, 2.2, 2.0, 1.8, 1.6, 1.5, 1.4, 1.3]
+    },
+    {
+        name: '汕头近岸', maxHeight: 2.5, time: '18:00',
+        warningColor: 'blue', forecastWarning: true, observedWarning: false,
+        currentHeight: 1.8, observedTime: '14:10', direction: 'SE',
+        state: '正常',
+        warningLevel: 2.0,
+        trendData: [0.8, 0.9, 1.0, 1.2, 1.3, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.4, 2.2, 2.0, 1.8, 1.5, 1.3, 1.1, 0.9]
+    }
+]

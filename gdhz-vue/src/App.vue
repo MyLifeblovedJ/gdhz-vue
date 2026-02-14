@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useAppStore } from './stores/app'
 import AppHeader from './components/layout/AppHeader.vue'
 
@@ -19,13 +19,21 @@ const store = useAppStore()
 
 // 页面切换动画名称
 const transitionName = ref('page-fade')
+let clockTimer = null
 
 onMounted(() => {
   // 启动时钟
   store.updateCurrentTime()
-  setInterval(() => {
+  clockTimer = setInterval(() => {
     store.updateCurrentTime()
   }, 60000)
+})
+
+onUnmounted(() => {
+  if (clockTimer) {
+    clearInterval(clockTimer)
+    clockTimer = null
+  }
 })
 </script>
 

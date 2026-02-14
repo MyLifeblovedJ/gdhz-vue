@@ -1,0 +1,33 @@
+<svg width="440" height="720" viewBox="0 0 440 720" xmlns="http://www.w3.org/2000/svg">
+  <rect width="440" height="720" fill="#071422"/>
+  <text x="20" y="34" fill="#9bdcff" font-size="15" font-family="Arial">态势感知左侧 - 摘要化方案预览 V2</text>
+
+  <rect x="14" y="50" width="412" height="650" rx="12" fill="#10263f" stroke="#275176"/>
+
+  <rect x="26" y="66" width="388" height="176" rx="8" fill="#122d47" stroke="#2d638f"/>
+  <text x="38" y="92" fill="#9fe3ff" font-size="15" font-family="Arial">当前预警</text>
+  <rect x="38" y="104" width="364" height="44" rx="6" fill="#2f1b1e" stroke="#cb5e69"/>
+  <text x="48" y="130" fill="#ffd3d8" font-size="12" font-family="Arial">摘要：红2橙3黄5，重点在珠江口与万山群岛</text>
+  <rect x="38" y="156" width="364" height="74" rx="6" fill="#1a334b" stroke="#3d739f"/>
+  <text x="48" y="179" fill="#d2e9fb" font-size="12" font-family="Arial">关键证据：珠海香洲站预计05:30达 4.32m（红）</text>
+  <text x="48" y="198" fill="#d2e9fb" font-size="12" font-family="Arial">关键证据：大万山岛浪高 4.7m，风速 22.8m/s</text>
+  <text x="48" y="217" fill="#d2e9fb" font-size="12" font-family="Arial">关键证据：3条预警与实测重叠</text>
+
+  <rect x="26" y="254" width="388" height="176" rx="8" fill="#122d47" stroke="#2d638f"/>
+  <text x="38" y="280" fill="#9fe3ff" font-size="15" font-family="Arial">综合研判</text>
+  <rect x="38" y="292" width="364" height="44" rx="6" fill="#3a2c18" stroke="#c8893f"/>
+  <text x="48" y="318" fill="#ffe2bf" font-size="12" font-family="Arial">摘要：未来6小时主导风险为风浪潮叠加（橙偏红）</text>
+  <rect x="38" y="344" width="364" height="74" rx="6" fill="#1a334b" stroke="#3d739f"/>
+  <text x="48" y="367" fill="#d2e9fb" font-size="12" font-family="Arial">研判链：天文潮高位 + 风暴潮增水 + 海浪放大效应</text>
+  <text x="48" y="386" fill="#d2e9fb" font-size="12" font-family="Arial">风险窗口：04:30 - 07:00</text>
+  <text x="48" y="405" fill="#d2e9fb" font-size="12" font-family="Arial">重点区域：香洲区、斗门区、万山群岛</text>
+
+  <rect x="26" y="442" width="388" height="176" rx="8" fill="#122d47" stroke="#2d638f"/>
+  <text x="38" y="468" fill="#9fe3ff" font-size="15" font-family="Arial">决策建议</text>
+  <rect x="38" y="480" width="364" height="44" rx="6" fill="#1f3925" stroke="#4fa46b"/>
+  <text x="48" y="506" fill="#c9f8d8" font-size="12" font-family="Arial">摘要：优先执行“沿海低洼转移+海堤巡查加密”</text>
+  <rect x="38" y="532" width="364" height="74" rx="6" fill="#1a334b" stroke="#3d739f"/>
+  <text x="48" y="555" fill="#d2e9fb" font-size="12" font-family="Arial">动作1：香洲/斗门低洼点位转移，06:00前完成</text>
+  <text x="48" y="574" fill="#d2e9fb" font-size="12" font-family="Arial">动作2：海堤薄弱段 1h/次巡查</text>
+  <text x="48" y="593" fill="#d2e9fb" font-size="12" font-family="Arial">动作3：重点港口临时交通管制</text>
+</svg>

@@ -459,15 +459,17 @@ export const mockRiskData = [
 
 // ===== 实时监控数据 =====
 export const mockRealtimeData = {
-    // 数据概览卡片
+    // 数据概览（潮位 + 浪高两个维度）
     overview: {
         tideLevel: {
-            label: '当前潮位',
-            value: 2.85,
+            label: '总潮位',
+            value: 3.45,
             unit: 'm',
-            trend: 'up',  // up, down, stable
+            trend: 'up',
             station: '珠海香洲站',
             threshold: { warn: 2.5, alarm: 3.0 },
+            surgeHeight: 0.63,
+            description: '天文潮 + 风暴潮增水',
         },
         waveHeight: {
             label: '最大浪高',
@@ -476,23 +478,6 @@ export const mockRealtimeData = {
             trend: 'up',
             station: '大万山岛',
             threshold: { warn: 3.5, alarm: 5.0 },
-        },
-        windSpeed: {
-            label: '风速',
-            value: 22.5,
-            unit: 'm/s',
-            direction: 'ESE',  // 风向
-            trend: 'stable',
-            station: '担杆岛',
-            threshold: { warn: 17.0, alarm: 25.0 },
-        },
-        temperature: {
-            label: '海温',
-            value: 24.8,
-            unit: '°C',
-            trend: 'down',
-            station: '珠江口浮标',
-            threshold: { warn: 28.0, alarm: 30.0 },
         },
     },
 
@@ -737,4 +722,106 @@ export function generateHistoryData(deviceId, elementKey, startTime, endTime, in
     }
 
     return data
+}
+
+// ===== 海岸侵蚀视频监测数据 =====
+export const mockErosionVideoStreams = [
+    {
+        id: 'EV001',
+        stationName: '海陵岛大角湾',
+        streamUrl: '',
+        snapshotUrl: '',
+        status: 'online',
+        erosionRate: 1.8,
+        coastlineChange: -12.5,
+        riskLevel: 'high',
+        lastUpdate: '2026-02-14T10:30:00+08:00',
+        location: { lat: 21.5731, lng: 111.9284 }
+    },
+    {
+        id: 'EV002',
+        stationName: '汕头南澳岛',
+        streamUrl: '',
+        snapshotUrl: '',
+        status: 'online',
+        erosionRate: 0.6,
+        coastlineChange: -3.2,
+        riskLevel: 'low',
+        lastUpdate: '2026-02-14T10:28:00+08:00',
+        location: { lat: 23.4215, lng: 117.0235 }
+    },
+    {
+        id: 'EV003',
+        stationName: '湛江东海岛',
+        streamUrl: '',
+        snapshotUrl: '',
+        status: 'offline',
+        erosionRate: 2.3,
+        coastlineChange: -18.7,
+        riskLevel: 'high',
+        lastUpdate: '2026-02-14T08:15:00+08:00',
+        location: { lat: 20.9056, lng: 110.5617 }
+    },
+    {
+        id: 'EV004',
+        stationName: '惠州双月湾',
+        streamUrl: '',
+        snapshotUrl: '',
+        status: 'online',
+        erosionRate: 1.1,
+        coastlineChange: -6.8,
+        riskLevel: 'medium',
+        lastUpdate: '2026-02-14T10:25:00+08:00',
+        location: { lat: 22.5867, lng: 114.8932 }
+    }
+]
+
+// ===== 咸潮入侵数据 =====
+export const mockSaltwaterData = {
+    currentChlorinity: 380,
+    chlorinityThreshold: { warn: 250, alarm: 500 },
+    upstreamDistance: 28.5,
+    upstreamThreshold: { warn: 20, alarm: 35 },
+    trend: 'rising',
+    riskLevel: 'medium',
+    lastUpdate: '2026-02-14T10:30:00+08:00',
+    affectedIntakes: [
+        { name: '南沙取水口', chlorinity: 420, status: 'alarm', distance: 12.3 },
+        { name: '番禺取水口', chlorinity: 310, status: 'warn', distance: 18.7 },
+        { name: '顺德取水口', chlorinity: 180, status: 'normal', distance: 25.1 },
+        { name: '中山取水口', chlorinity: 260, status: 'warn', distance: 22.4 }
+    ],
+    trend24h: [
+        { time: '00:00', value: 220 },
+        { time: '02:00', value: 240 },
+        { time: '04:00', value: 280 },
+        { time: '06:00', value: 310 },
+        { time: '08:00', value: 350 },
+        { time: '10:00', value: 380 },
+        { time: '12:00', value: 360 },
+        { time: '14:00', value: 340 },
+        { time: '16:00', value: 310 },
+        { time: '18:00', value: 290 },
+        { time: '20:00', value: 260 },
+        { time: '22:00', value: 235 }
+    ]
+}
+
+// ===== 海水入侵数据 =====
+export const mockSeawaterData = {
+    groundwaterLevel: -2.8,
+    groundwaterThreshold: { warn: -3.0, alarm: -4.0 },
+    chlorideConcentration: 180,
+    chlorideThreshold: { warn: 250, alarm: 500 },
+    intrusionDistance: 3.2,
+    affectedArea: 15.6,
+    riskLevel: 'low',
+    lastUpdate: '2026-02-14T10:00:00+08:00',
+    monitoringWells: [
+        { name: '湛江G01井', depth: 15, chloride: 120, level: -2.1, status: 'normal' },
+        { name: '湛江G02井', depth: 20, chloride: 280, level: -3.2, status: 'warn' },
+        { name: '阳江G01井', depth: 12, chloride: 90, level: -1.8, status: 'normal' },
+        { name: '汕头G01井', depth: 18, chloride: 310, level: -3.5, status: 'warn' },
+        { name: '汕头G02井', depth: 22, chloride: 150, level: -2.5, status: 'normal' }
+    ]
 }
