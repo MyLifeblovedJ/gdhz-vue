@@ -10,6 +10,7 @@
         </div>
       </div>
       <div class="panel-content">
+        <div class="panel-summary summary-alert">{{ alertPanelSummary }}</div>
         <div class="alerts-scroll-container">
           <div
             v-for="alert in displayAlerts"
@@ -48,6 +49,7 @@
 
     <!-- 2. AI态势摘要（融合态势研判+预测趋势+重点风险） -->
     <AISituationSummary 
+      :header-summary="situationPanelSummary"
       @risk-click="handleRiskClick"
       @refresh="handleAIRefresh"
     />
@@ -122,6 +124,40 @@ const decisionCollapsed = ref(false)
 // 显示的预警
 const displayAlerts = computed(() => store.alerts)
 
+const alertLevelConfig = {
+  red: { label: '红', weight: 4 },
+  orange: { label: '橙', weight: 3 },
+  yellow: { label: '黄', weight: 2 },
+  blue: { label: '蓝', weight: 1 }
+}
+
+const alertPanelSummary = computed(() => {
+  const alerts = displayAlerts.value
+  if (!alerts.length) {
+    return '摘要：当前暂无预警，保持常态监测。'
+  }
+
+  const levelCount = { red: 0, orange: 0, yellow: 0, blue: 0 }
+  alerts.forEach(alert => {
+    if (levelCount[alert.level] !== undefined) {
+      levelCount[alert.level] += 1
+    }
+  })
+
+  const levelText = ['red', 'orange', 'yellow', 'blue']
+    .filter(level => levelCount[level] > 0)
+    .map(level => `${alertLevelConfig[level].label}${levelCount[level]}条`)
+    .join('，')
+
+  const topAlert = [...alerts].sort((a, b) => {
+    const wa = alertLevelConfig[a.level]?.weight || 0
+    const wb = alertLevelConfig[b.level]?.weight || 0
+    return wb - wa
+  })[0]
+
+  return `摘要：${levelText}，重点关注${topAlert.title}。`
+})
+
 // 预测趋势数据
 const predictions = computed(() => mockPredictions)
 
@@ -168,14 +204,17 @@ const conclusionTitle = computed(() => {
 const conclusionDesc = computed(() => {
   const overview = realtimeData.value.overview
   const alerts = []
+  const tide = overview?.tideLevel
+  const wave = overview?.waveHeight
+  const wind = overview?.windSpeed
 
-  if (overview.tideLevel.value >= overview.tideLevel.threshold.warn) {
-    alerts.push(`潮位偏高${(overview.tideLevel.value - overview.tideLevel.threshold.warn).toFixed(2)}m`)
+  if (tide && tide.value >= tide.threshold.warn) {
+    alerts.push(`潮位偏高${(tide.value - tide.threshold.warn).toFixed(2)}m`)
   }
-  if (overview.waveHeight.value >= overview.waveHeight.threshold.warn) {
+  if (wave && wave.value >= wave.threshold.warn) {
     alerts.push(`浪高超警戒`)
   }
-  if (overview.windSpeed.value >= overview.windSpeed.threshold.warn) {
+  if (wind && wind.value >= wind.threshold.warn) {
     alerts.push(`风力较大`)
   }
 
@@ -189,34 +228,37 @@ const conclusionDesc = computed(() => {
 const keyFindings = computed(() => {
   const findings = []
   const overview = realtimeData.value.overview
+  const tide = overview?.tideLevel
+  const wave = overview?.waveHeight
+  const wind = overview?.windSpeed
 
-  if (overview.tideLevel.value >= overview.tideLevel.threshold.alarm) {
+  if (tide && tide.value >= tide.threshold.alarm) {
     findings.push({
       icon: 'fa-solid fa-water',
-      text: `${overview.tideLevel.station}潮位已达${overview.tideLevel.value}m，超过警戒`,
+      text: `${tide.station}潮位已达${tide.value}m，超过警戒`,
       level: 'high'
     })
-  } else if (overview.tideLevel.value >= overview.tideLevel.threshold.warn) {
+  } else if (tide && tide.value >= tide.threshold.warn) {
     findings.push({
       icon: 'fa-solid fa-water',
-      text: `${overview.tideLevel.station}潮位接近警戒值`,
+      text: `${tide.station}潮位接近警戒值`,
       level: 'medium'
     })
   }
 
-  if (overview.waveHeight.value >= overview.waveHeight.threshold.warn) {
+  if (wave && wave.value >= wave.threshold.warn) {
     findings.push({
       icon: 'fa-solid fa-wind',
-      text: `${overview.waveHeight.station}浪高${overview.waveHeight.value}m，不宜出海`,
-      level: overview.waveHeight.value >= overview.waveHeight.threshold.alarm ? 'high' : 'medium'
+      text: `${wave.station}浪高${wave.value}m，不宜出海`,
+      level: wave.value >= wave.threshold.alarm ? 'high' : 'medium'
     })
   }
 
-  if (overview.windSpeed.value >= overview.windSpeed.threshold.warn) {
+  if (wind && wind.value >= wind.threshold.warn) {
     findings.push({
       icon: 'fa-solid fa-tornado',
-      text: `${overview.windSpeed.station}风速${overview.windSpeed.value}m/s，注意防风`,
-      level: overview.windSpeed.value >= overview.windSpeed.threshold.alarm ? 'high' : 'medium'
+      text: `${wind.station}风速${wind.value}m/s，注意防风`,
+      level: wind.value >= wind.threshold.alarm ? 'high' : 'medium'
     })
   }
 
@@ -229,6 +271,10 @@ const keyFindings = computed(() => {
   }
 
   return findings
+})
+const situationPanelSummary = computed(() => {
+  const findings = keyFindings.value.slice(0, 2).map(item => item.text).join('；')
+  return `摘要：${conclusionTitle.value}。${findings || '当前海况平稳，持续监测。'}`
 })
 
 function getStatusText(level) {
@@ -348,6 +394,29 @@ function handleAIRefresh() {
     border-right-color: rgba(239, 68, 68, 0.6);
     box-shadow: inset -3px 0 20px rgba(239, 68, 68, 0.15);
   }
+}
+
+/* 通用摘要条 */
+.panel-summary {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.panel-summary.summary-situation {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.panel-summary.summary-alert {
+  margin-bottom: 8px;
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
 }
 
 /* 历史预警入口 */

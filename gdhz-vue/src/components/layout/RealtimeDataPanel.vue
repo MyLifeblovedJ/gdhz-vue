@@ -15,6 +15,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
+        <div class="panel-summary summary-storm-wave">{{ stormWaveSummary }}</div>
 
         <!-- 摘要指标（潮位 + 浪高并排） -->
         <div class="summary-row">
@@ -266,6 +267,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
+        <div class="panel-summary summary-erosion">{{ erosionSummary }}</div>
         <!-- 视频直播区域 -->
         <div class="video-container">
           <div class="video-player">
@@ -320,6 +322,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
+        <div class="panel-summary summary-saltwater">{{ saltwaterSummary }}</div>
         <!-- 核心指标 -->
         <div class="mini-indicators">
           <div class="mini-card" :class="saltwaterData.currentChlorinity >= saltwaterData.chlorinityThreshold.alarm ? 'alarm' : saltwaterData.currentChlorinity >= saltwaterData.chlorinityThreshold.warn ? 'warn' : 'normal'">
@@ -369,6 +372,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
+        <div class="panel-summary summary-seawater">{{ seawaterSummary }}</div>
         <!-- 核心指标 -->
         <div class="mini-indicators">
           <div class="mini-card" :class="seawaterData.groundwaterLevel <= seawaterData.groundwaterThreshold.alarm ? 'alarm' : seawaterData.groundwaterLevel <= seawaterData.groundwaterThreshold.warn ? 'warn' : 'normal'">
@@ -461,7 +465,7 @@ const store = useAppStore()
 
 // ===== 面板展开/折叠状态 =====
 const expandedPanels = reactive({
-  stormWave: true,    // 风浪潮默认展开
+  stormWave: false,
   erosion: false,
   saltwater: false,
   seawater: false
@@ -510,6 +514,12 @@ function getOverallRisk(type) {
   return 'normal'
 }
 
+function riskLevelToPanelState(level) {
+  if (['alarm', 'high', 'red'].includes(level)) return 'alarm'
+  if (['warn', 'medium', 'orange', 'yellow', 'blue'].includes(level)) return 'warn'
+  return 'normal'
+}
+
 // ===== 潮位预警站点列表（按四色级别排序） =====
 const warningColorOrder = { red: 0, orange: 1, yellow: 2, blue: 3 }
 const warningStations = computed(() => {
@@ -523,6 +533,17 @@ const waveWarningStations = computed(() => {
   return mockWaveForecastStations
     .filter(s => s.forecastWarning || s.observedWarning)
     .sort((a, b) => (warningColorOrder[a.warningColor] ?? 99) - (warningColorOrder[b.warningColor] ?? 99))
+})
+
+const stormWaveSummary = computed(() => {
+  const tideStations = warningStations.value
+  const waveStations = waveWarningStations.value
+  const predicted = tideStations.filter(s => s.forecastWarning).length
+  const observed = tideStations.filter(s => s.observedWarning).length
+  const overlap = tideStations.filter(s => s.forecastWarning && s.observedWarning).length
+  const peak = tideStations[0]
+  const topWave = waveStations[0]
+  return `摘要：潮位预测预警${predicted}站、实测预警${observed}站、重叠${overlap}站；最高总潮位${peak?.maxLevel ?? '--'}m（${peak?.name ?? '--'}）@${peak?.time ?? '--'}，最大浪高${topWave?.maxHeight ?? '--'}m。`
 })
 
 // Tab 角标计数
@@ -830,16 +851,34 @@ const erosionRisk = computed(() => {
     const levels = { high: 3, medium: 2, low: 1 }
     return (levels[s.riskLevel] || 0) > (levels[max] || 0) ? s.riskLevel : max
   }, 'low')
-  return maxRisk === 'high' ? 'alarm' : maxRisk === 'medium' ? 'warn' : 'normal'
+  return riskLevelToPanelState(maxRisk)
+})
+const erosionSummary = computed(() => {
+  const streams = erosionStreams.value || []
+  const onlineCount = streams.filter(s => s.status === 'online').length
+  const warningCount = streams.filter(s => riskLevelToPanelState(s.riskLevel) !== 'normal').length
+  const maxRate = streams.reduce((max, s) => Math.max(max, Number(s.erosionRate) || 0), 0)
+  return `摘要：${onlineCount}/${streams.length}路视频在线，${warningCount}处岸段预警，最大侵蚀速率${maxRate.toFixed(1)}m/年。`
 })
 
 // ===== 咸潮入侵数据 =====
 const saltwaterData = computed(() => mockSaltwaterData)
 const saltwaterChartRef = ref(null)
 let saltwaterChartInstance = null
+const saltwaterSummary = computed(() => {
+  const intakes = saltwaterData.value?.affectedIntakes || []
+  const warningCount = intakes.filter(i => i.status !== 'normal').length
+  return `摘要：${warningCount}个取水口预警，当前氯度${saltwaterData.value?.currentChlorinity ?? '--'}mg/L，上溯${saltwaterData.value?.upstreamDistance ?? '--'}km。`
+})
 
 // ===== 海水入侵数据 =====
 const seawaterData = computed(() => mockSeawaterData)
+const seawaterSummary = computed(() => {
+  const wells = seawaterData.value?.monitoringWells || []
+  const warningCount = wells.filter(w => w.status !== 'normal').length
+  const maxChloride = wells.reduce((max, w) => Math.max(max, Number(w.chloride) || 0), 0)
+  return `摘要：${warningCount}口监测井预警，最大氯离子${maxChloride}mg/L，入侵距离${seawaterData.value?.intrusionDistance ?? '--'}km。`
+})
 
 // ===== 通用方法 =====
 function getRiskText(level) {
@@ -1112,15 +1151,25 @@ const alertDevicesCount = computed(() =>
   store.devices.filter(d => d.status === 'alarm' || d.status === 'warn').length
 )
 
+function initPanelExpandByRisk() {
+  expandedPanels.stormWave = getOverallRisk('stormWave') !== 'normal'
+  expandedPanels.erosion = erosionRisk.value !== 'normal'
+  expandedPanels.saltwater = riskLevelToPanelState(saltwaterData.value?.riskLevel) !== 'normal'
+  expandedPanels.seawater = riskLevelToPanelState(seawaterData.value?.riskLevel) !== 'normal'
+}
+
 // ===== 生命周期 =====
 onMounted(() => {
   nextTick(() => {
+    initPanelExpandByRisk()
     // 初始化默认展开的站点
     initDefaultExpanded()
-    // 渲染默认展开站点的图表
-    nextTick(() => {
-      Object.keys(expandedStations.value).forEach(name => renderStationChart(name))
-    })
+    // 仅在风浪潮展开时渲染默认展开站点图表
+    if (expandedPanels.stormWave) {
+      nextTick(() => {
+        Object.keys(expandedStations.value).forEach(name => renderStationChart(name))
+      })
+    }
     if (expandedPanels.stormWave) {
       renderTideChart()
     }
@@ -1525,6 +1574,38 @@ onUnmounted(() => {
   background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.05));
   color: #22d3ee;
   border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+/* ===== 面板摘要 ===== */
+.panel-summary {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.panel-summary.summary-storm-wave {
+  border-color: rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.panel-summary.summary-erosion {
+  border-color: rgba(251, 146, 60, 0.25);
+  background: rgba(251, 146, 60, 0.08);
+}
+
+.panel-summary.summary-saltwater {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.panel-summary.summary-seawater {
+  border-color: rgba(6, 182, 212, 0.25);
+  background: rgba(6, 182, 212, 0.08);
 }
 
 /* ===== 摘要指标行 ===== */

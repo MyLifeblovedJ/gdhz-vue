@@ -4,20 +4,23 @@
     <div class="section judgment-section" :class="{ collapsed: judgmentCollapsed }">
       <!-- 头部 -->
       <div class="judgment-header" @click="judgmentCollapsed = !judgmentCollapsed">
-        <div class="header-left">
-          <i class="fa-solid fa-brain"></i>
-          <span class="title">综合研判</span>
+        <div class="header-top">
+          <div class="header-left">
+            <i class="fa-solid fa-brain"></i>
+            <span class="title">综合研判</span>
+          </div>
+          <div class="header-right">
+            <span class="data-meta">
+              <i class="fa-solid fa-database"></i>
+              {{ summaryData.meta.source }} · {{ formatTime(summaryData.meta.updateTime) }}
+            </span>
+            <button class="refresh-btn" @click.stop="handleRefresh" :class="{ spinning: isRefreshing }">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+          </div>
         </div>
-        <div class="header-right">
-          <span class="data-meta">
-            <i class="fa-solid fa-database"></i>
-            {{ summaryData.meta.source }} · {{ formatTime(summaryData.meta.updateTime) }}
-          </span>
-          <button class="refresh-btn" @click.stop="handleRefresh" :class="{ spinning: isRefreshing }">
-            <i class="fa-solid fa-rotate"></i>
-          </button>
-          <i class="fa-solid fa-chevron-down toggle-icon"></i>
-        </div>
+        <div v-if="props.headerSummary" class="header-summary">{{ props.headerSummary }}</div>
       </div>
       
       <!-- 可折叠内容区 -->
@@ -365,6 +368,12 @@ import { mockAISummaryData, formatUpdateTime } from '../../data/aiSummaryData'
 import { mockHistoricalMatches } from '../../data/mockData'
 
 const emit = defineEmits(['risk-click', 'refresh'])
+const props = defineProps({
+  headerSummary: {
+    type: String,
+    default: ''
+  }
+})
 
 // 数据
 const summaryData = ref(mockAISummaryData)
@@ -726,10 +735,9 @@ onMounted(() => {
 /* 综合研判头部 */
 .judgment-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
@@ -776,13 +784,35 @@ onMounted(() => {
   gap: 8px;
 }
 
-.header-left i { color: #06b6d4; font-size: 16px; }
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.header-left i { color: #06b6d4; font-size: 16px; margin-top: 1px; }
 .header-left .title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.header-summary {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.08);
+  white-space: normal;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .data-meta {
