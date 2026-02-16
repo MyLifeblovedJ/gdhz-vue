@@ -15,7 +15,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
-        <div class="panel-summary summary-storm-wave">{{ stormWaveSummary }}</div>
+        <div class="panel-summary summary-storm-wave" v-html="stormWaveSummary"></div>
 
         <!-- 摘要指标（潮位 + 浪高并排） -->
         <div class="summary-row">
@@ -267,7 +267,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
-        <div class="panel-summary summary-erosion">{{ erosionSummary }}</div>
+        <div class="panel-summary summary-erosion" v-html="erosionSummary"></div>
         <!-- 视频直播区域 -->
         <div class="video-container">
           <div class="video-player">
@@ -322,7 +322,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
-        <div class="panel-summary summary-saltwater">{{ saltwaterSummary }}</div>
+        <div class="panel-summary summary-saltwater" v-html="saltwaterSummary"></div>
         <!-- 核心指标 -->
         <div class="mini-indicators">
           <div class="mini-card" :class="saltwaterData.currentChlorinity >= saltwaterData.chlorinityThreshold.alarm ? 'alarm' : saltwaterData.currentChlorinity >= saltwaterData.chlorinityThreshold.warn ? 'warn' : 'normal'">
@@ -372,7 +372,7 @@
         <i class="fa-solid fa-chevron-down toggle-arrow"></i>
       </div>
       <div class="disaster-body">
-        <div class="panel-summary summary-seawater">{{ seawaterSummary }}</div>
+        <div class="panel-summary summary-seawater" v-html="seawaterSummary"></div>
         <!-- 核心指标 -->
         <div class="mini-indicators">
           <div class="mini-card" :class="seawaterData.groundwaterLevel <= seawaterData.groundwaterThreshold.alarm ? 'alarm' : seawaterData.groundwaterLevel <= seawaterData.groundwaterThreshold.warn ? 'warn' : 'normal'">
@@ -543,7 +543,7 @@ const stormWaveSummary = computed(() => {
   const overlap = tideStations.filter(s => s.forecastWarning && s.observedWarning).length
   const peak = tideStations[0]
   const topWave = waveStations[0]
-  return `摘要：潮位预测预警${predicted}站、实测预警${observed}站、重叠${overlap}站；最高总潮位${peak?.maxLevel ?? '--'}m（${peak?.name ?? '--'}）@${peak?.time ?? '--'}，最大浪高${topWave?.maxHeight ?? '--'}m。`
+  return `摘要：潮位预测预警<strong>${predicted}</strong>站、实测预警<strong>${observed}</strong>站、重叠<strong>${overlap}</strong>站；最高总潮位<strong>${peak?.maxLevel ?? '--'}m</strong>（${peak?.name ?? '--'}）@${peak?.time ?? '--'}，最大浪高<strong>${topWave?.maxHeight ?? '--'}m</strong>。`
 })
 
 // Tab 角标计数
@@ -858,7 +858,7 @@ const erosionSummary = computed(() => {
   const onlineCount = streams.filter(s => s.status === 'online').length
   const warningCount = streams.filter(s => riskLevelToPanelState(s.riskLevel) !== 'normal').length
   const maxRate = streams.reduce((max, s) => Math.max(max, Number(s.erosionRate) || 0), 0)
-  return `摘要：${onlineCount}/${streams.length}路视频在线，${warningCount}处岸段预警，最大侵蚀速率${maxRate.toFixed(1)}m/年。`
+  return `摘要：<strong>${onlineCount}/${streams.length}</strong>路视频在线，<strong>${warningCount}</strong>处岸段预警，最大侵蚀速率<strong>${maxRate.toFixed(1)}m/年</strong>。`
 })
 
 // ===== 咸潮入侵数据 =====
@@ -868,7 +868,7 @@ let saltwaterChartInstance = null
 const saltwaterSummary = computed(() => {
   const intakes = saltwaterData.value?.affectedIntakes || []
   const warningCount = intakes.filter(i => i.status !== 'normal').length
-  return `摘要：${warningCount}个取水口预警，当前氯度${saltwaterData.value?.currentChlorinity ?? '--'}mg/L，上溯${saltwaterData.value?.upstreamDistance ?? '--'}km。`
+  return `摘要：<strong>${warningCount}</strong>个取水口预警，当前氯度<strong>${saltwaterData.value?.currentChlorinity ?? '--'}mg/L</strong>，上溯<strong>${saltwaterData.value?.upstreamDistance ?? '--'}km</strong>。`
 })
 
 // ===== 海水入侵数据 =====
@@ -877,7 +877,7 @@ const seawaterSummary = computed(() => {
   const wells = seawaterData.value?.monitoringWells || []
   const warningCount = wells.filter(w => w.status !== 'normal').length
   const maxChloride = wells.reduce((max, w) => Math.max(max, Number(w.chloride) || 0), 0)
-  return `摘要：${warningCount}口监测井预警，最大氯离子${maxChloride}mg/L，入侵距离${seawaterData.value?.intrusionDistance ?? '--'}km。`
+  return `摘要：<strong>${warningCount}</strong>口监测井预警，最大氯离子<strong>${maxChloride}mg/L</strong>，入侵距离<strong>${seawaterData.value?.intrusionDistance ?? '--'}km</strong>。`
 })
 
 // ===== 通用方法 =====
@@ -1608,6 +1608,16 @@ onUnmounted(() => {
   background: rgba(6, 182, 212, 0.08);
 }
 
+/* P0-1.2 摘要文本中的关键数值高亮 */
+.panel-summary strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.panel-summary.summary-storm-wave strong { color: #60a5fa; }
+.panel-summary.summary-erosion strong { color: #fb923c; }
+.panel-summary.summary-saltwater strong { color: #fbbf24; }
+.panel-summary.summary-seawater strong { color: #22d3ee; }
+
 /* ===== 摘要指标行 ===== */
 .summary-row {
   display: flex;
@@ -1628,6 +1638,12 @@ onUnmounted(() => {
 
 .summary-item.alarm { border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); }
 .summary-item.warn { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.06); }
+
+/* P0-1.1 关键数值状态着色 — 超警数值红色/橙色，正常保持白色 */
+.summary-item.alarm .summary-value { color: #f87171; text-shadow: 0 0 12px rgba(239, 68, 68, 0.4); }
+.summary-item.warn .summary-value  { color: #fbbf24; text-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+.summary-item.alarm .summary-label { color: #ef4444; }
+.summary-item.warn .summary-label  { color: #f59e0b; }
 
 .summary-label {
   font-size: 10px;

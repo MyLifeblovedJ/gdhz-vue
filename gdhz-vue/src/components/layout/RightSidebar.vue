@@ -10,7 +10,7 @@
         </div>
       </div>
       <div class="panel-content">
-        <div class="panel-summary summary-alert">{{ alertPanelSummary }}</div>
+        <div class="panel-summary summary-alert" v-html="alertPanelSummary"></div>
         <div class="alerts-scroll-container">
           <div
             v-for="alert in displayAlerts"
@@ -146,7 +146,7 @@ const alertPanelSummary = computed(() => {
 
   const levelText = ['red', 'orange', 'yellow', 'blue']
     .filter(level => levelCount[level] > 0)
-    .map(level => `${alertLevelConfig[level].label}${levelCount[level]}条`)
+    .map(level => `<strong>${alertLevelConfig[level].label}${levelCount[level]}条</strong>`)
     .join('，')
 
   const topAlert = [...alerts].sort((a, b) => {
@@ -418,6 +418,13 @@ function handleAIRefresh() {
   border-color: rgba(245, 158, 11, 0.3);
   background: rgba(245, 158, 11, 0.08);
 }
+
+/* P0-1.2 摘要文本关键数值高亮 */
+.panel-summary strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.panel-summary.summary-alert strong { color: #fbbf24; }
 
 /* 历史预警入口 */
 .history-entry {
@@ -807,6 +814,15 @@ function handleAIRefresh() {
 }
 
 /* ===== 预警面板 ===== */
+/* P0-1.4 面板标题颜色区分 — 预警面板使用红色系身份色 */
+.alert-panel::before {
+  background: linear-gradient(90deg, transparent, #ef4444 30%, #ef4444 70%, transparent);
+}
+
+.alert-panel .panel-title {
+  color: #f87171;
+}
+
 .alert-panel .panel-header {
   cursor: default;
 }
