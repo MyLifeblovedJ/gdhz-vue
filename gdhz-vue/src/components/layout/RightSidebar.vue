@@ -1,5 +1,5 @@
 <template>
-  <div class="decision-sidebar" :class="{ 'high-risk-mode': hasHighRisk }">
+  <div class="decision-sidebar" :class="{ 'high-risk-mode': hasHighRisk, 'high-risk-pulse': highRiskPulseActive }">
     <!-- 1. 当前预警 -->
     <div class="panel alert-panel">
       <div class="panel-header">
@@ -24,6 +24,7 @@
               :alt="alert.title"
               @error="handleImageError"
               class="alert-icon"
+              :class="{ 'alert-icon-pulse': pulsingAlertIds[alert.id] }"
             >
             <div class="alert-info">
               <div class="alert-title">{{ alert.title }}</div>
@@ -109,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useAppStore } from '../../stores/app'
 import AISituationSummary from '../decision/AISituationSummary.vue'
 import { mockRealtimeData, mockPredictions } from '../../data/mockData'
@@ -164,6 +165,82 @@ const predictions = computed(() => mockPredictions)
 // 检测是否有高风险
 const hasHighRisk = computed(() =>
   store.riskDecisions?.risks?.some(r => r.level === 'high') || false
+)
+const highRiskPulseActive = ref(false)
+const pulsingAlertIds = reactive({})
+let highRiskPulseTimer = null
+const alertPulseTimers = new Map()
+
+function clearHighRiskPulseTimer() {
+  if (highRiskPulseTimer) {
+    clearTimeout(highRiskPulseTimer)
+    highRiskPulseTimer = null
+  }
+}
+
+function triggerHighRiskPulse() {
+  clearHighRiskPulseTimer()
+  highRiskPulseActive.value = false
+  requestAnimationFrame(() => {
+    highRiskPulseActive.value = true
+  })
+  highRiskPulseTimer = setTimeout(() => {
+    highRiskPulseActive.value = false
+    highRiskPulseTimer = null
+  }, 9200)
+}
+
+function clearAlertPulseTimer(alertId) {
+  const timer = alertPulseTimers.get(alertId)
+  if (timer) {
+    clearTimeout(timer)
+    alertPulseTimers.delete(alertId)
+  }
+}
+
+function triggerAlertPulse(alertId) {
+  if (alertId === undefined || alertId === null) return
+  clearAlertPulseTimer(alertId)
+  pulsingAlertIds[alertId] = false
+  requestAnimationFrame(() => {
+    pulsingAlertIds[alertId] = true
+  })
+  const timer = setTimeout(() => {
+    delete pulsingAlertIds[alertId]
+    alertPulseTimers.delete(alertId)
+  }, 900)
+  alertPulseTimers.set(alertId, timer)
+}
+
+watch(hasHighRisk, (isHigh, wasHigh) => {
+  if (isHigh && !wasHigh) {
+    triggerHighRiskPulse()
+  }
+  if (!isHigh) {
+    highRiskPulseActive.value = false
+    clearHighRiskPulseTimer()
+  }
+})
+
+watch(
+  () => displayAlerts.value.map(alert => alert.id),
+  (nextIds, prevIds = []) => {
+    const prevSet = new Set(prevIds)
+    const nextSet = new Set(nextIds)
+
+    nextIds.forEach(id => {
+      if (!prevSet.has(id)) {
+        triggerAlertPulse(id)
+      }
+    })
+
+    prevIds.forEach(id => {
+      if (!nextSet.has(id)) {
+        clearAlertPulseTimer(id)
+        delete pulsingAlertIds[id]
+      }
+    })
+  }
 )
 
 // === 态势研判相关计算属性 ===
@@ -341,6 +418,12 @@ function handleRiskClick(risk) {
 function handleAIRefresh() {
   console.log('AI态势摘要刷新')
 }
+
+onUnmounted(() => {
+  clearHighRiskPulseTimer()
+  alertPulseTimers.forEach(timer => clearTimeout(timer))
+  alertPulseTimers.clear()
+})
 </script>
 
 <style scoped>
@@ -380,15 +463,20 @@ function handleAIRefresh() {
   background: var(--accent-cyan);
 }
 
-/* 高风险模式 - 微红色边框呼吸 */
+/* 高风险模式 - 常驻轻度高亮 + 事件触发脉冲 */
 .decision-sidebar.high-risk-mode {
-  animation: sidebar-risk-pulse 3s ease-in-out infinite;
+  border-right-color: rgba(239, 68, 68, 0.35);
+  box-shadow: inset -2px 0 10px rgba(239, 68, 68, 0.08);
+}
+
+.decision-sidebar.high-risk-pulse {
+  animation: sidebar-risk-pulse 3s ease-in-out 3;
 }
 
 @keyframes sidebar-risk-pulse {
   0%, 100% {
-    border-right-color: var(--border-subtle);
-    box-shadow: inset -2px 0 10px rgba(239, 68, 68, 0.05);
+    border-right-color: rgba(239, 68, 68, 0.35);
+    box-shadow: inset -2px 0 10px rgba(239, 68, 68, 0.08);
   }
   50% {
     border-right-color: rgba(239, 68, 68, 0.6);
@@ -586,11 +674,11 @@ function handleAIRefresh() {
 
 /* ===== 预测趋势面板 ===== */
 .prediction-panel::before {
-  background: linear-gradient(90deg, transparent, #8b5cf6 30%, #8b5cf6 70%, transparent);
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #3b82f6 70%, transparent);
 }
 
 .prediction-panel .panel-title {
-  color: #8b5cf6;
+  color: #3b82f6;
 }
 
 .prediction-summary {
@@ -598,7 +686,7 @@ function handleAIRefresh() {
   color: var(--text-secondary);
   line-height: 1.5;
   padding: 8px 10px;
-  background: rgba(139, 92, 246, 0.05);
+  background: rgba(59, 130, 246, 0.05);
   border-radius: 6px;
   margin-bottom: 10px;
 }
@@ -700,7 +788,7 @@ function handleAIRefresh() {
 }
 
 .expand-hint i {
-  animation: bounce 1.5s ease-in-out infinite;
+  animation: bounce 1.5s ease-in-out 2;
 }
 
 @keyframes bounce {
@@ -904,9 +992,12 @@ function handleAIRefresh() {
   width: 44px;
   height: 44px;
   filter: drop-shadow(0 0 6px rgba(255, 100, 100, 0.5));
-  animation: pulse-icon 2s ease-in-out infinite;
   flex-shrink: 0;
   object-fit: contain;
+}
+
+.alert-icon.alert-icon-pulse {
+  animation: pulse-icon 0.7s ease-out 1;
 }
 
 @keyframes pulse-icon {
@@ -1153,5 +1244,13 @@ function handleAIRefresh() {
   background: rgba(16, 185, 129, 0.1);
   border-color: #10b981;
   color: #10b981;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decision-sidebar.high-risk-pulse,
+  .alert-icon.alert-icon-pulse,
+  .expand-hint i {
+    animation: none !important;
+  }
 }
 </style>

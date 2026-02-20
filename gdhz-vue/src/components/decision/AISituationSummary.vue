@@ -230,7 +230,7 @@
       <div class="risk-highlight-card" :class="{ expanded: riskExpanded }">
         <div class="risk-hl-header" @click="riskExpanded = !riskExpanded">
           <div class="header-left">
-            <div class="risk-icon-wrap" :class="riskLevelClass">
+            <div class="risk-icon-wrap" :class="[riskLevelClass, { 'risk-pulse-active': riskPulseActive }]">
               <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
             <div class="header-text">
@@ -362,7 +362,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { mockAISummaryData, formatUpdateTime } from '../../data/aiSummaryData'
 import { mockHistoricalMatches } from '../../data/mockData'
@@ -446,6 +446,27 @@ const riskLevelClass = computed(() => {
   if (count >= 2) return 'level-medium'
   return 'level-low'
 })
+const riskPulseActive = ref(false)
+let riskPulseTimer = null
+
+function clearRiskPulseTimer() {
+  if (riskPulseTimer) {
+    clearTimeout(riskPulseTimer)
+    riskPulseTimer = null
+  }
+}
+
+function triggerRiskPulse() {
+  clearRiskPulseTimer()
+  riskPulseActive.value = false
+  requestAnimationFrame(() => {
+    riskPulseActive.value = true
+  })
+  riskPulseTimer = setTimeout(() => {
+    riskPulseActive.value = false
+    riskPulseTimer = null
+  }, 6200)
+}
 
 const riskLevelText = computed(() => {
   const count = summaryData.value.riskHotspots.length
@@ -624,9 +645,27 @@ watch(selectedStation, () => {
   nextTick(() => updateChart())
 })
 
+watch(riskLevelClass, (next, prev) => {
+  if (next === 'level-high' && prev !== 'level-high') {
+    triggerRiskPulse()
+  }
+  if (next !== 'level-high') {
+    riskPulseActive.value = false
+    clearRiskPulseTimer()
+  }
+})
+
 // 挂载后初始化图表
 onMounted(() => {
   nextTick(() => initChart())
+})
+
+onUnmounted(() => {
+  clearRiskPulseTimer()
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 </script>
 
@@ -997,7 +1036,7 @@ onMounted(() => {
   color: #60a5fa;
 }
 
-.area-tag i { font-size: 9px; }
+.area-tag i { font-size: 10px; }
 
 .impact-desc {
   font-size: 11px !important;
@@ -1135,7 +1174,7 @@ onMounted(() => {
 }
 
 .pred-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1177,7 +1216,7 @@ onMounted(() => {
 
 .areas-label {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-bottom: 6px;
   text-transform: uppercase;
@@ -1200,7 +1239,7 @@ onMounted(() => {
 }
 
 .areas-list .area-tag i {
-  font-size: 8px;
+  font-size: 10px;
   margin-right: 4px;
 }
 
@@ -1295,7 +1334,7 @@ onMounted(() => {
   padding: 2px 8px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-secondary);
 }
 
@@ -1320,7 +1359,7 @@ onMounted(() => {
 }
 
 .ref-impacts .impact-label {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -1422,7 +1461,7 @@ onMounted(() => {
 }
 
 .similarity-tag {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 600;
@@ -1446,7 +1485,7 @@ onMounted(() => {
 
 .match-card .toggle-icon {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   transition: transform 0.3s;
   margin-left: 6px;
 }
@@ -1466,14 +1505,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-secondary);
 }
 
 .brief-item i {
   color: #eab308;
   width: 10px;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .brief-item.loss {
@@ -1501,7 +1540,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 5px;
@@ -1510,7 +1549,7 @@ onMounted(() => {
 .section-label i {
   color: #eab308;
   width: 10px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 /* 灾害详情 */
@@ -1527,7 +1566,7 @@ onMounted(() => {
   padding: 3px 6px;
   background: rgba(255, 255, 255, 0.02);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .stat-name {
@@ -1548,7 +1587,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 6px;
   padding-top: 6px;
@@ -1557,7 +1596,7 @@ onMounted(() => {
 
 .landing-time i {
   color: #3b82f6;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 /* 展开/折叠动画 */
@@ -1684,17 +1723,20 @@ onMounted(() => {
 
 .risk-icon-wrap.level-high {
   background: rgba(239, 68, 68, 0.25);
-  animation: pulse-risk 2s ease-in-out infinite;
+}
+
+.risk-icon-wrap.level-high.risk-pulse-active {
+  animation: pulse-risk 2s ease-in-out 3;
 }
 
 @keyframes pulse-risk {
   0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.25);
     transform: scale(1);
   }
   50% { 
-    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
-    transform: scale(1.05);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    transform: scale(1.03);
   }
 }
 
@@ -1738,7 +1780,7 @@ onMounted(() => {
 }
 
 .risk-type-tag i {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 /* 展开的热点区域 */
@@ -1844,12 +1886,12 @@ onMounted(() => {
 }
 
 .hotspot-type {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
 .hotspot-status .over-design {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.15);
@@ -1864,7 +1906,7 @@ onMounted(() => {
 
 .hotspot-item .toggle-icon {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   transition: transform 0.3s;
 }
 
@@ -1913,12 +1955,12 @@ onMounted(() => {
   padding: 2px 6px;
   background: rgba(59, 130, 246, 0.1);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: #60a5fa;
 }
 
 .hotspot-details .flood-tag i {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .hotspot-details .flood-tag.people {
@@ -1947,26 +1989,26 @@ onMounted(() => {
   padding: 2px 6px;
   background: rgba(139, 92, 246, 0.1);
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: #a78bfa;
 }
 
 .location-time .district-tag i {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .location-time .time-range {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .location-time .time-range i {
   color: #3b82f6;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .hotspot-details .locate-btn {
@@ -2103,7 +2145,7 @@ onMounted(() => {
 }
 
 .stat-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -2167,7 +2209,7 @@ onMounted(() => {
 }
 
 .tide-info-item .label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
 }
 
@@ -2293,7 +2335,7 @@ onMounted(() => {
 }
 
 .related-station i {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .station-peak {
@@ -2320,7 +2362,7 @@ onMounted(() => {
 }
 
 .flood-tag i {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .flood-tag.people {
@@ -2366,7 +2408,7 @@ onMounted(() => {
 }
 
 .district-tag i {
-  font-size: 9px;
+  font-size: 10px;
   opacity: 0.8;
 }
 
@@ -2393,5 +2435,11 @@ onMounted(() => {
 
 .risk-item:hover .locate-btn {
   background: rgba(6, 182, 212, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .risk-icon-wrap.level-high.risk-pulse-active {
+    animation: none !important;
+  }
 }
 </style>

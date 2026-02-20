@@ -3,7 +3,7 @@
     <!-- 关键指标监测 - 灾害折叠面板 -->
 
     <!-- 1. 风浪潮（风暴潮/海浪/天文潮） -->
-    <div class="disaster-panel" :class="{ collapsed: !expandedPanels.stormWave, 'has-warning': getOverallRisk('stormWave') !== 'normal' }">
+    <div class="disaster-panel stormwave-type" :class="{ collapsed: !expandedPanels.stormWave, 'has-warning': getOverallRisk('stormWave') !== 'normal' }">
       <div class="disaster-header" @click="togglePanel('stormWave')">
         <div class="disaster-title">
           <span class="disaster-icon storm-wave"><i class="fa-solid fa-water"></i></span>
@@ -43,7 +43,7 @@
             </div>
             <div class="section-cards">
             <div
-              v-for="station in warningStations"
+              v-for="station in displayedWarningStations"
               :key="'tide-' + station.name"
               class="station-card-v2"
               :class="'warning-' + station.warningColor"
@@ -139,6 +139,10 @@
               </div>
             </div>
             </div>
+            <div v-if="warningStations.length > 1" class="list-toggle" @click="showAllWarningStations = !showAllWarningStations">
+              <i class="fa-solid" :class="showAllWarningStations ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              {{ showAllWarningStations ? '收起其余站点' : `查看其余 ${warningStations.length - 1} 个站点` }}
+            </div>
           </div>
 
           <!-- ===== 浪高预警站点 ===== -->
@@ -150,7 +154,7 @@
             </div>
             <div class="section-cards">
             <div
-              v-for="station in waveWarningStations"
+              v-for="station in displayedWaveWarningStations"
               :key="'wave-' + station.name"
               class="station-card-v2"
               :class="'warning-' + station.warningColor"
@@ -246,6 +250,10 @@
               </div>
             </div>
             </div>
+            <div v-if="waveWarningStations.length > 1" class="list-toggle" @click="showAllWaveWarningStations = !showAllWaveWarningStations">
+              <i class="fa-solid" :class="showAllWaveWarningStations ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+              {{ showAllWaveWarningStations ? '收起其余站点' : `查看其余 ${waveWarningStations.length - 1} 个站点` }}
+            </div>
           </div>
 
         </div>
@@ -255,7 +263,7 @@
     </div>
 
     <!-- 2. 海岸侵蚀 -->
-    <div class="disaster-panel" :class="{ collapsed: !expandedPanels.erosion, 'has-warning': erosionRisk !== 'normal' }">
+    <div class="disaster-panel erosion-type" :class="{ collapsed: !expandedPanels.erosion, 'has-warning': erosionRisk !== 'normal' }">
       <div class="disaster-header" @click="togglePanel('erosion')">
         <div class="disaster-title">
           <span class="disaster-icon erosion"><i class="fa-solid fa-video"></i></span>
@@ -310,7 +318,7 @@
     </div>
 
     <!-- 3. 咸潮入侵 -->
-    <div class="disaster-panel" :class="{ collapsed: !expandedPanels.saltwater, 'has-warning': saltwaterData.riskLevel !== 'low' }">
+    <div class="disaster-panel saltwater-type" :class="{ collapsed: !expandedPanels.saltwater, 'has-warning': saltwaterData.riskLevel !== 'low' }">
       <div class="disaster-header" @click="togglePanel('saltwater')">
         <div class="disaster-title">
           <span class="disaster-icon saltwater"><i class="fa-solid fa-droplet"></i></span>
@@ -341,10 +349,10 @@
           <div class="sparkline-title">近24h氯度变化</div>
           <div class="sparkline-container" ref="saltwaterChartRef"></div>
         </div>
-        <!-- 受影响取水口 -->
+        <!-- 受影响取水口（默认折叠，只显示前2项） -->
         <div class="intake-list">
           <div
-            v-for="intake in saltwaterData.affectedIntakes"
+            v-for="intake in displayedIntakes"
             :key="intake.name"
             class="intake-item"
             :class="intake.status"
@@ -355,12 +363,16 @@
               {{ intake.status === 'alarm' ? '超标' : intake.status === 'warn' ? '临界' : '正常' }}
             </span>
           </div>
+          <div v-if="saltwaterData.affectedIntakes.length > 2" class="list-toggle" @click="showAllIntakes = !showAllIntakes">
+            <i class="fa-solid" :class="showAllIntakes ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            {{ showAllIntakes ? '收起' : `查看全部 ${saltwaterData.affectedIntakes.length} 个取水口` }}
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 4. 海水入侵 -->
-    <div class="disaster-panel" :class="{ collapsed: !expandedPanels.seawater, 'has-warning': seawaterData.riskLevel !== 'low' }">
+    <div class="disaster-panel seawater-type" :class="{ collapsed: !expandedPanels.seawater, 'has-warning': seawaterData.riskLevel !== 'low' }">
       <div class="disaster-header" @click="togglePanel('seawater')">
         <div class="disaster-title">
           <span class="disaster-icon seawater"><i class="fa-solid fa-water"></i></span>
@@ -401,10 +413,10 @@
             <span class="intrusion-value">{{ seawaterData.affectedArea }}<span class="unit">km²</span></span>
           </div>
         </div>
-        <!-- 监测井列表 -->
+        <!-- 监测井列表（默认折叠，只显示前2项） -->
         <div class="well-list">
           <div
-            v-for="well in seawaterData.monitoringWells"
+            v-for="well in displayedWells"
             :key="well.name"
             class="well-item"
             :class="well.status"
@@ -412,6 +424,10 @@
             <span class="well-dot" :class="well.status"></span>
             <span class="well-name">{{ well.name }}</span>
             <span class="well-value">{{ well.chloride }}<span class="unit">mg/L</span></span>
+          </div>
+          <div v-if="seawaterData.monitoringWells.length > 2" class="list-toggle" @click="showAllWells = !showAllWells">
+            <i class="fa-solid" :class="showAllWells ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            {{ showAllWells ? '收起' : `查看全部 ${seawaterData.monitoringWells.length} 口监测井` }}
           </div>
         </div>
       </div>
@@ -535,6 +551,19 @@ const waveWarningStations = computed(() => {
     .sort((a, b) => (warningColorOrder[a.warningColor] ?? 99) - (warningColorOrder[b.warningColor] ?? 99))
 })
 
+const showAllWarningStations = ref(false)
+const displayedWarningStations = computed(() => {
+  if (showAllWarningStations.value) return warningStations.value
+  const southWater = warningStations.value.find(station => station.name.includes('南水'))
+  return southWater ? [southWater] : warningStations.value.slice(0, 1)
+})
+
+const showAllWaveWarningStations = ref(false)
+const displayedWaveWarningStations = computed(() => {
+  if (showAllWaveWarningStations.value) return waveWarningStations.value
+  return waveWarningStations.value.slice(0, 1)
+})
+
 const stormWaveSummary = computed(() => {
   const tideStations = warningStations.value
   const waveStations = waveWarningStations.value
@@ -568,7 +597,9 @@ const stationChartInstances = new Map() // 站点名 -> ECharts 实例
 // 初始化默认展开第一个潮位站和第一个浪高站
 function initDefaultExpanded() {
   if (warningStations.value.length > 0) {
-    expandedStations.value[warningStations.value[0].name] = true
+    const southWater = warningStations.value.find(station => station.name.includes('南水'))
+    const defaultTideStation = southWater || warningStations.value[0]
+    expandedStations.value[defaultTideStation.name] = true
   }
   if (waveWarningStations.value.length > 0) {
     expandedStations.value[waveWarningStations.value[0].name] = true
@@ -701,19 +732,19 @@ function renderStationChart(stationName) {
       },
       z: 4
     },
-    // 预测曲线（紫色虚线）
+    // 预测曲线（蓝色虚线）
     {
       name: isTide ? '总潮位(预测)' : '浪高(预测)',
       type: 'line',
       data: predData,
-      lineStyle: { color: '#8b5cf6', width: 2, type: 'dashed' },
+      lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' },
       symbol: 'circle',
       symbolSize: 4,
-      itemStyle: { color: '#8b5cf6' },
+      itemStyle: { color: '#3b82f6' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(139, 92, 246, 0.15)' },
-          { offset: 1, color: 'rgba(139, 92, 246, 0.02)' }
+          { offset: 0, color: 'rgba(59, 130, 246, 0.15)' },
+          { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
         ])
       },
       z: 3
@@ -871,6 +902,13 @@ const saltwaterSummary = computed(() => {
   return `摘要：<strong>${warningCount}</strong>个取水口预警，当前氯度<strong>${saltwaterData.value?.currentChlorinity ?? '--'}mg/L</strong>，上溯<strong>${saltwaterData.value?.upstreamDistance ?? '--'}km</strong>。`
 })
 
+// 咸潮取水口列表折叠
+const showAllIntakes = ref(false)
+const displayedIntakes = computed(() => {
+  const intakes = saltwaterData.value?.affectedIntakes || []
+  return showAllIntakes.value ? intakes : intakes.slice(0, 2)
+})
+
 // ===== 海水入侵数据 =====
 const seawaterData = computed(() => mockSeawaterData)
 const seawaterSummary = computed(() => {
@@ -878,6 +916,13 @@ const seawaterSummary = computed(() => {
   const warningCount = wells.filter(w => w.status !== 'normal').length
   const maxChloride = wells.reduce((max, w) => Math.max(max, Number(w.chloride) || 0), 0)
   return `摘要：<strong>${warningCount}</strong>口监测井预警，最大氯离子<strong>${maxChloride}mg/L</strong>，入侵距离<strong>${seawaterData.value?.intrusionDistance ?? '--'}km</strong>。`
+})
+
+// 海水监测井列表折叠
+const showAllWells = ref(false)
+const displayedWells = computed(() => {
+  const wells = seawaterData.value?.monitoringWells || []
+  return showAllWells.value ? wells : wells.slice(0, 2)
 })
 
 // ===== 通用方法 =====
@@ -1006,14 +1051,14 @@ function renderTideChart() {
         const point = data.prediction.find(d => d.time === t)
         return point ? point.value : null
       }),
-      lineStyle: { color: '#8b5cf6', width: 2, type: 'dashed' },
+      lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' },
       symbol: 'circle',
       symbolSize: 5,
-      itemStyle: { color: '#8b5cf6' },
+      itemStyle: { color: '#3b82f6' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(139, 92, 246, 0.15)' },
-          { offset: 1, color: 'rgba(139, 92, 246, 0.02)' }
+          { offset: 0, color: 'rgba(59, 130, 246, 0.15)' },
+          { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
         ])
       },
       z: 3
@@ -1279,6 +1324,24 @@ onUnmounted(() => {
   background: linear-gradient(90deg, transparent, #f59e0b 30%, #f59e0b 70%, transparent);
 }
 
+/* 咸潮入侵 - 黄色身份色 */
+.disaster-panel.saltwater-type.has-warning {
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.disaster-panel.saltwater-type.has-warning::before {
+  background: linear-gradient(90deg, transparent, #fbbf24 30%, #fbbf24 70%, transparent);
+}
+
+/* 海水入侵 - 青色身份色 */
+.disaster-panel.seawater-type.has-warning {
+  border-color: rgba(34, 211, 238, 0.4);
+}
+
+.disaster-panel.seawater-type.has-warning::before {
+  background: linear-gradient(90deg, transparent, #22d3ee 30%, #22d3ee 70%, transparent);
+}
+
 /* ===== 灾害面板头部 ===== */
 .disaster-header {
   display: flex;
@@ -1334,7 +1397,7 @@ onUnmounted(() => {
 }
 
 .risk-badge {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
@@ -1503,7 +1566,7 @@ onUnmounted(() => {
 }
 
 .card-station {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -1700,7 +1763,7 @@ onUnmounted(() => {
 }
 
 .station-count {
-  font-size: 9px;
+  font-size: 10px;
   padding: 1px 6px;
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.15);
@@ -1729,6 +1792,26 @@ onUnmounted(() => {
 .section-cards::-webkit-scrollbar { width: 3px; }
 .section-cards::-webkit-scrollbar-track { background: transparent; }
 .section-cards::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 2px; }
+
+.list-toggle {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-subtle);
+  transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.list-toggle:hover {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.08);
+}
 
 /* ===== 站点卡片 V2（参考 AISituationSummary） ===== */
 .station-card-v2 {
@@ -1780,7 +1863,7 @@ onUnmounted(() => {
 
 .pred-item.station { border-right: 1px solid var(--border-subtle); }
 .pred-item.station i { color: #10b981; }
-.pred-item.time i { color: #8b5cf6; }
+.pred-item.time i { color: #22d3ee; }
 
 .pred-info {
   display: flex;
@@ -1790,7 +1873,7 @@ onUnmounted(() => {
 }
 
 .pred-label {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1840,7 +1923,7 @@ onUnmounted(() => {
   height: 24px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.04)'/%3E%3C/svg%3E") repeat-x;
   background-size: 500px 24px;
-  animation: tideSlide 8s ease-in-out infinite;
+  animation: tideSlide 8s ease-in-out 3;
 }
 
 /* 背景波浪 —— 更慢的反向缓波 */
@@ -1848,7 +1931,7 @@ onUnmounted(() => {
   height: 18px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.025)'/%3E%3C/svg%3E") repeat-x;
   background-size: 400px 18px;
-  animation: tideSlide 12s ease-in-out infinite reverse;
+  animation: tideSlide 12s ease-in-out 3 reverse;
 }
 
 /* ===== 海浪动画 —— 快速激烈的尖锐浪花 ===== */
@@ -1857,7 +1940,7 @@ onUnmounted(() => {
   height: 28px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.05)'/%3E%3C/svg%3E") repeat-x;
   background-size: 350px 28px;
-  animation: chopWave 3.5s linear infinite;
+  animation: chopWave 3.5s linear 3;
 }
 
 /* 中景：涌浪（中速反向） */
@@ -1865,7 +1948,7 @@ onUnmounted(() => {
   height: 20px;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.035)'/%3E%3C/svg%3E") repeat-x;
   background-size: 280px 20px;
-  animation: chopWave 5s linear infinite reverse;
+  animation: chopWave 5s linear 3 reverse;
 }
 
 /* 潮位：平滑缓慢 */
@@ -1892,19 +1975,19 @@ onUnmounted(() => {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.03));
 }
 .pred-item.tide-peak.border-red:not(.wave-type)::before {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(239%2C68%2C68%2C0.08)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(56%2C189%2C248%2C0.2)'/%3E%3C/svg%3E") repeat-x;
   background-size: 500px 24px;
 }
 .pred-item.tide-peak.border-red:not(.wave-type)::after {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(239%2C68%2C68%2C0.05)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(186%2C230%2C253%2C0.16)'/%3E%3C/svg%3E") repeat-x;
   background-size: 400px 18px;
 }
 .pred-item.tide-peak.border-red.wave-type::before {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(239%2C68%2C68%2C0.1)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(34%2C211%2C238%2C0.26)'/%3E%3C/svg%3E") repeat-x;
   background-size: 350px 28px;
 }
 .pred-item.tide-peak.border-red.wave-type::after {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(239%2C68%2C68%2C0.06)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(125%2C211%2C252%2C0.2)'/%3E%3C/svg%3E") repeat-x;
   background-size: 280px 20px;
 }
 .pred-item.tide-peak.border-red i { color: #ef4444; }
@@ -1996,7 +2079,7 @@ onUnmounted(() => {
 
 /* 色标 */
 .color-badge {
-  font-size: 8px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 700;
@@ -2012,7 +2095,9 @@ onUnmounted(() => {
 .observed-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  column-gap: 10px;
   padding: 8px 12px;
   border-top: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.02);
@@ -2023,6 +2108,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .obs-item i {
@@ -2042,7 +2128,7 @@ onUnmounted(() => {
 }
 
 .dual-badge, .obs-badge, .forecast-badge {
-  font-size: 8px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 600;
@@ -2062,9 +2148,9 @@ onUnmounted(() => {
 }
 
 .forecast-badge {
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 /* ===== 迷你 sparkline 趋势线 ===== */
@@ -2113,7 +2199,7 @@ onUnmounted(() => {
 .peak-blue { fill: #3b82f6; }
 
 .sparkline-hint {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;
@@ -2141,7 +2227,7 @@ onUnmounted(() => {
 }
 
 .card-detail-toggle i {
-  font-size: 8px;
+  font-size: 10px;
   transition: transform 0.2s;
 }
 
@@ -2171,12 +2257,12 @@ onUnmounted(() => {
   gap: 3px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
 }
 
 .mini-tag i {
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .mini-tag.peak {
@@ -2293,9 +2379,9 @@ onUnmounted(() => {
 .tide-tag .tag-value { font-weight: 600; }
 
 .tide-tag.peak {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.4);
-  color: #a78bfa;
+  background: rgba(34, 211, 238, 0.15);
+  border-color: rgba(34, 211, 238, 0.4);
+  color: #67e8f9;
 }
 
 .tide-tag.warning {
@@ -2395,7 +2481,7 @@ onUnmounted(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  font-size: 9px;
+  font-size: 10px;
   padding: 3px 8px;
   border-radius: 10px;
   font-weight: 600;
@@ -2425,7 +2511,7 @@ onUnmounted(() => {
 .station-btn {
   flex: 1;
   padding: 5px 4px;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-subtle);
@@ -2552,7 +2638,7 @@ onUnmounted(() => {
 }
 
 .mini-threshold {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -2612,13 +2698,13 @@ onUnmounted(() => {
 }
 
 .intake-value .unit {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-left: 1px;
 }
 
 .intake-badge {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 600;
@@ -2680,7 +2766,7 @@ onUnmounted(() => {
 }
 
 .progress-fill.area {
-  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+  background: linear-gradient(90deg, #3b82f6, #22d3ee);
 }
 
 .intrusion-value {
@@ -2693,7 +2779,7 @@ onUnmounted(() => {
 }
 
 .intrusion-value .unit {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -2743,7 +2829,7 @@ onUnmounted(() => {
 }
 
 .well-value .unit {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-left: 1px;
 }
@@ -2789,21 +2875,21 @@ onUnmounted(() => {
 }
 
 .stat-mini-value .unit {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   font-weight: 400;
   margin-left: 1px;
 }
 
 .stat-mini-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
 .stat-mini.online .stat-mini-value { color: #10b981; }
 .stat-mini.alert .stat-mini-value { color: #ef4444; }
-.stat-mini.data .stat-mini-value { color: #8b5cf6; }
+.stat-mini.data .stat-mini-value { color: #22d3ee; }
 
 .quality-row {
   display: flex;
@@ -2812,7 +2898,7 @@ onUnmounted(() => {
 }
 
 .quality-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
 }
