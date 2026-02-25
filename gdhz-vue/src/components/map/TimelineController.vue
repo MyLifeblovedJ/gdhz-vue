@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="timeline-controller">
     <div class="timeline-header">
-      <span class="timeline-title">漫滩模拟时间轴</span>
+      <span class="timeline-title">婕哗妯℃嫙鏃堕棿杞?/span>
       <span class="speed-control">
-        速度: 
+        閫熷害: 
         <select v-model="playSpeed" class="speed-select">
           <option value="0.5">0.5x</option>
           <option value="1">1x</option>
@@ -14,20 +14,20 @@
     </div>
     
     <div class="timeline-body">
-      <!-- 播放控制按钮 -->
+      <!-- 鎾斁鎺у埗鎸夐挳 -->
       <div class="playback-controls">
-        <button class="control-btn" @click="handleStepBackward" title="后退一步">
+        <button class="control-btn" @click="handleStepBackward" title="鍚庨€€涓€姝?>
           <i class="fa-solid fa-backward-step"></i>
         </button>
-        <button class="control-btn play-btn" @click="togglePlay" :title="isPlaying ? '暂停' : '播放'">
+        <button class="control-btn play-btn" @click="togglePlay" :title="isPlaying ? '鏆傚仠' : '鎾斁'">
           <i :class="isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
         </button>
-        <button class="control-btn" @click="handleStepForward" title="前进一步">
+        <button class="control-btn" @click="handleStepForward" title="鍓嶈繘涓€姝?>
           <i class="fa-solid fa-forward-step"></i>
         </button>
       </div>
 
-      <!-- 时间轴滑块 -->
+      <!-- 鏃堕棿杞存粦鍧?-->
       <div class="timeline-slider-container">
         <span class="time-label start">{{ formatTime(startTime) }}</span>
         <div class="slider-wrapper">
@@ -74,7 +74,7 @@ const isPlaying = ref(false)
 const playSpeed = ref('1')
 let playInterval = null
 
-// 计算滑块值（0-100）
+// 璁＄畻婊戝潡鍊硷紙0-100锛?
 const sliderValue = computed(() => {
   const start = new Date(props.startTime).getTime()
   const end = new Date(props.endTime).getTime()
@@ -104,14 +104,14 @@ function togglePlay() {
 function startPlayback() {
   const intervalMs = 1000 / parseFloat(playSpeed.value)
   playInterval = setInterval(() => {
-    // 模拟时间前进30分钟
+    // 妯℃嫙鏃堕棿鍓嶈繘30鍒嗛挓
     const current = new Date(props.currentTime)
     const end = new Date(props.endTime)
     
     current.setMinutes(current.getMinutes() + 30)
     
     if (current >= end) {
-      // 到达终点，停止播放
+      // 鍒拌揪缁堢偣锛屽仠姝㈡挱鏀?
       isPlaying.value = false
       stopPlayback()
       emit('time-change', props.endTime)
@@ -168,7 +168,7 @@ function handleStepForward() {
   }
 }
 
-// 速度变化时重新开始播放
+// 閫熷害鍙樺寲鏃堕噸鏂板紑濮嬫挱鏀?
 watch(playSpeed, () => {
   if (isPlaying.value) {
     stopPlayback()
@@ -212,7 +212,7 @@ onUnmounted(() => {
 }
 
 .speed-control {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -220,11 +220,11 @@ onUnmounted(() => {
 }
 
 .speed-select {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(6, 12, 20, 0.35);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -240,7 +240,7 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* 播放控制按钮 */
+/* 鎾斁鎺у埗鎸夐挳 */
 .playback-controls {
   display: flex;
   gap: 6px;
@@ -251,7 +251,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(6, 12, 20, 0.38);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   display: flex;
@@ -262,7 +262,7 @@ onUnmounted(() => {
 }
 
 .control-btn:hover {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(8, 16, 28, 0.56);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }
@@ -270,18 +270,18 @@ onUnmounted(() => {
 .control-btn.play-btn {
   width: 36px;
   height: 36px;
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #f87171;
+  background: rgba(79, 179, 216, 0.16);
+  border-color: rgba(79, 179, 216, 0.42);
+  color: #8fcbe3;
 }
 
 .control-btn.play-btn:hover {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: #ef4444;
-  color: #ef4444;
+  background: rgba(79, 179, 216, 0.25);
+  border-color: #4fb3d8;
+  color: #4fb3d8;
 }
 
-/* 时间轴滑块 */
+/* 鏃堕棿杞存粦鍧?*/
 .timeline-slider-container {
   flex: 1;
   display: flex;
@@ -290,7 +290,7 @@ onUnmounted(() => {
 }
 
 .time-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -307,7 +307,7 @@ onUnmounted(() => {
 .timeline-slider {
   width: 100%;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(94, 126, 160, 0.32);
   border-radius: 2px;
   appearance: none;
   cursor: pointer;
@@ -320,7 +320,7 @@ onUnmounted(() => {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #ef4444;
+  background: #4fb3d8;
   border: 2px solid white;
   cursor: grab;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -337,7 +337,7 @@ onUnmounted(() => {
   top: 50%;
   transform: translateY(-50%);
   height: 4px;
-  background: linear-gradient(90deg, #ef4444, #f97316);
+  background: linear-gradient(90deg, #5a91d8, #4fb3d8);
   border-radius: 2px;
   pointer-events: none;
   z-index: 1;
@@ -351,9 +351,10 @@ onUnmounted(() => {
 }
 
 .marker-tooltip {
-  background: rgba(239, 68, 68, 0.9);
+  background: rgba(17, 38, 58, 0.95);
+  border: 1px solid rgba(79, 179, 216, 0.45);
   color: white;
-  font-size: 10px;
+  font-size: 12px;
   font-family: var(--font-mono);
   padding: 3px 8px;
   border-radius: 4px;
@@ -368,6 +369,7 @@ onUnmounted(() => {
   transform: translateX(-50%);
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-top: 4px solid rgba(239, 68, 68, 0.9);
+  border-top: 4px solid rgba(17, 38, 58, 0.95);
 }
 </style>
+

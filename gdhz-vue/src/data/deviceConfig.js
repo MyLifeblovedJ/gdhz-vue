@@ -31,29 +31,29 @@ export const deviceTypeTree = [
         id: DEVICE_TYPES.COASTAL_STATION,
         name: '岸基观测站',
         icon: 'fa-tower-observation',
-        color: '#3498DB',
+        color: '#4A8FC4',
         children: [
-            { id: DEVICE_TYPES.SURGE_STATION, name: '风暴潮核定站', count: 36, icon: 'fa-water', color: '#FF6B6B' },
-            { id: DEVICE_TYPES.COASTAL_BASE, name: '岸基观测站', count: 65, icon: 'fa-tower-observation', color: '#3498DB' },
-            { id: DEVICE_TYPES.TIDE_STATION, name: '潮位站', count: 17, icon: 'fa-chart-line', color: '#1ABC9C' },
+            { id: DEVICE_TYPES.SURGE_STATION, name: '风暴潮核定站', count: 36, icon: 'fa-water', color: '#5F9FB9' },
+            { id: DEVICE_TYPES.COASTAL_BASE, name: '岸基观测站', count: 65, icon: 'fa-tower-observation', color: '#4A8FC4' },
+            { id: DEVICE_TYPES.TIDE_STATION, name: '潮位站', count: 17, icon: 'fa-chart-line', color: '#4FB3D8' },
         ]
     },
     {
         id: DEVICE_TYPES.BUOY,
         name: '浮标',
         icon: 'fa-circle-dot',
-        color: '#4ECDC4',
+        color: '#5A91D8',
         children: [
-            { id: DEVICE_TYPES.WAVE_BUOY, name: '波浪谱浮标（锚定）', count: 20, icon: 'fa-bullseye', color: '#4ECDC4' },
-            { id: DEVICE_TYPES.DISPOSABLE_BUOY, name: '抛弃式浮标', count: 18, icon: 'fa-circle', color: '#9B59B6' },
-            { id: DEVICE_TYPES.ARGO_BUOY, name: 'Argo浮标', count: 10, icon: 'fa-circle-dot', color: '#E74C3C' },
+            { id: DEVICE_TYPES.WAVE_BUOY, name: '波浪谱浮标（锚定）', count: 20, icon: 'fa-bullseye', color: '#5A91D8' },
+            { id: DEVICE_TYPES.DISPOSABLE_BUOY, name: '抛弃式浮标', count: 18, icon: 'fa-circle', color: '#6F8EA8' },
+            { id: DEVICE_TYPES.ARGO_BUOY, name: 'Argo浮标', count: 10, icon: 'fa-circle-dot', color: '#7B9BB2' },
         ]
     },
     {
         id: DEVICE_TYPES.EROSION_MONITOR,
         name: '海岸侵蚀',
         icon: 'fa-video',
-        color: '#9B59B6',
+        color: '#5F9FB9',
         count: 12,
         children: []
     },
@@ -61,7 +61,7 @@ export const deviceTypeTree = [
         id: DEVICE_TYPES.SMART_MARKER,
         name: '智能标识物',
         icon: 'fa-location-dot',
-        color: '#F39C12',
+        color: '#6A97B8',
         count: 10,
         children: []
     },
@@ -69,7 +69,7 @@ export const deviceTypeTree = [
         id: DEVICE_TYPES.UAV,
         name: '无人机',
         icon: 'fa-helicopter',
-        color: '#2ECC71',
+        color: '#6C9AB8',
         count: 20,
         children: []
     },
@@ -77,7 +77,7 @@ export const deviceTypeTree = [
         id: DEVICE_TYPES.USV,
         name: '无人艇',
         icon: 'fa-ship',
-        color: '#E67E22',
+        color: '#5F89A7',
         count: 12,
         children: []
     },
@@ -88,7 +88,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.SURGE_STATION]: {
         name: '风暴潮核定站',
         icon: 'fa-water',
-        color: '#FF6B6B',
+        color: '#5F9FB9',
         count: 36,
         parent: DEVICE_TYPES.COASTAL_STATION,
         elements: [
@@ -105,7 +105,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.COASTAL_BASE]: {
         name: '岸基观测站',
         icon: 'fa-tower-observation',
-        color: '#3498DB',
+        color: '#4A8FC4',
         count: 65,
         parent: DEVICE_TYPES.COASTAL_STATION,
         elements: [
@@ -121,7 +121,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.TIDE_STATION]: {
         name: '潮位站',
         icon: 'fa-chart-line',
-        color: '#1ABC9C',
+        color: '#4FB3D8',
         count: 17,
         parent: DEVICE_TYPES.COASTAL_STATION,
         elements: [
@@ -135,7 +135,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.WAVE_BUOY]: {
         name: '波浪谱浮标（锚定）',
         icon: 'fa-bullseye',
-        color: '#4ECDC4',
+        color: '#5A91D8',
         count: 20,
         parent: DEVICE_TYPES.BUOY,
         elements: [
@@ -150,7 +150,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.DISPOSABLE_BUOY]: {
         name: '抛弃式浮标',
         icon: 'fa-circle',
-        color: '#9B59B6',
+        color: '#6F8EA8',
         count: 18,
         parent: DEVICE_TYPES.BUOY,
         elements: [
@@ -162,7 +162,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.ARGO_BUOY]: {
         name: 'Argo浮标',
         icon: 'fa-circle-dot',
-        color: '#E74C3C',
+        color: '#7B9BB2',
         count: 10,
         parent: DEVICE_TYPES.BUOY,
         elements: [
@@ -175,7 +175,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.EROSION_MONITOR]: {
         name: '海岸侵蚀',
         icon: 'fa-video',
-        color: '#9B59B6',
+        color: '#5F9FB9',
         count: 12,
         elements: [
             { key: 'erosionRate', name: '侵蚀速率', unit: 'm/年', chartType: 'line' },
@@ -188,7 +188,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.SMART_MARKER]: {
         name: '智能标识物',
         icon: 'fa-location-dot',
-        color: '#F39C12',
+        color: '#6A97B8',
         count: 10,
         elements: [
             { key: 'position', name: '位置偏移', unit: 'm', chartType: 'line' },
@@ -199,7 +199,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.UAV]: {
         name: '无人机',
         icon: 'fa-helicopter',
-        color: '#2ECC71',
+        color: '#6C9AB8',
         count: 20,
         elements: [
             { key: 'altitude', name: '飞行高度', unit: 'm', chartType: 'line' },
@@ -211,7 +211,7 @@ export const deviceTypeConfig = {
     [DEVICE_TYPES.USV]: {
         name: '无人艇',
         icon: 'fa-ship',
-        color: '#E67E22',
+        color: '#5F89A7',
         count: 12,
         elements: [
             { key: 'speed', name: '航速', unit: 'kn', chartType: 'line' },
@@ -237,7 +237,7 @@ export const legendConfig = {
         id: 'stations',
         title: '观测站点',
         items: [
-            { color: '#10B981', label: '正常', type: 'dot' },
+            { color: '#4FB3D8', label: '正常', type: 'dot' },
             { color: '#F59E0B', label: '预警', type: 'dot', animate: true },
             { color: '#EF4444', label: '告警', type: 'dot', animate: true },
             { color: '#6B7280', label: '离线', type: 'dot' },
@@ -260,7 +260,7 @@ export const legendConfig = {
         id: 'vessels',
         title: '海上船舶',
         items: [
-            { color: '#10B981', label: '正常', type: 'dot' },
+            { color: '#4FB3D8', label: '正常', type: 'dot' },
             { color: '#F59E0B', label: '警告', type: 'dot' },
         ]
     },

@@ -1,40 +1,40 @@
-<template>
+﻿<template>
   <header class="app-header">
-    <!-- 左侧品牌区 -->
+    <!-- 宸︿晶鍝佺墝鍖?-->
     <div class="header-brand">
       <div class="brand-logo">
         <svg viewBox="0 0 48 48" class="logo-svg">
           <defs>
             <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#001830"/>
-              <stop offset="100%" stop-color="#003366"/>
+              <stop offset="0%" stop-color="#081425"/>
+              <stop offset="100%" stop-color="#12314b"/>
             </linearGradient>
             <linearGradient id="wave1-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#00c8ff"/>
-              <stop offset="100%" stop-color="#0088cc"/>
+              <stop offset="0%" stop-color="#4fb3d8"/>
+              <stop offset="100%" stop-color="#2f6c95"/>
             </linearGradient>
             <linearGradient id="wave2-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#0099dd"/>
-              <stop offset="100%" stop-color="#006699"/>
+              <stop offset="0%" stop-color="#3b81ad"/>
+              <stop offset="100%" stop-color="#255f85"/>
             </linearGradient>
             <linearGradient id="wave3-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#0077aa"/>
-              <stop offset="100%" stop-color="#004466"/>
+              <stop offset="0%" stop-color="#2f6c95"/>
+              <stop offset="100%" stop-color="#1b425f"/>
             </linearGradient>
             <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#ffffcc"/>
-              <stop offset="50%" stop-color="#ffdd66"/>
-              <stop offset="100%" stop-color="#ff8800" stop-opacity="0"/>
+              <stop offset="0%" stop-color="#d7e3ef"/>
+              <stop offset="50%" stop-color="#7db8d6"/>
+              <stop offset="100%" stop-color="#4a8fc4" stop-opacity="0"/>
             </radialGradient>
           </defs>
-          <circle cx="24" cy="24" r="22" fill="url(#sky-grad)" stroke="#00a8ff" stroke-width="1" stroke-opacity="0.5"/>
+          <circle cx="24" cy="24" r="22" fill="url(#sky-grad)" stroke="#4a8fc4" stroke-width="1" stroke-opacity="0.45"/>
           <circle cx="34" cy="12" r="5" fill="url(#sun-glow)" class="sun-pulse"/>
-          <circle cx="34" cy="12" r="3" fill="#ffeeaa"/>
+          <circle cx="34" cy="12" r="3" fill="#bcd5e6"/>
           <path d="M2 32 Q8 28 14 32 T26 32 T38 32 T46 32 L46 46 L2 46 Z" fill="url(#wave1-grad)" class="wave-layer wave-1"/>
           <path d="M2 36 Q10 32 18 36 T34 36 T46 36 L46 46 L2 46 Z" fill="url(#wave2-grad)" class="wave-layer wave-2"/>
           <path d="M2 40 Q12 36 22 40 T42 40 T46 40 L46 46 L2 46 Z" fill="url(#wave3-grad)" class="wave-layer wave-3"/>
-          <path d="M12 18 Q14 16 16 18 M13 17 L14 16 L15 17" fill="none" stroke="#80d0ff" stroke-width="0.8" stroke-linecap="round"/>
-          <path d="M20 14 Q22 12 24 14 M21 13 L22 12 L23 13" fill="none" stroke="#60c0ff" stroke-width="0.6" stroke-linecap="round"/>
+          <path d="M12 18 Q14 16 16 18 M13 17 L14 16 L15 17" fill="none" stroke="#8ab7d3" stroke-width="0.8" stroke-linecap="round"/>
+          <path d="M20 14 Q22 12 24 14 M21 13 L22 12 L23 13" fill="none" stroke="#78a9c7" stroke-width="0.6" stroke-linecap="round"/>
         </svg>
       </div>
       <div class="brand-text">
@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <!-- 中间导航区 -->
+    <!-- 涓棿瀵艰埅鍖?-->
     <nav class="header-nav">
       <router-link
         v-for="item in navItems"
@@ -57,7 +57,7 @@
       </router-link>
     </nav>
 
-    <!-- 右侧工具区 -->
+    <!-- 鍙充晶宸ュ叿鍖?-->
     <div class="header-tools">
       <div class="tool-datetime">
         <div class="dt-clock">
@@ -85,17 +85,17 @@ import { navItems } from '../../data/mockData'
 const store = useAppStore()
 const currentPage = computed(() => store.currentPage)
 
-// 时间相关
+// 鏃堕棿鐩稿叧
 const now = ref(new Date())
 let timer = null
 
-// 天气相关
+// 澶╂皵鐩稿叧
 const weatherLocation = ref('加载中...')
 const weatherText = ref('')
 const weatherTemp = ref('')
 const weatherIcon = ref('fa-solid fa-cloud-sun')
 
-// 天气图标映射
+// 澶╂皵鍥炬爣鏄犲皠
 const weatherIconMap = {
   '晴': 'fa-solid fa-sun',
   '多云': 'fa-solid fa-cloud-sun',
@@ -120,23 +120,23 @@ const weatherIconMap = {
   '沙尘暴': 'fa-solid fa-wind',
 }
 
-// 根据天气描述获取图标
+// 鏍规嵁澶╂皵鎻忚堪鑾峰彇鍥炬爣
 const getWeatherIcon = (weather) => {
   for (const key in weatherIconMap) {
     if (weather && weather.includes(key)) {
       return weatherIconMap[key]
     }
   }
-  return 'fa-solid fa-cloud-sun' // 默认图标
+  return 'fa-solid fa-cloud-sun' // 榛樿鍥炬爣
 }
 
-// 高德地图Web服务API Key（免费申请：https://lbs.amap.com/）
+// 楂樺痉鍦板浘Web鏈嶅姟API Key锛堝厤璐圭敵璇凤細https://lbs.amap.com/锛?
 const AMAP_KEY = '0fcea6d3fd884f1b8e27746f87245f03'
 
-// 获取天气数据
+// 鑾峰彇澶╂皵鏁版嵁
 const fetchWeather = async () => {
   try {
-    // 1. 使用高德IP定位API获取精确位置（可精确到区/街道）
+    // 1. 浣跨敤楂樺痉IP瀹氫綅API鑾峰彇绮剧‘浣嶇疆锛堝彲绮剧‘鍒板尯/琛楅亾锛?
     const ipRes = await fetch(`https://restapi.amap.com/v3/ip?key=${AMAP_KEY}`)
     const ipData = await ipRes.json()
     
@@ -145,13 +145,13 @@ const fetchWeather = async () => {
     
     if (ipData.status === '1' && ipData.adcode) {
       adcode = ipData.adcode
-      // 优先显示区级，如果没有则显示城市
+      // 浼樺厛鏄剧ず鍖虹骇锛屽鏋滄病鏈夊垯鏄剧ず鍩庡競
       district = ipData.district || ipData.city || '广州'
-      // 移除"区"、"县"、"市"后缀使显示更简洁
+      // 绉婚櫎"鍖?銆?鍘?銆?甯?鍚庣紑浣挎樉绀烘洿绠€娲?
       district = district.replace(/(区|县|市)$/, '')
     }
     
-    // 2. 使用高德天气API获取实时天气
+    // 2. 浣跨敤楂樺痉澶╂皵API鑾峰彇瀹炴椂澶╂皵
     const weatherRes = await fetch(`https://restapi.amap.com/v3/weather/weatherInfo?key=${AMAP_KEY}&city=${adcode}&extensions=base`)
     const weatherData = await weatherRes.json()
     
@@ -162,21 +162,21 @@ const fetchWeather = async () => {
       weatherTemp.value = `${live.temperature}°C`
       weatherIcon.value = getWeatherIcon(live.weather)
     } else {
-      // 天气API失败时使用默认值
+      // 澶╂皵API澶辫触鏃朵娇鐢ㄩ粯璁ゅ€?
       weatherLocation.value = district
       weatherText.value = '多云'
       weatherTemp.value = '--°C'
     }
   } catch (error) {
-    console.error('获取天气失败:', error)
-    // 使用默认值
+    console.error('鑾峰彇澶╂皵澶辫触:', error)
+    // 浣跨敤榛樿鍊?
     weatherLocation.value = '广州'
     weatherText.value = '多云'
     weatherTemp.value = '--°C'
   }
 }
 
-// 时间格式化
+// 鏃堕棿鏍煎紡鍖?
 const formattedTime = computed(() => {
   return now.value.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
@@ -213,9 +213,9 @@ onMounted(() => {
     now.value = new Date()
   }, 60000)
   
-  // 初始化获取天气
+  // 鍒濆鍖栬幏鍙栧ぉ姘?
   fetchWeather()
-  // 每30分钟更新一次天气
+  // 姣?0鍒嗛挓鏇存柊涓€娆″ぉ姘?
   weatherTimer = setInterval(fetchWeather, 30 * 60 * 1000)
 })
 
@@ -230,8 +230,8 @@ onUnmounted(() => {
   height: 64px;
   flex-shrink: 0;
   z-index: 100;
-  background: linear-gradient(180deg, rgba(0, 20, 40, 0.98) 0%, rgba(0, 15, 35, 0.95) 100%);
-  border-bottom: 1px solid rgba(0, 200, 255, 0.15);
+  background: linear-gradient(180deg, rgba(8, 20, 36, 0.98) 0%, rgba(7, 17, 31, 0.95) 100%);
+  border-bottom: 1px solid rgba(79, 179, 216, 0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -246,10 +246,10 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 200, 255, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(79, 179, 216, 0.35), transparent);
 }
 
-/* 左侧品牌区 */
+/* 宸︿晶鍝佺墝鍖?*/
 .header-brand {
   display: flex;
   align-items: center;
@@ -266,10 +266,10 @@ onUnmounted(() => {
 .brand-logo .logo-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 10px rgba(0, 180, 255, 0.4));
+  filter: drop-shadow(0 0 10px rgba(79, 179, 216, 0.35));
 }
 
-/* 太阳呼吸动画 */
+/* 澶槼鍛煎惛鍔ㄧ敾 */
 .sun-pulse {
   animation: sun-breathe 3s ease-in-out infinite;
   transform-origin: center;
@@ -280,7 +280,7 @@ onUnmounted(() => {
   50% { opacity: 1; transform: scale(1.1); }
 }
 
-/* 海浪动画 */
+/* 娴锋氮鍔ㄧ敾 */
 .wave-layer {
   animation: wave-flow 3s ease-in-out infinite;
 }
@@ -304,20 +304,20 @@ onUnmounted(() => {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 2px;
-  background: linear-gradient(90deg, #fff, #80d4ff);
+  background: linear-gradient(90deg, #fff, #bcd5e6);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .brand-subtitle {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 2px;
-  color: rgba(100, 180, 220, 0.6);
+  color: rgba(167, 187, 207, 0.72);
   text-transform: uppercase;
 }
 
-/* 中间导航区 */
+/* 涓棿瀵艰埅鍖?*/
 .header-nav {
   display: flex;
   align-items: center;
@@ -347,8 +347,8 @@ onUnmounted(() => {
 
 .nav-btn.active {
   color: #fff;
-  background: linear-gradient(135deg, rgba(0, 180, 255, 0.3), rgba(0, 220, 255, 0.15));
-  box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+  background: linear-gradient(135deg, rgba(79, 179, 216, 0.3), rgba(74, 143, 196, 0.15));
+  box-shadow: 0 0 18px rgba(79, 179, 216, 0.2);
 }
 
 .nav-btn.active .nav-glow {
@@ -357,7 +357,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+  background: linear-gradient(90deg, transparent, #4fb3d8, transparent);
 }
 
 .nav-text {
@@ -365,7 +365,7 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-/* 右侧工具区 */
+/* 鍙充晶宸ュ叿鍖?*/
 .header-tools {
   display: flex;
   align-items: center;
@@ -391,11 +391,11 @@ onUnmounted(() => {
 
 .dt-clock i {
   font-size: 14px;
-  color: #00d4ff;
+  color: #4fb3d8;
 }
 
 .dt-date {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
 }
 
@@ -411,7 +411,7 @@ onUnmounted(() => {
 
 .tool-weather > i {
   font-size: 20px;
-  color: #ffd43b;
+  color: #7db8d6;
 }
 
 .weather-info {
@@ -427,8 +427,9 @@ onUnmounted(() => {
 }
 
 .weather-desc {
-  font-size: 10px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
 }
 </style>
+
 

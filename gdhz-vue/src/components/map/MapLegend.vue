@@ -1,12 +1,12 @@
-<template>
+﻿<template>
   <div class="map-legend-wrapper" v-if="visibleLegends.length > 0">
     <div class="legend-container">
-      <!-- 标题栏 -->
+      <!-- 鏍囬鏍?-->
       <div class="legend-title-bar">
         <i class="fa-solid fa-palette"></i>
         <span>图例</span>
       </div>
-      <!-- 图例内容区 -->
+      <!-- 鍥句緥鍐呭鍖?-->
       <div class="legend-scroll">
         <div 
           v-for="legend in visibleLegends" 
@@ -14,20 +14,20 @@
           class="legend-panel"
           :class="{ collapsed: collapsedLegends[legend.id] }"
         >
-          <!-- 图例标题栏 -->
+          <!-- 鍥句緥鏍囬鏍?-->
           <div class="legend-header" @click="toggleLegend(legend.id)">
             <span class="legend-name">{{ legend.title }}</span>
             <i :class="collapsedLegends[legend.id] ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
           </div>
           
-          <!-- 图例内容 -->
+          <!-- 鍥句緥鍐呭 -->
           <div class="legend-content" v-show="!collapsedLegends[legend.id]">
             <div 
               v-for="(item, index) in legend.items" 
               :key="index"
               class="legend-item"
             >
-              <!-- 图例符号 -->
+              <!-- 鍥句緥绗﹀彿 -->
               <span class="legend-symbol" :class="[item.type, { animate: item.animate }]">
                 <template v-if="item.type === 'dot'">
                   <span class="symbol-dot" :style="{ background: item.color }"></span>
@@ -61,18 +61,18 @@ import { legendConfig } from '../../data/deviceConfig'
 
 const store = useAppStore()
 
-// 跟踪已折叠的图例
+// 璺熻釜宸叉姌鍙犵殑鍥句緥
 const collapsedLegends = ref({})
 
-// 跟踪图例添加顺序（后添加的在上面）
+// 璺熻釜鍥句緥娣诲姞椤哄簭锛堝悗娣诲姞鐨勫湪涓婇潰锛?
 const legendOrder = ref([])
 
-// 根据图层可见性获取需要显示的图例
+// 鏍规嵁鍥惧眰鍙鎬ц幏鍙栭渶瑕佹樉绀虹殑鍥句緥
 const visibleLegends = computed(() => {
   const legends = []
   const visibility = store.layerVisibility
   
-  // 观测站点（总是显示，如果有任何站点图层开启）
+  // 瑙傛祴绔欑偣锛堟€绘槸鏄剧ず锛屽鏋滄湁浠讳綍绔欑偣鍥惧眰寮€鍚級
   if (visibility.surge_stations || visibility.buoys || 
       visibility.coastal_stations || visibility.tide_stations || 
       visibility.coastal_base || visibility.wave_buoy ||
@@ -81,53 +81,53 @@ const visibleLegends = computed(() => {
     legends.push(legendConfig.stations)
   }
   
-  // 台风
+  // 鍙伴
   if (visibility.typhoon) {
     legends.push(legendConfig.typhoon)
   }
   
-  // 船舶
+  // 鑸硅埗
   if (visibility.vessels) {
     legends.push(legendConfig.vessels)
   }
   
-  // 风粒子
+  // 椋庣矑瀛?
   if (visibility.wind_particle) {
     legends.push(legendConfig.wind_particle)
   }
   
-  // 海浪热力图
+  // 娴锋氮鐑姏鍥?
   if (visibility.wave_heatmap) {
     legends.push(legendConfig.wave_heatmap)
   }
   
-  // 按添加顺序排序（后添加的在前面），未在顺序列表中的放最后
+  // 鎸夋坊鍔犻『搴忔帓搴忥紙鍚庢坊鍔犵殑鍦ㄥ墠闈級锛屾湭鍦ㄩ『搴忓垪琛ㄤ腑鐨勬斁鏈€鍚?
   return legends.sort((a, b) => {
     const aIndex = legendOrder.value.indexOf(a.id)
     const bIndex = legendOrder.value.indexOf(b.id)
     if (aIndex === -1 && bIndex === -1) return 0
     if (aIndex === -1) return 1
     if (bIndex === -1) return -1
-    return bIndex - aIndex // 后添加的排在前面
+    return bIndex - aIndex // 鍚庢坊鍔犵殑鎺掑湪鍓嶉潰
   })
 })
 
-// 切换图例展开/折叠
+// 鍒囨崲鍥句緥灞曞紑/鎶樺彔
 function toggleLegend(legendId) {
   collapsedLegends.value[legendId] = !collapsedLegends.value[legendId]
 }
 
-// 监听图层可见性变化，更新图例顺序
+// 鐩戝惉鍥惧眰鍙鎬у彉鍖栵紝鏇存柊鍥句緥椤哄簭
 watch(() => store.layerVisibility, (newVal, oldVal) => {
-  // 检测新开启的图层
+  // 妫€娴嬫柊寮€鍚殑鍥惧眰
   Object.keys(newVal).forEach(key => {
     if (newVal[key] && !oldVal?.[key]) {
-      // 新开启的图层，添加到顺序列表末尾（显示在最上面）
+      // 鏂板紑鍚殑鍥惧眰锛屾坊鍔犲埌椤哄簭鍒楄〃鏈熬锛堟樉绀哄湪鏈€涓婇潰锛?
       const legendId = getLegendIdForLayer(key)
       if (legendId && !legendOrder.value.includes(legendId)) {
         legendOrder.value.push(legendId)
         
-        // 折叠其他图例，展开新图例
+        // 鎶樺彔鍏朵粬鍥句緥锛屽睍寮€鏂板浘渚?
         Object.keys(collapsedLegends.value).forEach(id => {
           if (id !== legendId) {
             collapsedLegends.value[id] = true
@@ -139,7 +139,7 @@ watch(() => store.layerVisibility, (newVal, oldVal) => {
   })
 }, { deep: true })
 
-// 根据图层ID获取对应的图例ID
+// 鏍规嵁鍥惧眰ID鑾峰彇瀵瑰簲鐨勫浘渚婭D
 function getLegendIdForLayer(layerId) {
   const mapping = {
     surge_stations: 'stations',
@@ -185,13 +185,13 @@ function getLegendIdForLayer(layerId) {
   flex-direction: column;
 }
 
-/* 标题栏（与左侧边栏组件一致） */
+/* 鏍囬鏍忥紙涓庡乏渚ц竟鏍忕粍浠朵竴鑷达級 */
 .legend-title-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(5, 11, 18, 0.42);
   border-bottom: 1px solid var(--border-subtle);
   font-size: 12px;
   font-weight: 600;
@@ -215,7 +215,7 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-scroll::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(6, 12, 20, 0.35);
   border-radius: 2px;
 }
 
@@ -242,17 +242,17 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-header:hover {
-  background: rgba(0, 180, 230, 0.1);
+  background: var(--bg-hover);
 }
 
 .legend-name {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .legend-header i {
-  font-size: 8px;
+  font-size: 12px;
   color: var(--text-muted);
   transition: transform 0.2s;
 }
@@ -271,7 +271,7 @@ function getLegendIdForLayer(layerId) {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -282,7 +282,7 @@ function getLegendIdForLayer(layerId) {
   justify-content: center;
 }
 
-/* 圆点符号 */
+/* 鍦嗙偣绗﹀彿 */
 .symbol-dot {
   width: 8px;
   height: 8px;
@@ -298,21 +298,21 @@ function getLegendIdForLayer(layerId) {
   50% { opacity: 0.5; transform: scale(1.2); }
 }
 
-/* 线条符号 */
+/* 绾挎潯绗﹀彿 */
 .symbol-line {
   width: 16px;
   height: 2px;
   border-radius: 1px;
 }
 
-/* 虚线符号 */
+/* 铏氱嚎绗﹀彿 */
 .symbol-dashed {
   width: 16px;
   height: 0;
   border-top: 2px dashed;
 }
 
-/* 圆圈符号 */
+/* 鍦嗗湀绗﹀彿 */
 .symbol-circle {
   width: 12px;
   height: 12px;
@@ -321,7 +321,7 @@ function getLegendIdForLayer(layerId) {
   background: transparent;
 }
 
-/* 渐变符号 */
+/* 娓愬彉绗﹀彿 */
 .symbol-gradient {
   width: 16px;
   height: 8px;
@@ -333,3 +333,4 @@ function getLegendIdForLayer(layerId) {
   flex: 1;
 }
 </style>
+

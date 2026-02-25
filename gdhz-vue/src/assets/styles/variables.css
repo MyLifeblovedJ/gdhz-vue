@@ -13,41 +13,41 @@
     /* 正文 */
 
     /* ===== 背景层级 ===== */
-    --bg-deepest: #020810;
+    --bg-deepest: #050b12;
     /* 最深层背景 */
-    --bg-deep: #041021;
+    --bg-deep: #0a1522;
     /* 深层背景 */
-    --bg-panel: rgba(8, 25, 50, 0.92);
+    --bg-panel: rgba(14, 28, 43, 0.94);
     /* 面板背景 */
-    --bg-card: rgba(15, 40, 75, 0.85);
+    --bg-card: rgba(18, 34, 50, 0.88);
     /* 卡片背景 */
-    --bg-hover: rgba(0, 180, 230, 0.15);
+    --bg-hover: rgba(79, 179, 216, 0.12);
     /* 悬停态 */
-    --bg-active: rgba(0, 229, 255, 0.2);
+    --bg-active: rgba(79, 179, 216, 0.2);
     /* 激活态 */
 
     /* ===== 边框系统 ===== */
-    --border-subtle: rgba(0, 180, 230, 0.15);
+    --border-subtle: rgba(111, 150, 184, 0.22);
     /* 细微边框 */
-    --border-normal: rgba(0, 210, 255, 0.35);
+    --border-normal: rgba(111, 150, 184, 0.35);
     /* 普通边框 */
-    --border-accent: #00d4ff;
+    --border-accent: #4fb3d8;
     /* 强调边框 */
 
     /* ===== 文字层级 ===== */
     --text-primary: #ffffff;
     /* 主标题 */
-    --text-secondary: #e0f0ff;
+    --text-secondary: #d7e3ef;
     /* 副标题/重要内容 */
-    --text-tertiary: #8cb8d8;
+    --text-tertiary: #a7bbcf;
     /* 次要文字/标签 */
-    --text-muted: #5a7a9a;
+    --text-muted: #7a8fa5;
     /* 提示/辅助 */
 
     /* ===== 功能色 ===== */
-    --accent-cyan: #00e5ff;
+    --accent-cyan: #4fb3d8;
     /* 主强调色 */
-    --accent-blue: #1890ff;
+    --accent-blue: #4a8fc4;
     /* 链接/可交互 */
     --alert-red: #ff4757;
     /* I级预警 */
@@ -57,15 +57,15 @@
     /* III级预警 */
     --alert-blue: #00a8ff;
     /* IV级预警 */
-    --status-online: #00d26a;
+    --status-online: #53b07e;
     /* 在线/正常 */
-    --status-offline: #636e72;
+    --status-offline: #6d7780;
     /* 离线/故障 */
     --status-warn: #ffa502;
     /* 警告 */
 
     /* ===== 特效色 ===== */
-    --glow-cyan: rgba(0, 229, 255, 0.25);
+    --glow-cyan: rgba(79, 179, 216, 0.22);
     --glow-red: rgba(255, 71, 87, 0.35);
 
     /* ===== 过渡时间 ===== */
@@ -80,7 +80,7 @@
 
     /* ===== 阴影 ===== */
     --shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 15px rgba(0, 210, 255, 0.05);
+    --shadow-glow: 0 0 14px rgba(79, 179, 216, 0.06);
 
     /* ===== 间距系统 ===== */
     --space-1: 4px;
@@ -142,6 +142,6 @@ body {
 
 /* ===== 选择样式 ===== */
 ::selection {
-    background: rgba(0, 229, 255, 0.3);
+    background: rgba(79, 179, 216, 0.3);
     color: #fff;
 }

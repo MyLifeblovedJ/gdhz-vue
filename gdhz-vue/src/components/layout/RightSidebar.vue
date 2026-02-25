@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="decision-sidebar" :class="{ 'high-risk-mode': hasHighRisk, 'high-risk-pulse': highRiskPulseActive }">
     <!-- 1. 当前预警 -->
     <div class="panel alert-panel">
@@ -428,10 +428,12 @@ onUnmounted(() => {
 
 <style scoped>
 .decision-sidebar {
+  --left-panel-border: rgba(111, 150, 184, 0.34);
+  --left-panel-line: rgba(111, 150, 184, 0.5);
   width: 340px;
   flex-shrink: 0;
   background: var(--bg-deepest);
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--left-panel-border);
   display: flex;
   flex-direction: column;
   padding: 8px 10px;
@@ -489,7 +491,7 @@ onUnmounted(() => {
   margin-bottom: 10px;
   padding: 8px 10px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
@@ -497,8 +499,8 @@ onUnmounted(() => {
 }
 
 .panel-summary.summary-situation {
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(83, 176, 126, 0.25);
+  background: rgba(83, 176, 126, 0.08);
 }
 
 .panel-summary.summary-alert {
@@ -527,13 +529,13 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .history-entry:hover {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #60a5fa;
+  background: rgba(79, 179, 216, 0.12);
+  border-color: rgba(79, 179, 216, 0.32);
+  color: var(--accent-cyan);
 }
 
 .history-entry span {
@@ -545,21 +547,21 @@ onUnmounted(() => {
 }
 
 .history-entry i:last-child {
-  font-size: 10px;
+  font-size: 12px;
   opacity: 0.6;
 }
 
 /* ===== 态势研判面板 ===== */
 .situation-panel::before {
-  background: linear-gradient(90deg, transparent, #10b981 30%, #10b981 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
 }
 
 .situation-panel .panel-title {
-  color: #10b981;
+  color: var(--accent-cyan);
 }
 
 .status-badge {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
@@ -576,8 +578,8 @@ onUnmounted(() => {
 }
 
 .status-badge.low {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: rgba(83, 176, 126, 0.2);
+  color: #53b07e;
 }
 
 /* 结论卡片 */
@@ -590,8 +592,8 @@ onUnmounted(() => {
 }
 
 .summary-conclusion.low {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(83, 176, 126, 0.1);
+  border: 1px solid rgba(83, 176, 126, 0.2);
 }
 
 .summary-conclusion.medium {
@@ -616,8 +618,8 @@ onUnmounted(() => {
 }
 
 .summary-conclusion.low .conclusion-icon {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: rgba(83, 176, 126, 0.2);
+  color: #53b07e;
 }
 
 .summary-conclusion.medium .conclusion-icon {
@@ -666,7 +668,7 @@ onUnmounted(() => {
 }
 
 .finding-item.low { color: var(--text-secondary); }
-.finding-item.low i { color: #10b981; }
+.finding-item.low i { color: #53b07e; }
 .finding-item.medium { color: var(--text-secondary); background: rgba(245, 158, 11, 0.05); }
 .finding-item.medium i { color: #f59e0b; }
 .finding-item.high { color: var(--text-primary); background: rgba(239, 68, 68, 0.08); }
@@ -674,11 +676,11 @@ onUnmounted(() => {
 
 /* ===== 预测趋势面板 ===== */
 .prediction-panel::before {
-  background: linear-gradient(90deg, transparent, #3b82f6 30%, #3b82f6 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
 }
 
 .prediction-panel .panel-title {
-  color: #3b82f6;
+  color: var(--accent-cyan);
 }
 
 .prediction-summary {
@@ -686,7 +688,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   line-height: 1.5;
   padding: 8px 10px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(79, 179, 216, 0.06);
   border-radius: 6px;
   margin-bottom: 10px;
 }
@@ -734,7 +736,7 @@ onUnmounted(() => {
 }
 
 .timeline-item.low .timeline-dot {
-  background: #10b981;
+  background: #53b07e;
 }
 
 .timeline-header {
@@ -745,7 +747,7 @@ onUnmounted(() => {
 }
 
 .timeline-time {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -757,7 +759,7 @@ onUnmounted(() => {
 }
 
 .timeline-detail {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -774,7 +776,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 6px;
   padding: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
   border-top: 1px solid var(--border-subtle);
@@ -784,7 +786,7 @@ onUnmounted(() => {
 
 .expand-hint:hover {
   color: var(--accent-cyan);
-  background: rgba(0, 255, 255, 0.05);
+  background: rgba(79, 179, 216, 0.05);
 }
 
 .expand-hint i {
@@ -819,7 +821,7 @@ onUnmounted(() => {
 .panel {
   background: var(--bg-panel);
   /* backdrop-filter 已移除以提升滚动性能 */
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--left-panel-border);
   border-radius: var(--border-radius);
   overflow: hidden;
   display: flex;
@@ -838,10 +840,23 @@ onUnmounted(() => {
   height: 1px;
   background: linear-gradient(90deg,
     transparent,
-    var(--accent-cyan) 30%,
-    var(--accent-cyan) 70%,
+    var(--left-panel-line) 30%,
+    var(--left-panel-line) 70%,
     transparent);
   opacity: 0.6;
+}
+
+.decision-sidebar :deep(.ai-summary-panel) {
+  border-color: var(--left-panel-border);
+}
+
+.decision-sidebar :deep(.judgment-section) {
+  border-color: rgba(111, 150, 184, 0.22);
+}
+
+.decision-sidebar :deep(.header-summary) {
+  border-color: rgba(111, 150, 184, 0.24);
+  background: rgba(111, 150, 184, 0.08);
 }
 
 .panel-header {
@@ -871,7 +886,7 @@ onUnmounted(() => {
 }
 
 .panel-title .badge {
-  font-size: 10px;
+  font-size: 12px;
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
   padding: 2px 6px;
@@ -880,7 +895,7 @@ onUnmounted(() => {
 
 .toggle-icon {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   transition: transform var(--transition-fast);
 }
 
@@ -904,12 +919,16 @@ onUnmounted(() => {
 /* ===== 预警面板 ===== */
 /* P0-1.4 面板标题颜色区分 — 预警面板使用红色系身份色 */
 .alert-panel::before {
-  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.72) 30%, rgba(239, 68, 68, 0.72) 70%, transparent);
+  opacity: 0.75;
 }
 
 .alert-panel .panel-title {
-  color: var(--text-secondary);
+  color: #f1b6b6;
+}
+
+.alert-panel .panel-title i {
+  color: #ef4444;
 }
 
 .alert-panel .panel-header {
@@ -948,7 +967,7 @@ onUnmounted(() => {
 
 .alerts-more {
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   padding-top: 8px;
   border-top: 1px solid var(--border-subtle);
@@ -1026,12 +1045,12 @@ onUnmounted(() => {
 }
 
 .alert-time {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .alert-valid {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--accent-cyan);
 }
 
@@ -1074,27 +1093,27 @@ onUnmounted(() => {
 
 /* 各等级颜色 */
 .response-card.level-1 {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.08);
 }
 
 .response-card.level-2 {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.05));
-  border: 1px solid rgba(249, 115, 22, 0.5);
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.08);
 }
 
 .response-card.level-3 {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(234, 179, 8, 0.05));
-  border: 1px solid rgba(234, 179, 8, 0.5);
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.15);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.08);
 }
 
 .response-card.level-4 {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03));
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.10);
+  background: rgba(59, 130, 246, 0.09);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.06);
 }
 
 /* 顶部：标题 + 指示灯 */
@@ -1106,7 +1125,7 @@ onUnmounted(() => {
 }
 
 .response-title {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -1128,22 +1147,22 @@ onUnmounted(() => {
 
 .level-1 .level-dots .dot.active {
   background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
 }
 
 .level-2 .level-dots .dot.active {
   background: #f97316;
-  box-shadow: 0 0 8px #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.7);
 }
 
 .level-3 .level-dots .dot.active {
   background: #eab308;
-  box-shadow: 0 0 8px #eab308;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.7);
 }
 
 .level-4 .level-dots .dot.active {
   background: #3b82f6;
-  box-shadow: 0 0 6px #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.65);
 }
 
 /* 底部：图标 + 等级名称 */
@@ -1179,7 +1198,7 @@ onUnmounted(() => {
 }
 
 .points-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -1195,7 +1214,7 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
@@ -1204,9 +1223,9 @@ onUnmounted(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(0, 229, 255, 0.12);
+  background: rgba(79, 179, 216, 0.12);
   color: var(--accent-cyan);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -1233,7 +1252,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   display: flex;
@@ -1244,7 +1263,7 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background: rgba(0, 229, 255, 0.1);
+  background: rgba(79, 179, 216, 0.1);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }
@@ -1257,3 +1276,5 @@ onUnmounted(() => {
   }
 }
 </style>
+
+

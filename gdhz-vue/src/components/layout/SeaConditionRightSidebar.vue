@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="data-panel-sidebar">
     <!-- 1. 风浪潮监测重点 -->
     <div class="panel data-panel" :class="{ 'collapsed': manualCollapse }">
@@ -62,7 +62,7 @@
               </div>
               <div class="card-main">
                 <div class="card-row">
-                  <span class="label" title="天文潮位 + 风暴潮增水的总潮位">预计最高 <i class="fa-regular fa-circle-question" style="font-size:10px"></i></span>
+                  <span class="label" title="天文潮位 + 风暴潮增水的总潮位">预计最高 <i class="fa-regular fa-circle-question" style="font-size: 12px"></i></span>
                   <span class="value big">{{ station.maxLevel }}<span class="unit">m</span></span>
                 </div>
                 <div class="card-row">
@@ -260,7 +260,7 @@ function renderTideChart() {
       type: 'category',
       data: allTimes,
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9 },
+      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
       splitLine: { show: false }
     },
     yAxis: {
@@ -268,7 +268,7 @@ function renderTideChart() {
       min: 0,
       max: 3.5,
       axisLine: { show: false },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9, formatter: '{value}m' },
+      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, formatter: '{value}m' },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
     },
     series: [
@@ -289,14 +289,14 @@ function renderTideChart() {
           const point = data.observation.find(d => d.time === t)
           return point ? point.value : null
         }),
-        lineStyle: { color: '#10b981', width: 2.5 },
+        lineStyle: { color: '#53b07e', width: 2.5 },
         symbol: 'circle',
         symbolSize: 6,
-        itemStyle: { color: '#10b981' },
+        itemStyle: { color: '#53b07e' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-            { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
+            { offset: 0, color: 'rgba(83, 176, 126, 0.3)' },
+            { offset: 1, color: 'rgba(83, 176, 126, 0.05)' }
           ])
         },
         z: 3
@@ -309,14 +309,14 @@ function renderTideChart() {
           const point = data.prediction.find(d => d.time === t)
           return point ? point.value : null
         }),
-        lineStyle: { color: '#8b5cf6', width: 2, type: 'dashed' },
+        lineStyle: { color: '#4a8fc4', width: 2, type: 'dashed' },
         symbol: 'circle',
         symbolSize: 5,
-        itemStyle: { color: '#8b5cf6' },
+        itemStyle: { color: '#4a8fc4' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(139, 92, 246, 0.2)' },
-            { offset: 1, color: 'rgba(139, 92, 246, 0.02)' }
+            { offset: 0, color: 'rgba(74, 143, 196, 0.2)' },
+            { offset: 1, color: 'rgba(74, 143, 196, 0.02)' }
           ])
         },
         z: 2
@@ -324,8 +324,18 @@ function renderTideChart() {
     ],
     legend: {
       data: ['观测值', '预测值', '警戒线'],
+      type: 'plain',
       top: 0,
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+      left: 0,
+      right: 0,
+      itemGap: 10,
+      formatter: name => {
+        if (name === '观测值') return '观测'
+        if (name === '预测值') return '预测'
+        if (name === '警戒线') return '警戒'
+        return name
+      },
+      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
       itemWidth: 15,
       itemHeight: 8
     },
@@ -333,7 +343,7 @@ function renderTideChart() {
       trigger: 'axis',
       backgroundColor: 'rgba(20, 30, 50, 0.9)',
       borderColor: 'rgba(6, 182, 212, 0.3)',
-      textStyle: { color: '#fff', fontSize: 11 }
+      textStyle: { color: '#fff', fontSize: 12 }
     }
   }
   
@@ -444,7 +454,7 @@ function getTrendIcon(trend) {
 }
 
 .data-panel-sidebar::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
+  background: var(--accent-cyan);
 }
 
 /* 面板通用样式 */
@@ -499,14 +509,14 @@ function getTrendIcon(trend) {
 }
 
 .panel-title .badge {
-  font-size: 9px;
+  font-size: 12px;
   padding: 1px 5px;
   border-radius: 8px;
 }
 
 .panel-title .badge.normal {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  background: rgba(83, 176, 126, 0.2);
+  color: #53b07e;
 }
 
 .panel-title .badge.warn {
@@ -516,7 +526,7 @@ function getTrendIcon(trend) {
 
 .toggle-icon {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   transition: transform var(--transition-fast);
 }
 
@@ -557,7 +567,7 @@ function getTrendIcon(trend) {
 }
 
 .category-title {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -571,7 +581,7 @@ function getTrendIcon(trend) {
     background: transparent;
     border: none;
     color: var(--accent-cyan);
-    font-size: 10px;
+    font-size: 12px;
     cursor: pointer;
     padding: 2px 6px;
     border-radius: 4px;
@@ -582,8 +592,8 @@ function getTrendIcon(trend) {
 }
 
 .astro-card {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05));
-    border-color: rgba(139, 92, 246, 0.3);
+    background: rgba(74, 143, 196, 0.1);
+    border-color: rgba(74, 143, 196, 0.3);
 }
 
 .data-card {
@@ -599,7 +609,7 @@ function getTrendIcon(trend) {
   align-items: center;
   justify-content: center;
   padding: 20px 0;
-  color: #10b981;
+  color: var(--accent-cyan);
   gap: 8px;
   font-size: 12px;
 }
@@ -651,14 +661,14 @@ function getTrendIcon(trend) {
 }
 
 .card-tag {
-    font-size: 10px;
+    font-size: 12px;
     padding: 2px 6px;
     border-radius: 2px;
     font-weight: 600;
 }
 .card-tag.alarm { color: #ef4444; background: rgba(239, 68, 68, 0.2); }
 .card-tag.warn { color: #f59e0b; background: rgba(245, 158, 11, 0.2); }
-.card-tag.normal { color: #10b981; background: rgba(16, 185, 129, 0.2); }
+.card-tag.normal { color: #53b07e; background: rgba(83, 176, 126, 0.2); }
 .card-tag.orange { color: #f97316; background: rgba(249, 115, 22, 0.2); }
 
 .card-main {
@@ -671,7 +681,7 @@ function getTrendIcon(trend) {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .card-row .label {
@@ -691,7 +701,7 @@ function getTrendIcon(trend) {
     font-weight: 600;
 }
 .card-row .unit {
-    font-size: 10px;
+    font-size: 12px;
     margin-left: 2px;
     font-weight: normal;
     color: var(--text-muted);
@@ -699,11 +709,11 @@ function getTrendIcon(trend) {
 
 /* 历史灾害面板 */
 .disaster-panel::before {
-  background: linear-gradient(90deg, transparent, #eab308 30%, #eab308 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
 }
 
 .disaster-panel .panel-title {
-  color: #eab308;
+  color: var(--accent-cyan);
 }
 
 /* 统计区域 */
@@ -748,20 +758,20 @@ function getTrendIcon(trend) {
 }
 
 .stat-mini-value .unit {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 400;
   margin-left: 1px;
 }
 
 .stat-mini-label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
 .stat-mini.online .stat-mini-value {
-  color: #10b981;
+  color: #53b07e;
 }
 
 .stat-mini.alert .stat-mini-value {
@@ -769,7 +779,7 @@ function getTrendIcon(trend) {
 }
 
 .stat-mini.data .stat-mini-value {
-  color: #8b5cf6;
+  color: var(--accent-cyan);
 }
 
 .quality-row {
@@ -779,7 +789,7 @@ function getTrendIcon(trend) {
 }
 
 .quality-label {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -794,15 +804,15 @@ function getTrendIcon(trend) {
 
 .quality-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #4a8fc4, #7db8d6);
   border-radius: 2px;
   transition: width 0.5s;
 }
 
 .quality-value {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  color: #10b981;
+  color: var(--accent-cyan);
   min-width: 35px;
   text-align: right;
 }
@@ -844,42 +854,42 @@ function getTrendIcon(trend) {
 }
 
 .risk-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
 
 .risk-desc {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 /* 潮位趋势面板样式 */
 .tide-panel::before {
-  background: linear-gradient(90deg, transparent, #3b82f6 30%, #3b82f6 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
 }
 
 .tide-panel .panel-title {
-  color: #3b82f6;
+  color: var(--accent-cyan);
 }
 
 .station-select {
   margin-left: auto;
   margin-right: 8px;
   padding: 3px 8px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(79, 179, 216, 0.15);
+  border: 1px solid rgba(79, 179, 216, 0.3);
   border-radius: 4px;
-  color: #60a5fa;
-  font-size: 10px;
+  color: #7db8d6;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
 }
 
 .station-select:focus {
-  border-color: #3b82f6;
+  border-color: var(--accent-cyan);
 }
 
 .station-select option {
@@ -906,7 +916,7 @@ function getTrendIcon(trend) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .tide-info-item .label {
@@ -919,7 +929,7 @@ function getTrendIcon(trend) {
 }
 
 .tide-info-item.peak .value {
-  color: #8b5cf6;
+  color: var(--accent-cyan);
   font-weight: 600;
 }
 
@@ -928,3 +938,5 @@ function getTrendIcon(trend) {
   font-weight: 600;
 }
 </style>
+
+

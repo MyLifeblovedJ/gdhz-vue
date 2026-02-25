@@ -82,6 +82,16 @@ const riskLocationMap = {
 }
 
 // 初始化地图
+const MAP_COLORS = {
+  risk: '#df5d6a',
+  riskDeep: '#cf4b59',
+  forecast: '#d9973a',
+  windBlue: '#5a91d8',
+  textBright: '#d7e3ef',
+  vesselWarn: '#d9973a',
+  vesselNormal: '#53b07e'
+}
+
 function initMap() {
   if (!mapRef.value) return
 
@@ -140,8 +150,8 @@ function renderRiskHighlights() {
       if (coord) {
         // 动态呼吸圆圈
         const circle = L.circle(coord, {
-          color: '#EF4444',
-          fillColor: '#EF4444',
+          color: MAP_COLORS.risk,
+          fillColor: MAP_COLORS.risk,
           fillOpacity: 0.2,
           radius: 2000,
           className: 'risk-pulse-circle'
@@ -150,8 +160,8 @@ function renderRiskHighlights() {
         // 闪烁点
         const marker = L.circleMarker(coord, {
           radius: 6,
-          color: '#fff',
-          fillColor: '#EF4444',
+          color: MAP_COLORS.textBright,
+          fillColor: MAP_COLORS.risk,
           fillOpacity: 1,
           weight: 2,
           className: 'risk-pulse-marker'
@@ -181,7 +191,7 @@ function flyToRisk(risk) {
     // 临时标记
     const popup = L.popup({ closeButton: false, closeOnClick: false })
       .setLatLng(coord)
-      .setContent(`<div style="color:#EF4444; font-weight:bold;">⚠️ ${risk.title}</div>`)
+      .setContent(`<div style="color:${MAP_COLORS.risk}; font-weight:bold;">⚠️ ${risk.title}</div>`)
       .openOn(map)
       
     setTimeout(() => {
@@ -213,7 +223,7 @@ function renderDevices() {
       className: 'custom-div-icon',
       html: `<div style="
         width: 14px; height: 14px;
-        background: rgba(8, 25, 50, 0.9);
+        background: rgba(10, 22, 38, 0.9);
         border: 1px solid ${color};
         border-radius: 50%;
         box-shadow: 0 0 ${isAlert || isWarn ? '5px' : '3px'} ${color};
@@ -434,7 +444,7 @@ function renderVessels() {
   if (!layerVisibility.value.vessels || !vesselData.value) return
   
   vesselData.value.forEach(vessel => {
-    const color = vessel.status === 'warning' ? '#F59E0B' : '#10B981'
+    const color = vessel.status === 'warning' ? MAP_COLORS.vesselWarn : MAP_COLORS.vesselNormal
     const marker = L.circleMarker([vessel.lat, vessel.lng], {
       radius: 3,
       color: color,
@@ -979,12 +989,12 @@ onUnmounted(() => {
 
 @keyframes marker-blink {
   from { opacity: 1; stroke-width: 0; }
-  to { opacity: 0.5; stroke-width: 4px; stroke: rgba(239, 68, 68, 0.5); }
+  to { opacity: 0.5; stroke-width: 4px; stroke: rgba(223, 93, 106, 0.45); }
 }
 
 @keyframes focus-ring-shrink {
   0% { transform: scale(5); border-color: transparent; border-width: 0; }
-  20% { opacity: 1; border-color: #EF4444; border-width: 4px; }
+  20% { opacity: 1; border-color: #df5d6a; border-width: 4px; }
   100% { transform: scale(1); opacity: 0; border-width: 0; }
 }
 

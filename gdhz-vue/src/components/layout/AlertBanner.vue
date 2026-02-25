@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="alert-banner-wrapper">
-    <!-- 使用 grid 动画实现平滑高度过渡 -->
+    <!-- 浣跨敤 grid 鍔ㄧ敾瀹炵幇骞虫粦楂樺害杩囨浮 -->
     <div class="banner-grid-wrapper" :class="{ collapsed: isCollapsed }">
       <div class="alert-marquee-bar">
         <div class="alert-marquee-bar-inner">
-          <!-- 滚动内容区 -->
+          <!-- 婊氬姩鍐呭鍖?-->
           <div class="alert-marquee-content">
             <div class="marquee-track" ref="trackRef">
               <span
@@ -17,15 +17,15 @@
             </div>
           </div>
 
-          <!-- 收起按钮 -->
-          <button class="marquee-collapse-btn" @click="collapseBanner" title="收起预警横幅">
+          <!-- 鏀惰捣鎸夐挳 -->
+          <button class="marquee-collapse-btn" @click="collapseBanner" title="鏀惰捣棰勮妯箙">
             <i class="fa-solid fa-chevron-up"></i>
           </button>
         </div>
       </div>
     </div>
     
-    <!-- 展开按钮 (横幅收起时显示) -->
+    <!-- 灞曞紑鎸夐挳 (妯箙鏀惰捣鏃舵樉绀? -->
     <Transition name="expand-btn">
       <button 
         v-show="isCollapsed"
@@ -46,10 +46,10 @@ import { useAppStore } from '../../stores/app'
 const route = useRoute()
 const store = useAppStore()
 
-// 本地状态控制，更加流畅
+// 鏈湴鐘舵€佹帶鍒讹紝鏇村姞娴佺晠
 const isCollapsed = ref(false)
 
-// 显示的消息 (复制一份用于无缝滚动)
+// 鏄剧ず鐨勬秷鎭?(澶嶅埗涓€浠界敤浜庢棤缂濇粴鍔?
 const displayMessages = computed(() => {
   const messages = store.marqueeMessages
   return [...messages, ...messages]
@@ -63,26 +63,26 @@ function expandBanner() {
   isCollapsed.value = false
 }
 
-// 根据路由决定横幅默认状态
+// 鏍规嵁璺敱鍐冲畾妯箙榛樿鐘舵€?
 function updateBannerState() {
   const shouldDefaultClosed = route.meta.bannerDefaultCollapsed === true
   
   if (shouldDefaultClosed) {
-    // 需要关闭横幅，如果当前是展开的，播放关闭动画
+    // 闇€瑕佸叧闂í骞咃紝濡傛灉褰撳墠鏄睍寮€鐨勶紝鎾斁鍏抽棴鍔ㄧ敾
     if (!isCollapsed.value) {
       setTimeout(() => {
         isCollapsed.value = true
       }, 300)
     }
   } else {
-    // 不需要关闭横幅（如主页），确保横幅展开
+    // 涓嶉渶瑕佸叧闂í骞咃紙濡備富椤碉級锛岀‘淇濇í骞呭睍寮€
     if (isCollapsed.value) {
       isCollapsed.value = false
     }
   }
 }
 
-// 监听路由变化，立即生效
+// 鐩戝惉璺敱鍙樺寲锛岀珛鍗崇敓鏁?
 watch(() => route.path, () => {
   updateBannerState()
 }, { immediate: true })
@@ -93,13 +93,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 横幅容器 - 为展开按钮提供定位上下文 */
+/* 妯箙瀹瑰櫒 - 涓哄睍寮€鎸夐挳鎻愪緵瀹氫綅涓婁笅鏂?*/
 .alert-banner-wrapper {
   position: relative;
   flex-shrink: 0;
 }
 
-/* Grid 包装器 - 实现平滑高度动画 */
+/* Grid 鍖呰鍣?- 瀹炵幇骞虫粦楂樺害鍔ㄧ敾 */
 .banner-grid-wrapper {
   display: grid;
   grid-template-rows: 1fr;
@@ -110,7 +110,7 @@ onMounted(() => {
   grid-template-rows: 0fr;
 }
 
-/* 横幅内容 - 必须设置 min-height: 0 和 overflow: hidden 才能被 grid 收缩 */
+/* 妯箙鍐呭 - 蹇呴』璁剧疆 min-height: 0 鍜?overflow: hidden 鎵嶈兘琚?grid 鏀剁缉 */
 .alert-marquee-bar {
   min-height: 0;
   overflow: hidden;
@@ -118,10 +118,10 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* 横幅内部实际内容区 */
+/* 妯箙鍐呴儴瀹為檯鍐呭鍖?*/
 .alert-marquee-bar::before {
   content: '';
-  height: 8px; /* margin-top 的替代，参与 grid 动画 */
+  height: 8px; /* margin-top 鐨勬浛浠ｏ紝鍙備笌 grid 鍔ㄧ敾 */
   flex-shrink: 0;
 }
 
@@ -129,11 +129,11 @@ onMounted(() => {
   height: 50px;
   flex-shrink: 0;
   background: linear-gradient(90deg,
-    rgba(255, 71, 87, 0.2) 0%,
-    rgba(255, 71, 87, 0.06) 40%,
-    rgba(255, 71, 87, 0.06) 60%,
-    rgba(255, 71, 87, 0.2) 100%);
-  border: 1px solid rgba(255, 71, 87, 0.35);
+    rgba(239, 68, 68, 0.16) 0%,
+    rgba(239, 68, 68, 0.05) 40%,
+    rgba(239, 68, 68, 0.05) 60%,
+    rgba(239, 68, 68, 0.16) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--border-radius);
   display: flex;
   align-items: center;
@@ -146,7 +146,7 @@ onMounted(() => {
   opacity: 0;
 }
 
-/* 滚动内容 */
+/* 婊氬姩鍐呭 */
 .alert-marquee-content {
   flex: 1;
   overflow: hidden;
@@ -189,16 +189,16 @@ onMounted(() => {
   align-items: center;
   padding: 0 80px;
   font-size: 14px;
-  color: #ffcaca;
+  color: #e6bcbc;
   font-weight: 500;
   letter-spacing: 0.5px;
 }
 
 .marquee-item::before {
-  content: '▶';
+  content: '•';
   color: var(--alert-red);
   margin-right: 12px;
-  font-size: 10px;
+  font-size: 12px;
   animation: blink 1.2s infinite;
 }
 
@@ -211,14 +211,14 @@ onMounted(() => {
   }
 }
 
-/* 收起按钮 */
+/* 鏀惰捣鎸夐挳 */
 .marquee-collapse-btn {
   position: absolute;
   right: 15px;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 71, 87, 0.2);
-  border: 1px solid rgba(255, 71, 87, 0.4);
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.36);
   color: var(--alert-red);
   width: 28px;
   height: 28px;
@@ -237,12 +237,12 @@ onMounted(() => {
   color: #fff;
 }
 
-/* 展开按钮 - 固定定位确保可见 */
+/* 灞曞紑鎸夐挳 - 鍥哄畾瀹氫綅纭繚鍙 */
 .marquee-expand-btn {
   position: fixed;
   top: 88px; /* Header(80px) + margin-top(8px) */
-  right: 360px; /* 右侧边栏宽度(340px) + 间距(10px) + 缓冲(10px) */
-  background: rgba(255, 71, 87, 0.9);
+  right: 360px; /* 鍙充晶杈规爮瀹藉害(340px) + 闂磋窛(10px) + 缂撳啿(10px) */
+  background: rgba(239, 68, 68, 0.82);
   border: none;
   color: #fff;
   width: 32px;
@@ -254,7 +254,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.6);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
   transition: all 0.15s ease-out;
 }
 
@@ -263,7 +263,7 @@ onMounted(() => {
   transform: translateY(2px);
 }
 
-/* 展开按钮动画 */
+/* 灞曞紑鎸夐挳鍔ㄧ敾 */
 .expand-btn-enter-active,
 .expand-btn-leave-active {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
@@ -283,3 +283,4 @@ onMounted(() => {
   transform: translateY(0);
 }
 </style>
+

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="data-panel-sidebar">
     <!-- 关键指标监测 - 灾害折叠面板 -->
 
@@ -675,28 +675,28 @@ function renderStationChart(stationName) {
       name: '红色警戒',
       type: 'line',
       data: hours.map(() => wl.red),
-      lineStyle: { color: '#dc2626', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(220, 38, 38, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '橙色警戒',
       type: 'line',
       data: hours.map(() => wl.orange),
-      lineStyle: { color: '#ea580c', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(217, 151, 58, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '黄色警戒',
       type: 'line',
       data: hours.map(() => wl.yellow),
-      lineStyle: { color: '#ca8a04', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(202, 168, 87, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '蓝色警戒',
       type: 'line',
       data: hours.map(() => wl.blue),
-      lineStyle: { color: '#2563eb', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(90, 145, 216, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     // 增水柱状图
@@ -707,8 +707,8 @@ function renderStationChart(stationName) {
       barWidth: 6,
       itemStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(249, 115, 22, 0.7)' },
-          { offset: 1, color: 'rgba(249, 115, 22, 0.15)' }
+          { offset: 0, color: 'rgba(217, 151, 58, 0.58)' },
+          { offset: 1, color: 'rgba(217, 151, 58, 0.12)' }
         ]),
         borderRadius: [2, 2, 0, 0]
       },
@@ -720,14 +720,14 @@ function renderStationChart(stationName) {
       name: isTide ? '总潮位(观测)' : '浪高(观测)',
       type: 'line',
       data: obsData,
-      lineStyle: { color: '#10b981', width: 2 },
+      lineStyle: { color: '#53b07e', width: 2 },
       symbol: 'circle',
       symbolSize: 4,
-      itemStyle: { color: '#10b981' },
+      itemStyle: { color: '#53b07e' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(16, 185, 129, 0.2)' },
-          { offset: 1, color: 'rgba(16, 185, 129, 0.02)' }
+          { offset: 0, color: 'rgba(83, 176, 126, 0.2)' },
+          { offset: 1, color: 'rgba(83, 176, 126, 0.02)' }
         ])
       },
       z: 4
@@ -737,14 +737,14 @@ function renderStationChart(stationName) {
       name: isTide ? '总潮位(预测)' : '浪高(预测)',
       type: 'line',
       data: predData,
-      lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' },
+      lineStyle: { color: '#5a91d8', width: 2, type: 'dashed' },
       symbol: 'circle',
       symbolSize: 4,
-      itemStyle: { color: '#3b82f6' },
+      itemStyle: { color: '#5a91d8' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(59, 130, 246, 0.15)' },
-          { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
+          { offset: 0, color: 'rgba(90, 145, 216, 0.14)' },
+          { offset: 1, color: 'rgba(90, 145, 216, 0.02)' }
         ])
       },
       z: 3
@@ -753,15 +753,20 @@ function renderStationChart(stationName) {
 
   const obsLabel = isTide ? '总潮位(观测)' : '浪高(观测)'
   const predLabel = isTide ? '总潮位(预测)' : '浪高(预测)'
+  const legendAlias = {
+    [obsLabel]: '观测',
+    [predLabel]: '预测',
+    '风暴潮增水': '增水'
+  }
 
   const option = {
-    grid: { left: 38, right: 38, top: 32, bottom: 22 },
+    grid: { left: 54, right: 54, top: 42, bottom: 24 },
     xAxis: {
       type: 'category',
       data: hours,
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
       axisLabel: {
-        color: 'rgba(255,255,255,0.45)', fontSize: 9,
+        color: 'rgba(255,255,255,0.45)', fontSize: 12,
         interval: 5, formatter: v => v.slice(0, 2) + 'h'
       },
       splitLine: { show: false }
@@ -770,28 +775,37 @@ function renderStationChart(stationName) {
       {
         type: 'value',
         name: isTide ? '潮位(m)' : '浪高(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 8 },
+        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 12 },
+        nameLocation: 'middle',
+        nameGap: 40,
         min: val => Math.floor(val.min * 10) / 10,
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 8, formatter: '{value}' },
+        axisLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 10, formatter: '{value}' },
         splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }
       },
       {
         type: 'value',
         name: '增水(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 8 },
+        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 12 },
+        nameLocation: 'middle',
+        nameGap: 36,
         min: 0,
         max: Math.max(surgeHeight * 2, 1),
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(249, 115, 22, 0.5)', fontSize: 8, formatter: '{value}' },
+        axisLabel: { color: 'rgba(217, 151, 58, 0.6)', fontSize: 12, margin: 8, formatter: '{value}' },
         splitLine: { show: false }
       }
     ],
     series,
     legend: {
       data: [obsLabel, predLabel, '风暴潮增水'],
-      top: 0,
-      textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 8 },
+      type: 'plain',
+      top: 4,
+      left: 'center',
+      right: 'auto',
+      itemGap: 14,
+      formatter: name => legendAlias[name] || name,
+      textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
       itemWidth: 10,
       itemHeight: 6
     },
@@ -799,7 +813,7 @@ function renderStationChart(stationName) {
       trigger: 'axis',
       backgroundColor: 'rgba(20, 30, 50, 0.95)',
       borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#e5e7eb', fontSize: 10 },
+      textStyle: { color: '#e5e7eb', fontSize: 12 },
       formatter: params => {
         const time = params[0].axisValue
         let html = `<div style="font-weight:600;margin-bottom:4px">${time}</div>`
@@ -980,28 +994,28 @@ function renderTideChart() {
       name: '红色警戒',
       type: 'line',
       data: allTimes.map(() => wl.red),
-      lineStyle: { color: '#dc2626', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(220, 38, 38, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '橙色警戒',
       type: 'line',
       data: allTimes.map(() => wl.orange),
-      lineStyle: { color: '#ea580c', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(217, 151, 58, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '黄色警戒',
       type: 'line',
       data: allTimes.map(() => wl.yellow),
-      lineStyle: { color: '#ca8a04', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(202, 168, 87, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     {
       name: '蓝色警戒',
       type: 'line',
       data: allTimes.map(() => wl.blue),
-      lineStyle: { color: '#2563eb', width: 1, type: 'dashed' },
+      lineStyle: { color: 'rgba(90, 145, 216, 0.5)', width: 1, type: 'dashed' },
       symbol: 'none', z: 1
     },
     // 风暴潮增水面积图
@@ -1015,8 +1029,8 @@ function renderTideChart() {
       barWidth: 8,
       itemStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(249, 115, 22, 0.7)' },
-          { offset: 1, color: 'rgba(249, 115, 22, 0.15)' }
+          { offset: 0, color: 'rgba(217, 151, 58, 0.58)' },
+          { offset: 1, color: 'rgba(217, 151, 58, 0.12)' }
         ]),
         borderRadius: [2, 2, 0, 0]
       },
@@ -1031,14 +1045,14 @@ function renderTideChart() {
         const point = data.observation.find(d => d.time === t)
         return point ? point.value : null
       }),
-      lineStyle: { color: '#10b981', width: 2.5 },
+      lineStyle: { color: '#53b07e', width: 2.5 },
       symbol: 'circle',
       symbolSize: 6,
-      itemStyle: { color: '#10b981' },
+      itemStyle: { color: '#53b07e' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(16, 185, 129, 0.25)' },
-          { offset: 1, color: 'rgba(16, 185, 129, 0.02)' }
+          { offset: 0, color: 'rgba(83, 176, 126, 0.25)' },
+          { offset: 1, color: 'rgba(83, 176, 126, 0.02)' }
         ])
       },
       z: 4
@@ -1051,55 +1065,69 @@ function renderTideChart() {
         const point = data.prediction.find(d => d.time === t)
         return point ? point.value : null
       }),
-      lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' },
+      lineStyle: { color: '#5a91d8', width: 2, type: 'dashed' },
       symbol: 'circle',
       symbolSize: 5,
-      itemStyle: { color: '#3b82f6' },
+      itemStyle: { color: '#5a91d8' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(59, 130, 246, 0.15)' },
-          { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
+          { offset: 0, color: 'rgba(90, 145, 216, 0.14)' },
+          { offset: 1, color: 'rgba(90, 145, 216, 0.02)' }
         ])
       },
       z: 3
     }
   ]
 
+  const legendAlias = {
+    '总潮位(观测)': '观测',
+    '总潮位(预测)': '预测',
+    '风暴潮增水': '增水'
+  }
+
   const option = {
-    grid: { left: 40, right: 40, top: 35, bottom: 20 },
+    grid: { left: 54, right: 54, top: 44, bottom: 22 },
     xAxis: {
       type: 'category',
       data: allTimes,
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9 },
+      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, interval: 2 },
       splitLine: { show: false }
     },
     yAxis: [
       {
         type: 'value',
         name: '潮位(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
+        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+        nameLocation: 'middle',
+        nameGap: 42,
         min: 0,
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 9, formatter: '{value}' },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: 10, formatter: '{value}' },
         splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }
       },
       {
         type: 'value',
         name: '增水(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 9 },
+        nameTextStyle: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+        nameLocation: 'middle',
+        nameGap: 36,
         min: 0,
         max: 1.5,
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(249, 115, 22, 0.6)', fontSize: 9, formatter: '{value}' },
+        axisLabel: { color: 'rgba(217, 151, 58, 0.62)', fontSize: 12, margin: 8, formatter: '{value}' },
         splitLine: { show: false }
       }
     ],
     series,
     legend: {
       data: ['总潮位(观测)', '总潮位(预测)', '风暴潮增水'],
-      top: 0,
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 9 },
+      top: 4,
+      left: 'center',
+      right: 'auto',
+      itemGap: 14,
+      formatter: name => legendAlias[name] || name,
+      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
       itemWidth: 12,
       itemHeight: 7
     },
@@ -1107,7 +1135,7 @@ function renderTideChart() {
       trigger: 'axis',
       backgroundColor: 'rgba(20, 30, 50, 0.95)',
       borderColor: 'rgba(6, 182, 212, 0.3)',
-      textStyle: { color: '#fff', fontSize: 10 },
+      textStyle: { color: '#fff', fontSize: 12 },
       formatter: function (params) {
         let html = `<div style="font-weight:600;margin-bottom:4px">${params[0].axisValue}</div>`
         params.forEach(p => {
@@ -1141,13 +1169,13 @@ function renderSaltwaterSparkline() {
       type: 'category',
       data: trendData.map(d => d.time),
       axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 8 },
+      axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
       splitLine: { show: false }
     },
     yAxis: {
       type: 'value',
       axisLine: { show: false },
-      axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 8 },
+      axisLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
       splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }
     },
     series: [
@@ -1178,7 +1206,7 @@ function renderSaltwaterSparkline() {
       trigger: 'axis',
       backgroundColor: 'rgba(20, 30, 50, 0.9)',
       borderColor: 'rgba(245, 158, 11, 0.3)',
-      textStyle: { color: '#fff', fontSize: 10 },
+      textStyle: { color: '#fff', fontSize: 12 },
       formatter: (params) => {
         const val = params[1]?.value || params[0]?.value
         return `${params[0].axisValue}<br/>氯度: ${val} mg/L`
@@ -1275,10 +1303,16 @@ onUnmounted(() => {
 <style scoped>
 /* ===== 侧边栏容器 ===== */
 .data-panel-sidebar {
+  --panel-hazard-accent: var(--accent-cyan);
+  --panel-hazard-amber: #d9973a;
+  --panel-hazard-yellow: #d8b14a;
+  --panel-hazard-blue: #5a91d8;
+  --right-panel-border: rgba(79, 179, 216, 0.34);
+  --right-panel-line: rgba(79, 179, 216, 0.5);
   width: 340px;
   flex-shrink: 0;
   background: var(--bg-deepest);
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--right-panel-border);
   display: flex;
   flex-direction: column;
   padding: 8px 10px;
@@ -1291,12 +1325,12 @@ onUnmounted(() => {
 .data-panel-sidebar::-webkit-scrollbar { width: 4px; }
 .data-panel-sidebar::-webkit-scrollbar-track { background: transparent; }
 .data-panel-sidebar::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
-.data-panel-sidebar::-webkit-scrollbar-thumb:hover { background: #10b981; }
+.data-panel-sidebar::-webkit-scrollbar-thumb:hover { background: var(--panel-hazard-accent); }
 
 /* ===== 灾害折叠面板 ===== */
 .disaster-panel {
   background: var(--bg-panel);
-  border: 1px solid var(--border-normal);
+  border: 1px solid var(--right-panel-border);
   border-radius: var(--border-radius);
   overflow: hidden;
   flex-shrink: 0;
@@ -1312,34 +1346,34 @@ onUnmounted(() => {
   left: 15%;
   right: 15%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--right-panel-line) 30%, var(--right-panel-line) 70%, transparent);
   opacity: 0.6;
 }
 
 .disaster-panel.has-warning {
-  border-color: rgba(245, 158, 11, 0.4);
+  border-color: var(--right-panel-border);
 }
 
 .disaster-panel.has-warning::before {
-  background: linear-gradient(90deg, transparent, #f59e0b 30%, #f59e0b 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--right-panel-line) 30%, var(--right-panel-line) 70%, transparent);
 }
 
 /* 咸潮入侵 - 黄色身份色 */
 .disaster-panel.saltwater-type.has-warning {
-  border-color: rgba(251, 191, 36, 0.4);
+  border-color: var(--right-panel-border);
 }
 
 .disaster-panel.saltwater-type.has-warning::before {
-  background: linear-gradient(90deg, transparent, #fbbf24 30%, #fbbf24 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--right-panel-line) 30%, var(--right-panel-line) 70%, transparent);
 }
 
 /* 海水入侵 - 青色身份色 */
 .disaster-panel.seawater-type.has-warning {
-  border-color: rgba(34, 211, 238, 0.4);
+  border-color: var(--right-panel-border);
 }
 
 .disaster-panel.seawater-type.has-warning::before {
-  background: linear-gradient(90deg, transparent, #22d3ee 30%, #22d3ee 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--right-panel-line) 30%, var(--right-panel-line) 70%, transparent);
 }
 
 /* ===== 灾害面板头部 ===== */
@@ -1373,31 +1407,31 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .disaster-icon.storm-wave {
-  background: rgba(0, 229, 255, 0.15);
+  background: rgba(79, 179, 216, 0.15);
   color: var(--accent-cyan);
 }
 
 .disaster-icon.erosion {
-  background: rgba(0, 229, 255, 0.15);
+  background: rgba(79, 179, 216, 0.15);
   color: var(--accent-cyan);
 }
 
 .disaster-icon.saltwater {
-  background: rgba(0, 229, 255, 0.15);
+  background: rgba(79, 179, 216, 0.15);
   color: var(--accent-cyan);
 }
 
 .disaster-icon.seawater {
-  background: rgba(0, 229, 255, 0.15);
+  background: rgba(79, 179, 216, 0.15);
   color: var(--accent-cyan);
 }
 
 .risk-badge {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
@@ -1405,9 +1439,9 @@ onUnmounted(() => {
 }
 
 .risk-badge.normal {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(83, 176, 126, 0.15);
+  color: #53b07e;
+  border-color: rgba(83, 176, 126, 0.3);
 }
 
 .risk-badge.warn {
@@ -1424,7 +1458,7 @@ onUnmounted(() => {
 
 .toggle-arrow {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   transition: transform 0.3s ease;
 }
 
@@ -1455,8 +1489,8 @@ onUnmounted(() => {
 }
 
 .data-card {
-  background: linear-gradient(135deg, rgba(30, 40, 60, 0.6), rgba(20, 30, 50, 0.4));
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(111, 150, 184, 0.24);
   border-radius: 8px;
   padding: 12px;
   position: relative;
@@ -1471,32 +1505,32 @@ onUnmounted(() => {
   left: 0;
   width: 3px;
   height: 100%;
-  background: linear-gradient(180deg, #10b981, #3b82f6);
+  background: linear-gradient(180deg, var(--panel-hazard-accent), var(--panel-hazard-blue));
   opacity: 0;
   transition: opacity 0.3s;
 }
 
 .data-card:hover {
-  border-color: #10b981;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.05));
+  border-color: rgba(79, 179, 216, 0.4);
+  background: rgba(79, 179, 216, 0.08);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 12px rgba(79, 179, 216, 0.15);
 }
 
 .data-card:hover::before { opacity: 1; }
 
 .data-card.warn {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  background: rgba(217, 151, 58, 0.1);
   border-color: rgba(245, 158, 11, 0.4);
 }
 
 .data-card.warn::before {
-  background: linear-gradient(180deg, #f59e0b, #ef4444);
+  background: linear-gradient(180deg, var(--panel-hazard-amber), #ef4444);
   opacity: 1;
 }
 
 .data-card.alarm {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+  background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.4);
 }
 
@@ -1513,16 +1547,16 @@ onUnmounted(() => {
 }
 
 .card-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.card-trend { font-size: 10px; }
+.card-trend { font-size: 12px; }
 .card-trend.up { color: #ef4444; }
-.card-trend.down { color: #10b981; }
+.card-trend.down { color: #53b07e; }
 .card-trend.stable { color: var(--text-muted); }
 
 .card-value {
@@ -1535,18 +1569,18 @@ onUnmounted(() => {
   font-size: 22px;
   font-weight: 700;
   font-family: var(--font-display);
-  color: #10b981;
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  color: var(--status-online);
+  text-shadow: 0 0 8px rgba(83, 176, 126, 0.25);
 }
 
 .data-card.warn .card-value .value {
   color: #f59e0b;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
 }
 
 .data-card.alarm .card-value .value {
   color: #ef4444;
-  text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.25);
 }
 
 .card-value .unit {
@@ -1556,23 +1590,23 @@ onUnmounted(() => {
 }
 
 .card-value .direction {
-  font-size: 11px;
-  color: #3b82f6;
+  font-size: 12px;
+  color: var(--accent-blue);
   margin-left: 4px;
   padding: 2px 6px;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(74, 143, 196, 0.16);
   border-radius: 8px;
   font-weight: 600;
 }
 
 .card-station {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
 }
 
 .card-status-text {
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 6px;
   padding: 3px 8px;
   border-radius: 10px;
@@ -1582,9 +1616,9 @@ onUnmounted(() => {
 }
 
 .card-status-text.normal {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(83, 176, 126, 0.18);
+  color: var(--status-online);
+  border-color: rgba(83, 176, 126, 0.35);
 }
 
 .card-status-text.warn {
@@ -1616,7 +1650,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   position: sticky;
   top: 0;
@@ -1624,19 +1658,19 @@ onUnmounted(() => {
 }
 
 .section-header-bar i {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .section-header-bar.tide {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(0, 229, 255, 0.03));
+  background: linear-gradient(135deg, rgba(79, 179, 216, 0.1), rgba(79, 179, 216, 0.03));
   color: var(--text-secondary);
-  border: 1px solid rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(79, 179, 216, 0.15);
 }
 
 .section-header-bar.wave {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(0, 229, 255, 0.03));
+  background: linear-gradient(135deg, rgba(79, 179, 216, 0.1), rgba(79, 179, 216, 0.03));
   color: var(--text-secondary);
-  border: 1px solid rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(79, 179, 216, 0.15);
 }
 
 /* ===== 面板摘要 ===== */
@@ -1644,7 +1678,7 @@ onUnmounted(() => {
   margin-bottom: 10px;
   padding: 8px 10px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
@@ -1709,7 +1743,7 @@ onUnmounted(() => {
 .summary-item.warn .summary-label  { color: #f59e0b; }
 
 .summary-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -1728,18 +1762,18 @@ onUnmounted(() => {
 }
 
 .summary-sub {
-  font-size: 10px;
+  font-size: 12px;
   color: #f97316;
   font-weight: 600;
 }
 
 .summary-trend {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .summary-trend.up { color: #ef4444; }
-.summary-trend.down { color: #10b981; }
+.summary-trend.down { color: #53b07e; }
 .summary-trend.stable { color: var(--text-muted); }
 
 /* ===== 预警站点列表 ===== */
@@ -1751,7 +1785,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 8px;
@@ -1759,11 +1793,11 @@ onUnmounted(() => {
 
 .section-label i {
   color: #f59e0b;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .station-count {
-  font-size: 10px;
+  font-size: 12px;
   padding: 1px 6px;
   border-radius: 8px;
   background: rgba(239, 68, 68, 0.15);
@@ -1799,7 +1833,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
@@ -1817,29 +1851,33 @@ onUnmounted(() => {
 .station-card-v2 {
   border-radius: 10px;
   overflow: visible;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--right-panel-border);
   background: rgba(255, 255, 255, 0.02);
 }
 
+.station-card-v2.warning-red,
+.station-card-v2.warning-orange,
+.station-card-v2.warning-yellow,
+.station-card-v2.warning-blue {
+  border-color: rgba(79, 179, 216, 0.32);
+  background: rgba(79, 179, 216, 0.05);
+}
+
 .station-card-v2.warning-red {
-  border-color: rgba(220, 38, 38, 0.5);
-  border-left: 3px solid #dc2626;
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(255, 255, 255, 0.02));
+  border-color: rgba(79, 179, 216, 0.32);
+  background: rgba(79, 179, 216, 0.05);
 }
 .station-card-v2.warning-orange {
-  border-color: rgba(234, 88, 12, 0.45);
-  border-left: 3px solid #ea580c;
-  background: linear-gradient(135deg, rgba(234, 88, 12, 0.07), rgba(255, 255, 255, 0.02));
+  border-color: rgba(79, 179, 216, 0.32);
+  background: rgba(79, 179, 216, 0.05);
 }
 .station-card-v2.warning-yellow {
-  border-color: rgba(202, 138, 4, 0.4);
-  border-left: 3px solid #ca8a04;
-  background: linear-gradient(135deg, rgba(202, 138, 4, 0.06), rgba(255, 255, 255, 0.02));
+  border-color: rgba(79, 179, 216, 0.32);
+  background: rgba(79, 179, 216, 0.05);
 }
 .station-card-v2.warning-blue {
-  border-color: rgba(37, 99, 235, 0.35);
-  border-left: 3px solid #2563eb;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(255, 255, 255, 0.02));
+  border-color: rgba(79, 179, 216, 0.32);
+  background: rgba(79, 179, 216, 0.05);
 }
 
 .prediction-grid {
@@ -1862,8 +1900,8 @@ onUnmounted(() => {
 }
 
 .pred-item.station { border-right: 1px solid var(--border-subtle); }
-.pred-item.station i { color: #10b981; }
-.pred-item.time i { color: #22d3ee; }
+.pred-item.station i { color: #53b07e; }
+.pred-item.time i { color: #5a91d8; }
 
 .pred-info {
   display: flex;
@@ -1873,7 +1911,7 @@ onUnmounted(() => {
 }
 
 .pred-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2062,6 +2100,45 @@ onUnmounted(() => {
 .pred-item.tide-peak.border-blue i { color: #3b82f6; }
 .pred-item.tide-peak.border-blue .pred-value.large { color: #60a5fa; }
 
+/* 统一峰值行底板，避免红橙黄蓝大面积铺色造成视觉干扰 */
+.pred-item.tide-peak.border-red,
+.pred-item.tide-peak.border-orange,
+.pred-item.tide-peak.border-yellow,
+.pred-item.tide-peak.border-blue {
+  border-top: 1px solid rgba(79, 179, 216, 0.24);
+  background: linear-gradient(135deg, rgba(79, 179, 216, 0.08), rgba(79, 179, 216, 0.02));
+}
+
+.pred-item.tide-peak.border-red i,
+.pred-item.tide-peak.border-orange i,
+.pred-item.tide-peak.border-yellow i,
+.pred-item.tide-peak.border-blue i {
+  color: var(--accent-cyan);
+}
+
+.pred-item.tide-peak.border-red .pred-value.large,
+.pred-item.tide-peak.border-orange .pred-value.large,
+.pred-item.tide-peak.border-yellow .pred-value.large,
+.pred-item.tide-peak.border-blue .pred-value.large {
+  color: var(--text-primary);
+}
+
+.pred-item.tide-peak.border-red::before,
+.pred-item.tide-peak.border-orange::before,
+.pred-item.tide-peak.border-yellow::before,
+.pred-item.tide-peak.border-blue::before {
+  filter: saturate(0.42);
+  opacity: 0.72;
+}
+
+.pred-item.tide-peak.border-red::after,
+.pred-item.tide-peak.border-orange::after,
+.pred-item.tide-peak.border-yellow::after,
+.pred-item.tide-peak.border-blue::after {
+  filter: saturate(0.42);
+  opacity: 0.62;
+}
+
 .pred-extra {
   display: flex;
   flex-direction: column;
@@ -2071,7 +2148,7 @@ onUnmounted(() => {
 }
 
 .over-text {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -2079,7 +2156,7 @@ onUnmounted(() => {
 
 /* 色标 */
 .color-badge {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 700;
@@ -2107,18 +2184,18 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .obs-item i {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .obs-label {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .obs-value {
@@ -2128,7 +2205,7 @@ onUnmounted(() => {
 }
 
 .dual-badge, .obs-badge, .forecast-badge {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 600;
@@ -2199,7 +2276,7 @@ onUnmounted(() => {
 .peak-blue { fill: #3b82f6; }
 
 .sparkline-hint {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
   flex-shrink: 0;
@@ -2212,7 +2289,7 @@ onUnmounted(() => {
   justify-content: center;
   gap: 5px;
   padding: 6px 8px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
@@ -2227,7 +2304,7 @@ onUnmounted(() => {
 }
 
 .card-detail-toggle i {
-  font-size: 10px;
+  font-size: 12px;
   transition: transform 0.2s;
 }
 
@@ -2257,12 +2334,12 @@ onUnmounted(() => {
   gap: 3px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .mini-tag i {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .mini-tag.peak {
@@ -2310,7 +2387,7 @@ onUnmounted(() => {
 }
 
 .detail-chart-toggle i {
-  font-size: 10px;
+  font-size: 12px;
   transition: transform 0.2s;
 }
 
@@ -2328,7 +2405,7 @@ onUnmounted(() => {
 }
 
 .chart-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #3b82f6;
   display: flex;
@@ -2342,7 +2419,7 @@ onUnmounted(() => {
   border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 4px;
   color: #60a5fa;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
   outline: none;
 }
@@ -2370,11 +2447,11 @@ onUnmounted(() => {
   gap: 6px;
   padding: 5px 8px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: 12px;
   border: 1px solid;
 }
 
-.tide-tag i { font-size: 9px; }
+.tide-tag i { font-size: 12px; }
 .tide-tag .tag-label { opacity: 0.8; }
 .tide-tag .tag-value { font-weight: 600; }
 
@@ -2411,7 +2488,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 500;
 }
@@ -2432,14 +2509,14 @@ onUnmounted(() => {
   background: rgba(251, 146, 60, 0.15);
   border: 1px solid rgba(251, 146, 60, 0.35);
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: #fb923c;
   transition: background-color 0.2s ease;
 }
 
 .area-tag:hover { background: rgba(251, 146, 60, 0.25); }
-.area-tag i { font-size: 9px; opacity: 0.8; }
+.area-tag i { font-size: 12px; opacity: 0.8; }
 
 /* ===== 海岸侵蚀 - 视频区域 ===== */
 .video-container {
@@ -2481,7 +2558,7 @@ onUnmounted(() => {
   position: absolute;
   top: 8px;
   right: 8px;
-  font-size: 10px;
+  font-size: 12px;
   padding: 3px 8px;
   border-radius: 10px;
   font-weight: 600;
@@ -2491,9 +2568,9 @@ onUnmounted(() => {
 }
 
 .video-status.online {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(83, 176, 126, 0.2);
+  color: #53b07e;
+  border: 1px solid rgba(83, 176, 126, 0.3);
 }
 
 .video-status.offline {
@@ -2511,7 +2588,7 @@ onUnmounted(() => {
 .station-btn {
   flex: 1;
   padding: 5px 4px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-subtle);
@@ -2528,7 +2605,7 @@ onUnmounted(() => {
   font-size: 5px;
 }
 
-.station-btn i.online { color: #10b981; }
+.station-btn i.online { color: #53b07e; }
 .station-btn i.offline { color: #6b7280; }
 
 .station-btn:hover {
@@ -2557,7 +2634,7 @@ onUnmounted(() => {
 .mini-card {
   padding: 10px;
   background: linear-gradient(135deg, rgba(30, 40, 60, 0.6), rgba(20, 30, 50, 0.4));
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(83, 176, 126, 0.15);
   border-radius: 8px;
   position: relative;
   overflow: hidden;
@@ -2589,7 +2666,7 @@ onUnmounted(() => {
   transition: opacity 0.3s;
 }
 
-.mini-card.normal::before { background: #10b981; }
+.mini-card.normal::before { background: #53b07e; }
 .mini-card.warn::before { background: #f59e0b; opacity: 1; }
 .mini-card.alarm::before { background: #ef4444; opacity: 1; }
 
@@ -2604,7 +2681,7 @@ onUnmounted(() => {
 }
 
 .mini-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 4px;
   font-weight: 500;
@@ -2614,8 +2691,8 @@ onUnmounted(() => {
   font-size: 20px;
   font-weight: 700;
   font-family: var(--font-display);
-  color: #10b981;
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  color: #53b07e;
+  text-shadow: 0 0 8px rgba(83, 176, 126, 0.3);
   line-height: 1;
 }
 
@@ -2630,7 +2707,7 @@ onUnmounted(() => {
 }
 
 .mini-value .unit {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--text-secondary);
   margin-left: 2px;
@@ -2638,7 +2715,7 @@ onUnmounted(() => {
 }
 
 .mini-threshold {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -2651,7 +2728,7 @@ onUnmounted(() => {
 }
 
 .sparkline-title {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 4px;
 }
@@ -2676,7 +2753,7 @@ onUnmounted(() => {
   padding: 6px 8px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
-  font-size: 11px;
+  font-size: 12px;
   transition: background 0.2s;
 }
 
@@ -2698,13 +2775,13 @@ onUnmounted(() => {
 }
 
 .intake-value .unit {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-left: 1px;
 }
 
 .intake-badge {
-  font-size: 10px;
+  font-size: 12px;
   padding: 2px 6px;
   border-radius: 8px;
   font-weight: 600;
@@ -2712,9 +2789,9 @@ onUnmounted(() => {
 }
 
 .intake-badge.normal {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(83, 176, 126, 0.15);
+  color: #53b07e;
+  border-color: rgba(83, 176, 126, 0.3);
 }
 
 .intake-badge.warn {
@@ -2744,7 +2821,7 @@ onUnmounted(() => {
 }
 
 .intrusion-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
   min-width: 55px;
@@ -2760,13 +2837,13 @@ onUnmounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #22d3ee, #06b6d4);
+  background: linear-gradient(90deg, #5a91d8, #4fb3d8);
   border-radius: 2px;
   transition: width 0.5s ease;
 }
 
 .progress-fill.area {
-  background: linear-gradient(90deg, #3b82f6, #22d3ee);
+  background: linear-gradient(90deg, #3b82f6, #5a91d8);
 }
 
 .intrusion-value {
@@ -2779,7 +2856,7 @@ onUnmounted(() => {
 }
 
 .intrusion-value .unit {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
 }
@@ -2798,7 +2875,7 @@ onUnmounted(() => {
   gap: 8px;
   padding: 5px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   background: rgba(255, 255, 255, 0.02);
   transition: background 0.2s;
 }
@@ -2813,7 +2890,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.well-dot.normal { background: #10b981; box-shadow: 0 0 4px rgba(16, 185, 129, 0.5); }
+.well-dot.normal { background: #53b07e; box-shadow: 0 0 4px rgba(83, 176, 126, 0.5); }
 .well-dot.warn { background: #f59e0b; box-shadow: 0 0 4px rgba(245, 158, 11, 0.5); }
 .well-dot.alarm { background: #ef4444; box-shadow: 0 0 4px rgba(239, 68, 68, 0.5); }
 
@@ -2829,7 +2906,7 @@ onUnmounted(() => {
 }
 
 .well-value .unit {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-left: 1px;
 }
@@ -2875,21 +2952,21 @@ onUnmounted(() => {
 }
 
 .stat-mini-value .unit {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   font-weight: 400;
   margin-left: 1px;
 }
 
 .stat-mini-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
-.stat-mini.online .stat-mini-value { color: #10b981; }
+.stat-mini.online .stat-mini-value { color: #53b07e; }
 .stat-mini.alert .stat-mini-value { color: #ef4444; }
-.stat-mini.data .stat-mini-value { color: #22d3ee; }
+.stat-mini.data .stat-mini-value { color: #5a91d8; }
 
 .quality-row {
   display: flex;
@@ -2898,7 +2975,7 @@ onUnmounted(() => {
 }
 
 .quality-label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -2913,16 +2990,18 @@ onUnmounted(() => {
 
 .quality-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #53b07e, #7bbf9f);
   border-radius: 2px;
   transition: width 0.5s;
 }
 
 .quality-value {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  color: #10b981;
+  color: #53b07e;
   min-width: 35px;
   text-align: right;
 }
 </style>
+
+
