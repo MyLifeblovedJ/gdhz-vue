@@ -1377,23 +1377,23 @@ onUnmounted(() => {
 }
 
 .disaster-icon.storm-wave {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
 }
 
 .disaster-icon.erosion {
-  background: rgba(251, 146, 60, 0.2);
-  color: #fb923c;
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
 }
 
 .disaster-icon.saltwater {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
 }
 
 .disaster-icon.seawater {
-  background: rgba(6, 182, 212, 0.2);
-  color: #22d3ee;
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
 }
 
 .risk-badge {
@@ -1628,15 +1628,15 @@ onUnmounted(() => {
 }
 
 .section-header-bar.tide {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(0, 229, 255, 0.03));
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 229, 255, 0.15);
 }
 
 .section-header-bar.wave {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(6, 182, 212, 0.05));
-  color: #22d3ee;
-  border: 1px solid rgba(6, 182, 212, 0.2);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.1), rgba(0, 229, 255, 0.03));
+  color: var(--text-secondary);
+  border: 1px solid rgba(0, 229, 255, 0.15);
 }
 
 /* ===== 面板摘要 ===== */
@@ -1652,23 +1652,23 @@ onUnmounted(() => {
 }
 
 .panel-summary.summary-storm-wave {
-  border-color: rgba(59, 130, 246, 0.25);
-  background: rgba(59, 130, 246, 0.08);
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .panel-summary.summary-erosion {
-  border-color: rgba(251, 146, 60, 0.25);
-  background: rgba(251, 146, 60, 0.08);
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .panel-summary.summary-saltwater {
-  border-color: rgba(245, 158, 11, 0.25);
-  background: rgba(245, 158, 11, 0.08);
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .panel-summary.summary-seawater {
-  border-color: rgba(6, 182, 212, 0.25);
-  background: rgba(6, 182, 212, 0.08);
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 /* P0-1.2 摘要文本中的关键数值高亮 */
@@ -1676,10 +1676,10 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--text-primary);
 }
-.panel-summary.summary-storm-wave strong { color: #60a5fa; }
-.panel-summary.summary-erosion strong { color: #fb923c; }
-.panel-summary.summary-saltwater strong { color: #fbbf24; }
-.panel-summary.summary-seawater strong { color: #22d3ee; }
+.panel-summary.summary-storm-wave strong,
+.panel-summary.summary-erosion strong,
+.panel-summary.summary-saltwater strong,
+.panel-summary.summary-seawater strong { color: var(--text-primary); }
 
 /* ===== 摘要指标行 ===== */
 .summary-row {
@@ -1921,7 +1921,7 @@ onUnmounted(() => {
 /* 前景波浪 —— 缓慢正弦波 */
 .pred-item.tide-peak:not(.wave-type)::before {
   height: 24px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.04)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.02)'/%3E%3C/svg%3E") repeat-x;
   background-size: 500px 24px;
   animation: tideSlide 8s ease-in-out 3;
 }
@@ -1929,7 +1929,7 @@ onUnmounted(() => {
 /* 背景波浪 —— 更慢的反向缓波 */
 .pred-item.tide-peak:not(.wave-type)::after {
   height: 18px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.025)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.012)'/%3E%3C/svg%3E") repeat-x;
   background-size: 400px 18px;
   animation: tideSlide 12s ease-in-out 3 reverse;
 }
@@ -1938,7 +1938,7 @@ onUnmounted(() => {
 /* 前景：急浪（更尖的波峰、更短波长、更快） */
 .pred-item.tide-peak.wave-type::before {
   height: 28px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.05)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.025)'/%3E%3C/svg%3E") repeat-x;
   background-size: 350px 28px;
   animation: chopWave 3.5s linear 3;
 }
@@ -1946,7 +1946,7 @@ onUnmounted(() => {
 /* 中景：涌浪（中速反向） */
 .pred-item.tide-peak.wave-type::after {
   height: 20px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.035)'/%3E%3C/svg%3E") repeat-x;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(255%2C255%2C255%2C0.018)'/%3E%3C/svg%3E") repeat-x;
   background-size: 280px 20px;
   animation: chopWave 5s linear 3 reverse;
 }

@@ -904,11 +904,12 @@ onUnmounted(() => {
 /* ===== 预警面板 ===== */
 /* P0-1.4 面板标题颜色区分 — 预警面板使用红色系身份色 */
 .alert-panel::before {
-  background: linear-gradient(90deg, transparent, #ef4444 30%, #ef4444 70%, transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-cyan) 30%, var(--accent-cyan) 70%, transparent);
+  opacity: 0.5;
 }
 
 .alert-panel .panel-title {
-  color: #f87171;
+  color: var(--text-secondary);
 }
 
 .alert-panel .panel-header {
@@ -1038,26 +1039,28 @@ onUnmounted(() => {
 .risk-panel::before {
   background: linear-gradient(90deg,
     transparent,
-    #f59e0b 30%,
-    #f59e0b 70%,
+    var(--accent-cyan) 30%,
+    var(--accent-cyan) 70%,
     transparent);
+  opacity: 0.5;
 }
 
 .risk-panel .panel-title {
-  color: #f59e0b;
+  color: var(--text-secondary);
 }
 
 /* ===== 决策建议面板 ===== */
 .decision-panel::before {
   background: linear-gradient(90deg,
     transparent,
-    #10b981 30%,
-    #10b981 70%,
+    var(--accent-cyan) 30%,
+    var(--accent-cyan) 70%,
     transparent);
+  opacity: 0.5;
 }
 
 .decision-panel .panel-title {
-  color: #10b981;
+  color: var(--text-secondary);
 }
 
 /* 应急响应卡片（亮色设计） */
@@ -1073,25 +1076,25 @@ onUnmounted(() => {
 .response-card.level-1 {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05));
   border: 1px solid rgba(239, 68, 68, 0.5);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
 }
 
 .response-card.level-2 {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(249, 115, 22, 0.05));
   border: 1px solid rgba(249, 115, 22, 0.5);
-  box-shadow: 0 0 16px rgba(249, 115, 22, 0.25);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
 }
 
 .response-card.level-3 {
   background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(234, 179, 8, 0.05));
   border: 1px solid rgba(234, 179, 8, 0.5);
-  box-shadow: 0 0 16px rgba(234, 179, 8, 0.25);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.15);
 }
 
 .response-card.level-4 {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.03));
   border: 1px solid rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.10);
 }
 
 /* 顶部：标题 + 指示灯 */
@@ -1201,8 +1204,8 @@ onUnmounted(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent-cyan);
   font-size: 10px;
   font-weight: 600;
   display: flex;
@@ -1241,9 +1244,9 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: #10b981;
-  color: #10b981;
+  background: rgba(0, 229, 255, 0.1);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
 }
 
 @media (prefers-reduced-motion: reduce) {

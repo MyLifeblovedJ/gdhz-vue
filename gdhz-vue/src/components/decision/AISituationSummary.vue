@@ -730,10 +730,10 @@ onUnmounted(() => {
 
 /* AI研判区块 - 科技感设计 */
 .judgment-section {
-  background: linear-gradient(180deg, 
-    rgba(6, 182, 212, 0.08) 0%, 
+  background: linear-gradient(180deg,
+    rgba(0, 229, 255, 0.04) 0%,
     rgba(15, 23, 42, 0.95) 100%);
-  border: 1px solid rgba(6, 182, 212, 0.25);
+  border: 1px solid rgba(0, 229, 255, 0.15);
   border-radius: 12px;
   position: relative;
   overflow: hidden;
@@ -747,12 +747,12 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, 
-    transparent, 
-    #06b6d4 20%, 
-    #8b5cf6 50%, 
-    #06b6d4 80%, 
+  background: linear-gradient(90deg,
+    transparent,
+    var(--accent-cyan) 30%,
+    var(--accent-cyan) 70%,
     transparent);
+  opacity: 0.6;
 }
 
 .level-badge {
@@ -944,26 +944,26 @@ onUnmounted(() => {
 }
 
 /* 不同类型的颜色主题 */
-.metric-tag.typhoon { border-color: rgba(249, 115, 22, 0.3); }
-.metric-tag.typhoon i { color: #f97316; }
-.metric-tag.typhoon .value { color: #fb923c; }
+.metric-tag.typhoon { border-color: rgba(0, 229, 255, 0.2); }
+.metric-tag.typhoon i { color: var(--accent-cyan); }
+.metric-tag.typhoon .value { color: var(--text-primary); }
 
-.metric-tag.tide { border-color: rgba(59, 130, 246, 0.3); }
-.metric-tag.tide i { color: #3b82f6; }
-.metric-tag.tide .value { color: #60a5fa; }
+.metric-tag.tide { border-color: rgba(0, 229, 255, 0.2); }
+.metric-tag.tide i { color: var(--accent-cyan); }
+.metric-tag.tide .value { color: var(--text-primary); }
 .metric-tag.tide.danger { 
   border-color: rgba(239, 68, 68, 0.4); 
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
 }
 .metric-tag.tide.danger i, .metric-tag.tide.danger .value { color: #f87171; }
 
-.metric-tag.time { border-color: rgba(139, 92, 246, 0.3); }
-.metric-tag.time i { color: #8b5cf6; }
-.metric-tag.time .value { color: #a78bfa; }
+.metric-tag.time { border-color: rgba(0, 229, 255, 0.2); }
+.metric-tag.time i { color: var(--accent-cyan); }
+.metric-tag.time .value { color: var(--text-primary); }
 
-.metric-tag.risk { border-color: rgba(234, 179, 8, 0.3); }
-.metric-tag.risk i { color: #eab308; }
-.metric-tag.risk .value { color: #facc15; }
+.metric-tag.risk { border-color: rgba(0, 229, 255, 0.2); }
+.metric-tag.risk i { color: var(--accent-cyan); }
+.metric-tag.risk .value { color: var(--text-primary); }
 .metric-tag.risk.danger { 
   border-color: rgba(239, 68, 68, 0.4); 
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
@@ -1050,16 +1050,16 @@ onUnmounted(() => {
   justify-content: center;
   gap: 6px;
   padding: 8px;
-  background: rgba(139, 92, 246, 0.08);
+  background: rgba(0, 229, 255, 0.06);
   font-size: 10px;
-  color: #8b5cf6;
+  color: rgba(0, 229, 255, 0.6);
 }
 
 /* ========== 第一类：灾害因素卡片 ========== */
 .factor-card {
   margin: 12px;
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(249, 115, 22, 0.04));
-  border: 1px solid rgba(249, 115, 22, 0.3);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.06), rgba(0, 229, 255, 0.02));
+  border: 1px solid rgba(0, 229, 255, 0.2);
   border-radius: 10px;
   overflow: hidden;
 }
@@ -1069,12 +1069,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(249, 115, 22, 0.1);
-  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
+  background: rgba(0, 229, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.15);
 }
 
 .factor-header i {
-  color: #f97316;
+  color: var(--accent-cyan);
   font-size: 16px;
 }
 
@@ -1247,7 +1247,7 @@ onUnmounted(() => {
 .history-reference {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed rgba(234, 179, 8, 0.3);
+  border-top: 1px dashed rgba(0, 229, 255, 0.2);
 }
 
 .history-ref-header {
@@ -1255,14 +1255,14 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 10px;
-  background: rgba(234, 179, 8, 0.1);
+  background: rgba(0, 229, 255, 0.06);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .history-ref-header:hover {
-  background: rgba(234, 179, 8, 0.15);
+  background: rgba(0, 229, 255, 0.1);
 }
 
 .history-ref-header .header-left {
@@ -1272,7 +1272,7 @@ onUnmounted(() => {
 }
 
 .history-ref-header .header-left i {
-  color: #eab308;
+  color: var(--accent-cyan);
   font-size: 12px;
 }
 
@@ -1309,8 +1309,8 @@ onUnmounted(() => {
 
 /* 摘要信息 */
 .history-ref-summary {
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.2);
+  background: rgba(0, 229, 255, 0.04);
+  border: 1px solid rgba(0, 229, 255, 0.15);
   border-radius: 8px;
   padding: 10px;
   margin-top: 8px;
