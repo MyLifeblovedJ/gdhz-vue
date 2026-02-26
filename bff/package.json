@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node src/app.js",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "verify:stage1": "node scripts/stage1-closeout-verify.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

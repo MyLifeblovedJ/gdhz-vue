@@ -39,8 +39,12 @@ const catalogService = new AionUiCatalogService({
 const aionuiClient = new AionUiClient({
   catalogService,
 })
-const sessionRepository = new SessionRepository()
-const messageRepository = new MessageRepository()
+const sessionRepository = new SessionRepository({
+  filePath: config.ai.sessionStoreFile,
+})
+const messageRepository = new MessageRepository({
+  filePath: config.ai.messageStoreFile,
+})
 const aiService = new AiService({
   aionuiClient,
   sessionRepository,
@@ -86,12 +90,14 @@ void aiService.warmup().then(
 )
 
 process.on('SIGINT', () => {
+  aiService.shutdown()
   server.close(() => {
     process.exit(0)
   })
 })
 
 process.on('SIGTERM', () => {
+  aiService.shutdown()
   server.close(() => {
     process.exit(0)
   })

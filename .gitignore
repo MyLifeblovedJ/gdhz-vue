@@ -30,6 +30,7 @@ Thumbs.db
 *.local
 .env.local
 .env.*.local
+/bff/data/
 
 # 辅助工具和临时文件
 .agent/

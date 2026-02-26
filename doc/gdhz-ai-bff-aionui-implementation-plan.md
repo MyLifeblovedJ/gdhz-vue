@@ -582,8 +582,8 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 ### B. 尚未完成或待专项验证
 
 - [ ] 阶段0“协议文档产物”未单独沉淀为独立 PoC 文档（当前以实现代码为准）。
-- [ ] `auth-expired -> refresh/login -> WS 重建` 的“强制过期演练”需实机验证。
-- [ ] “双用户并发压测 + 尾包干扰场景”需按验收脚本专项验证。
+- [x] `auth-expired -> refresh/login -> WS 重建` 的“强制过期演练”已实机验证通过（见 `doc/verification/stage1-closeout-2026-02-26_14-49-59.json`）。
+- [x] “双用户并发压测 + 尾包干扰场景”已按验收脚本验证通过（见 `doc/verification/stage1-closeout-2026-02-26_14-49-59.json`）。
 
 ## 阶段 1 增量执行状态（2026-02-26 晚）
 
@@ -599,14 +599,14 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 
 ### B. 当前阶段定位
 
-> 当前处于“阶段1收尾”，主干能力与部署链路已可用，下一步应完成专项验证后再进入阶段2。
+> 阶段1收尾专项验证已完成，主干能力、部署链路与稳定性验证均可用，可进入阶段2准备项。
 
 ### C. 下一步准备清单（建议按顺序执行）
 
 1. 阶段1收尾验证：
-   - [ ] 执行“强制 token 过期演练”，验证 `auth-expired -> refresh/login -> WS 重建` 全链路。
-   - [ ] 执行双用户并发压测（不同 `x-user-id`）并记录“不串话”证据。
-   - [ ] 执行“尾包干扰”场景并确认 `finish cooldown` 策略稳定。
+   - [x] 执行“强制 token 过期演练”，验证 `auth-expired -> refresh/login -> WS 重建` 全链路。
+   - [x] 执行双用户并发压测（不同 `x-user-id`）并记录“不串话”证据。
+   - [x] 执行“尾包干扰”场景并确认 `finish cooldown` 策略稳定。
 2. 文档固化：
    - [ ] 产出独立 PoC 协议文档（事件名、入参、回调、完成信号、错误格式），补齐阶段0产物缺口。
 3. 阶段2启动准备：
@@ -661,6 +661,7 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 ### 5) 稳定性与隔离
 
 - [ ] 两个不同用户标识并发请求（`x-user-id` 不同）不串话
+- [ ] 同会话连发（第二问在第一问未完成时入队）不出现尾包干扰
 - [ ] 人为断开/重启 AionUi 后，BFF 能恢复连接并继续可用
 
 ## 阶段 1 本地自测记录（2026-02-26）
@@ -675,12 +676,60 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - [x] `POST /api/ai/summary/current`（`selection.backendKey=codex`）可稳定返回 `summaryText`（默认模型 `gpt-5.2-codex`）。
 - [x] `POST /api/ai/chat`（`selection.backendKey=codex`）可稳定返回真实回复（非 mock）。
 - [x] 连通性补充验证：配置 dummy 密码时，`summary/chat` 返回 `Invalid username or password`（证明 BFF -> AionUi 登录校验路径可达）。
+- [x] 阶段1专项验证脚本已落地：`bff/scripts/stage1-closeout-verify.mjs`（命令：`npm run verify:stage1`）。
+- [x] 强制过期演练通过：`auth-expired -> refresh/login -> WS 重建`。
+- [x] 双用户并发隔离通过：同 `chatSessionId` + 不同 `x-user-id`，返回不串话。
+- [x] 尾包干扰场景通过：同会话排队请求下第二问返回正确 token，不混入第一问尾流。
+- [x] 最新专项验证报告：`doc/verification/stage1-closeout-2026-02-26_14-49-59.json`（`PASS`）。
+
+## 阶段 1.5 会话治理与运维加固（2026-02-26）
+
+### 已完成
+
+- [x] 前端 `chatSessionId` 本地持久化与刷新恢复：
+  - `localStorage` 键：`gdhz.ai.chatSession.v1`
+  - 刷新后自动调用 `/api/ai/history` 回放历史。
+- [x] 前端 `x-user-id` 本地持久化，避免刷新后用户身份漂移：
+  - `localStorage` 键：`gdhz.ai.userId.v1`
+- [x] BFF 会话映射持久化：
+  - `bff/data/ai-sessions.json`
+- [x] BFF 消息历史持久化：
+  - `bff/data/ai-messages.json`
+- [x] 会话自动回收（释放 AionUi 运行态任务）：
+  - 阈值：`AI_SESSION_IDLE_RELEASE_MS`（默认 `1800000`）
+  - 扫描：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（默认 `60000`）
+  - 状态：`active/error/released`
+- [x] AionUi 资源保护与自愈：
+  - `Restart=always`
+  - `MemoryHigh=3584M`
+  - `MemoryMax=5120M`
+  - `TasksMax=320`
+- [x] 主机内存回压能力：
+  - `swapfile=8G`
+  - `vm.swappiness=10`
+  - `vm.vfs_cache_pressure=50`
+- [x] BFF systemd 常驻 + `EnvironmentFile` 托管敏感配置：
+  - 服务：`/etc/systemd/system/gdhz-bff.service`
+  - 环境：`/etc/gdhz/gdhz-bff.env`
+
+### 关键决策固化
+
+- 会话创建条件：
+  - 无历史会话 ID 时创建新会话
+  - 切换供应商/模型后创建新会话
+- 刷新行为：
+  - 默认恢复同一会话（非新建）
+- 过期与回收：
+  - 空闲会话释放运行态，但保留历史并可继续话题
+- 历史继续：
+  - 依赖 `tenantId + userId + chatSessionId` 三元组定位
+  - BFF 重启后仍可恢复（会话/消息已落盘）
 
 ## 阶段 2（下一期）
 
 - 改为 SSE/WS 前端流式渲染（打字效果）。
 - 增加 `/api/ai/confirm` 处理工具调用审批。
-- 历史查询分页、会话管理（重命名/删除）。
+- 历史查询分页、会话管理（重命名/删除）、后台清理策略配置化（按租户/用户上限）。
 
 ## 阶段 3（后续）
 

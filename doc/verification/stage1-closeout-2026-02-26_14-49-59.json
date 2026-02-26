@@ -1,0 +1,52 @@
+{
+  "startedAt": "2026-02-26T14:48:21.720Z",
+  "environment": {
+    "bffBaseUrl": "http://127.0.0.1:3301",
+    "aionuiBaseUrl": "http://127.0.0.1:25808",
+    "tenantId": "gd",
+    "preferredBackends": [
+      "gemini",
+      "codex"
+    ],
+    "heartbeatWaitMs": 36000,
+    "requestTimeoutMs": 180000,
+    "selectedProvider": {
+      "backend": "gemini",
+      "backendKey": "gemini",
+      "currentModelId": "auto",
+      "modelCount": 7
+    }
+  },
+  "checks": {
+    "authExpiredRecovery": {
+      "pass": true,
+      "userId": "verify-auth-4ccfa591",
+      "chatSessionId": "verify-auth-session-4ccfa591",
+      "waitMs": 36000,
+      "beforeLatencyMs": 9009,
+      "afterLatencyMs": 5495,
+      "invalidation": {
+        "hasCsrfToken": true,
+        "cookieCount": 2,
+        "message": "Password changed successfully"
+      }
+    },
+    "dualUserIsolation": {
+      "pass": true,
+      "sharedSessionId": "verify-shared-session-9c5877e4",
+      "userA": "verify-user-a-9c5877e4",
+      "userB": "verify-user-b-9c5877e4",
+      "latencyA": 16508,
+      "latencyB": 9244
+    },
+    "tailPacketCooldown": {
+      "pass": true,
+      "userId": "verify-tail-3ed8559a",
+      "chatSessionId": "verify-tail-session-3ed8559a",
+      "firstLatencyMs": 10490,
+      "secondLatencyMs": 29214
+    }
+  },
+  "passed": true,
+  "finishedAt": "2026-02-26T14:49:59.103Z"
+}

@@ -1,11 +1,34 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const USER_ID_STORAGE_KEY = 'gdhz.ai.userId.v1'
+
+function getLocalUserId() {
+  try {
+    const existing = window.localStorage.getItem(USER_ID_STORAGE_KEY)
+    if (existing) return existing
+    const next = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `gdhz-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+    window.localStorage.setItem(USER_ID_STORAGE_KEY, next)
+    return next
+  } catch {
+    return 'anonymous'
+  }
+}
+
+function buildRequestHeaders(extraHeaders = {}) {
+  return {
+    ...extraHeaders,
+    'x-tenant-id': 'gdhz',
+    'x-user-id': getLocalUserId(),
+  }
+}
 
 async function requestJson(path, payload) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
-    headers: {
+    headers: buildRequestHeaders({
       'Content-Type': 'application/json',
-    },
+    }),
     body: JSON.stringify(payload || {}),
   })
 
@@ -45,7 +68,9 @@ export async function fetchCurrentSummary({
 }
 
 export async function fetchChatHistory(chatSessionId) {
-  const response = await fetch(`${API_BASE_URL}/ai/history?chatSessionId=${encodeURIComponent(chatSessionId || '')}`)
+  const response = await fetch(`${API_BASE_URL}/ai/history?chatSessionId=${encodeURIComponent(chatSessionId || '')}`, {
+    headers: buildRequestHeaders(),
+  })
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
@@ -57,7 +82,9 @@ export async function fetchChatHistory(chatSessionId) {
 }
 
 export async function fetchAICatalog() {
-  const response = await fetch(`${API_BASE_URL}/ai/catalog`)
+  const response = await fetch(`${API_BASE_URL}/ai/catalog`, {
+    headers: buildRequestHeaders(),
+  })
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {

@@ -7,10 +7,37 @@ export class AiService {
     this.sessionRepository = sessionRepository
     this.messageRepository = messageRepository
     this.conversationLocks = new Map()
+    this.recyclerTimer = null
+    this.releasingIdleSessions = false
   }
 
   async warmup() {
     await this.aionuiClient.ensureReady()
+    this.startSessionRecycler()
+  }
+
+  shutdown() {
+    if (this.recyclerTimer) {
+      clearInterval(this.recyclerTimer)
+      this.recyclerTimer = null
+    }
+  }
+
+  startSessionRecycler() {
+    if (this.recyclerTimer) return
+    const intervalMs = Math.max(15_000, Number(config.ai.recycleScanIntervalMs || 60_000))
+    void this.releaseIdleSessions().catch((error) => {
+      console.warn('[ai-service] initial release idle sessions failed:', normalizeErrorMessage(error, 'release failed'))
+    })
+    this.recyclerTimer = setInterval(() => {
+      void this.releaseIdleSessions().catch((error) => {
+        console.warn('[ai-service] release idle sessions failed:', normalizeErrorMessage(error, 'release failed'))
+      })
+    }, intervalMs)
+
+    if (typeof this.recyclerTimer.unref === 'function') {
+      this.recyclerTimer.unref()
+    }
   }
 
   async chat({ tenantId, userId, chatSessionId, message, context, selection }) {
@@ -23,6 +50,7 @@ export class AiService {
       userId,
       chatSessionId,
     })
+    this.sessionRepository.markActive(session)
     this.sessionRepository.syncSelection(session, {
       backendKey: resolvedSelection.backendKey,
       backend: resolvedSelection.backend,
@@ -90,6 +118,37 @@ export class AiService {
         providerId: session.providerId,
         customAgentId: session.customAgentId,
       },
+    }
+  }
+
+  async releaseIdleSessions() {
+    if (this.releasingIdleSessions) return
+    this.releasingIdleSessions = true
+
+    try {
+      const idleBefore = Date.now() - Math.max(60_000, Number(config.ai.sessionIdleReleaseMs || 30 * 60 * 1000))
+      const targets = this.sessionRepository.listIdleSessions({ idleBefore })
+      if (!targets.length) return
+
+      for (const session of targets) {
+        if (this.conversationLocks.has(session.conversationId)) {
+          continue
+        }
+
+        try {
+          await this.runConversationTask(session.conversationId, async () => {
+            await this.aionuiClient.resetConversation({ conversationId: session.conversationId })
+            this.sessionRepository.markReleased(session)
+          })
+        } catch (error) {
+          console.warn(
+            `[ai-service] release conversation failed: ${session.conversationId}`,
+            normalizeErrorMessage(error, 'unknown error')
+          )
+        }
+      }
+    } finally {
+      this.releasingIdleSessions = false
     }
   }
 

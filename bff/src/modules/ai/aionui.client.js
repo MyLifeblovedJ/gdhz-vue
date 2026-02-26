@@ -474,6 +474,16 @@ export class AionUiClient {
     }
   }
 
+  async resetConversation({ conversationId }) {
+    if (!conversationId) return
+    await this.ensureReady()
+    await this.invokeBridgeProvider(
+      'reset-conversation',
+      { id: conversationId },
+      { timeoutMs: 10_000 }
+    )
+  }
+
   async emitBridgeEvent(name, data) {
     await this.ensureWebSocket()
     this.sendRaw({ name, data })
@@ -548,8 +558,12 @@ export class AionUiClient {
 
     const replyPromise = this.waitForReply({
       conversationId,
+      msgId,
       timeouts,
     })
+    // waitForReply may reject before provider callback returns;
+    // attach a sink handler early to avoid unhandled rejection crash.
+    void replyPromise.catch(() => undefined)
 
     let sendResult = null
     try {
@@ -587,19 +601,22 @@ export class AionUiClient {
     return replyPromise
   }
 
-  waitForReply({ conversationId, timeouts }) {
+  waitForReply({ conversationId, msgId, timeouts }) {
     return new Promise((resolve, reject) => {
       const chunks = []
       let finished = false
       let gotContent = false
+      let gotFinish = false
       let firstChunkTimer = null
       let idleTimer = null
       let totalTimer = null
+      let finishTimer = null
 
       const clearTimers = () => {
         if (firstChunkTimer) clearTimeout(firstChunkTimer)
         if (idleTimer) clearTimeout(idleTimer)
         if (totalTimer) clearTimeout(totalTimer)
+        if (finishTimer) clearTimeout(finishTimer)
       }
 
       const finish = (callback) => {
@@ -623,12 +640,24 @@ export class AionUiClient {
         }, timeouts.idleTimeoutMs)
       }
 
+      const scheduleFinish = () => {
+        if (finishTimer) {
+          clearTimeout(finishTimer)
+        }
+        finishTimer = setTimeout(() => {
+          finish(() => resolve(chunks.join('')))
+        }, timeouts.finishCooldownMs)
+      }
+
       const onStream = (message) => {
         if (!message || typeof message !== 'object') return
         if (message.conversation_id !== conversationId) return
 
-        // AionUi may emit stream chunks with regenerated msg_id.
-        // Conversation-level serialization already guarantees request isolation.
+        // Guard by both conversation_id and msg_id to prevent late chunks
+        // from the previous turn leaking into the next queued request.
+        const messageMsgId = typeof message.msg_id === 'string' ? message.msg_id : ''
+        if (!messageMsgId || messageMsgId !== msgId) return
+
         if (firstChunkTimer) {
           clearTimeout(firstChunkTimer)
           firstChunkTimer = null
@@ -638,13 +667,15 @@ export class AionUiClient {
           resetIdleTimer()
           chunks.push(message.data)
           gotContent = true
+          if (gotFinish) {
+            scheduleFinish()
+          }
           return
         }
 
-        if (message.type === 'finish') {
-          setTimeout(() => {
-            finish(() => resolve(chunks.join('')))
-          }, timeouts.finishCooldownMs)
+        if (message.type === 'finish' || message.type === 'finished') {
+          gotFinish = true
+          scheduleFinish()
           return
         }
 

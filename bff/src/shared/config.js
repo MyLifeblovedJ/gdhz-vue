@@ -1,3 +1,5 @@
+import path from 'node:path'
+
 function readNumber(name, fallback) {
   const raw = process.env[name]
   if (!raw) return fallback
@@ -23,6 +25,7 @@ function toWebSocketUrl(baseUrl) {
 }
 
 const aionuiBaseUrl = process.env.AIONUI_BASE_URL || 'http://127.0.0.1:25808'
+const aiStoreDir = process.env.AI_STORE_DIR || path.join(process.cwd(), 'data')
 
 export const config = {
   port: readNumber('BFF_PORT', 3001),
@@ -34,6 +37,10 @@ export const config = {
     finishCooldownMs: readNumber('AI_FINISH_COOLDOWN_MS', 300),
     createReadyDelayMs: readNumber('AI_CREATE_READY_DELAY_MS', 700),
     visibleBackends: splitCsv(process.env.BFF_AI_VISIBLE_BACKENDS || 'gemini,codex'),
+    sessionIdleReleaseMs: readNumber('AI_SESSION_IDLE_RELEASE_MS', 30 * 60 * 1000),
+    recycleScanIntervalMs: readNumber('AI_SESSION_RECYCLE_SCAN_INTERVAL_MS', 60_000),
+    sessionStoreFile: process.env.AI_SESSION_STORE_FILE || path.join(aiStoreDir, 'ai-sessions.json'),
+    messageStoreFile: process.env.AI_MESSAGE_STORE_FILE || path.join(aiStoreDir, 'ai-messages.json'),
   },
   aionui: {
     baseUrl: aionuiBaseUrl,

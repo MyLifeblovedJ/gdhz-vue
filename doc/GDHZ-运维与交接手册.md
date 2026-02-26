@@ -163,6 +163,19 @@ curl -sS -H 'Content-Type: application/json' \
 1. HTTP `200`。
 2. 返回包含真实 `reply`，不是演示兜底文案。
 
+### 6.4 阶段1专项验证（强制过期 + 并发 + 尾包）
+
+```bash
+cd /usr/local/project/dzh/gdhz-vue/bff
+AIONUI_PASSWORD='<AionUi密码>' npm run verify:stage1
+```
+
+预期：
+
+1. 输出 `[1/3] PASS`、`[2/3] PASS`、`[3/3] PASS`。
+2. 最终输出 `总结果: PASS`。
+3. 生成报告文件：`/usr/local/project/dzh/gdhz-vue/doc/verification/stage1-closeout-*.json`。
+
 ---
 
 ## 7. 端口与安全策略
@@ -314,4 +327,109 @@ systemctl restart nginx
 3. `/aionui` 与 `/mihomo` 均通过 nginx 子路径代理。
 4. gdhz 的 AI 供应商列表收敛为 `gemini`、`codex`。
 5. 聊天接口已切换为真实后端调用，不使用演示兜底回复。
+6. BFF 会话与消息已持久化到本地 JSON（`bff/data/*.json`）。
+7. 刷新页面可恢复历史会话，不再默认新建会话 ID。
+8. 空闲会话会自动回收（释放 AionUi 运行态 task），历史可继续。
+9. `aionui-webui.service` 已启用重启自愈与资源上限（内存/任务数）。
+10. 系统已启用 `8G` swap。
 
+---
+
+## 14. AI 会话生命周期与关键决策
+
+### 14.1 会话 ID 创建与复用
+
+1. 首次聊天或本地无会话 ID 时，由 BFF 生成 `chatSessionId`。
+2. 前端刷新后会从 `localStorage` 恢复 `chatSessionId`，并调用 `/api/ai/history` 回放历史。
+3. 切换供应商或模型时，会主动清空当前 `chatSessionId`，新问题触发新会话。
+
+### 14.2 会话隔离键
+
+1. BFF 使用 `tenantId + userId + chatSessionId` 作为隔离键。
+2. `tenantId/userId` 由请求头 `x-tenant-id/x-user-id` 决定。
+3. 前端会持久化 `x-user-id`（`gdhz.ai.userId.v1`），保证刷新后仍是同一用户身份。
+
+### 14.3 持久化与恢复
+
+1. 会话映射：`bff/data/ai-sessions.json`
+2. 消息历史：`bff/data/ai-messages.json`
+3. BFF 重启后会自动恢复会话与历史，不再丢失上下文映射。
+
+### 14.4 自动回收与过期
+
+1. 空闲阈值：`AI_SESSION_IDLE_RELEASE_MS`（默认 `1800000`，30 分钟）。
+2. 扫描间隔：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（默认 `60000`，60 秒）。
+3. 回收动作：调用 AionUi `reset-conversation`，会话状态改为 `released`。
+4. 历史消息不删除；用户继续发言时同 `chatSessionId` 会恢复为 `active` 并续聊。
+
+### 14.5 会话状态语义
+
+1. `active`：会话可用/最近活跃。
+2. `error`：最近一次调用失败。
+3. `released`：运行态已释放，历史保留，可重新激活。
+
+---
+
+## 15. systemd 与资源治理基线
+
+### 15.1 `aionui-webui.service`
+
+配置路径：
+
+1. 主配置：`/etc/systemd/system/aionui-webui.service`
+2. override：`/etc/systemd/system/aionui-webui.service.d/override.conf`
+
+关键参数（当前）：
+
+1. `Restart=always`
+2. `RestartSec=5`
+3. `MemoryHigh=3584M`
+4. `MemoryMax=5120M`
+5. `TasksMax=320`
+6. `StartLimitIntervalSec=300`
+7. `StartLimitBurst=10`
+
+### 15.2 `gdhz-bff.service`
+
+配置路径：
+
+1. 服务文件：`/etc/systemd/system/gdhz-bff.service`
+2. 环境文件：`/etc/gdhz/gdhz-bff.env`（建议权限 `600`）
+
+关键要求：
+
+1. `AIONUI_PASSWORD` 只放在 `EnvironmentFile`，不要写在命令行和仓库。
+2. `gdhz-bff.service` 与 `aionui-webui.service` 均启用开机自启。
+
+### 15.3 swap 与内核参数
+
+配置路径：
+
+1. swap：`/swapfile`
+2. 持久化挂载：`/etc/fstab`
+3. 内核参数：`/etc/sysctl.d/99-swap-tuning.conf`
+
+当前参数：
+
+1. `swap=8G`
+2. `vm.swappiness=10`
+3. `vm.vfs_cache_pressure=50`
+
+---
+
+## 16. 关键验收命令（会话治理专项）
+
+```bash
+# 1) 看会话是否持久化
+ls -lh /usr/local/project/dzh/gdhz-vue/bff/data
+
+# 2) 看当前服务资源上限是否生效
+systemctl show aionui-webui.service -p MemoryHigh -p MemoryMax -p TasksMax -p Restart
+
+# 3) 看 BFF 环境文件是否接管密码（输出前请注意脱敏）
+systemctl show gdhz-bff.service -p EnvironmentFiles
+
+# 4) 看 swap 状态
+free -h
+swapon --show
+```

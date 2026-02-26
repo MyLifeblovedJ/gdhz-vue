@@ -163,7 +163,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useAppStore } from '../../stores/app'
-import { chatWithAI, fetchCurrentSummary, fetchAICatalog } from '../../api/ai'
+import { chatWithAI, fetchCurrentSummary, fetchAICatalog, fetchChatHistory } from '../../api/ai'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
 
@@ -215,6 +215,8 @@ const catalogProviders = ref([])
 const selectedBackendKey = ref('')
 const selectedModelId = ref('')
 const allowedBackends = new Set(['gemini', 'codex'])
+const CHAT_SESSION_STORAGE_KEY = 'gdhz.ai.chatSession.v1'
+const DEFAULT_ASSISTANT_GREETING = '您好，我是您的<strong>智能防灾助手</strong>。我可以为您提供：<br>• 实时灾情分析与态势研判<br>• 应急决策辅助建议<br>• 系统操作指引<br><br>请问有什么可以帮您？'
 
 const selectedBackend = computed(() => {
   const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
@@ -230,9 +232,98 @@ const modelOptions = computed(() => {
 const messages = ref([
   { 
     role: 'assistant', 
-    content: '您好，我是您的<strong>智能防灾助手</strong>。我可以为您提供：<br>• 实时灾情分析与态势研判<br>• 应急决策辅助建议<br>• 系统操作指引<br><br>请问有什么可以帮您？' 
+    content: DEFAULT_ASSISTANT_GREETING 
   }
 ])
+
+function readStoredChatSession() {
+  try {
+    const raw = window.localStorage.getItem(CHAT_SESSION_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return {
+      chatSessionId: String(parsed.chatSessionId || ''),
+      backendKey: String(parsed.backendKey || ''),
+      modelId: String(parsed.modelId || ''),
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearStoredChatSession() {
+  try {
+    window.localStorage.removeItem(CHAT_SESSION_STORAGE_KEY)
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function saveCurrentChatSession() {
+  if (!chatSessionId.value) {
+    clearStoredChatSession()
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      CHAT_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        chatSessionId: chatSessionId.value,
+        backendKey: selectedBackendKey.value || '',
+        modelId: selectedModelId.value || '',
+        updatedAt: Date.now(),
+      })
+    )
+  } catch {
+    // ignore storage errors
+  }
+}
+
+async function restoreChatSessionIfExists() {
+  const stored = readStoredChatSession()
+  if (!stored?.chatSessionId) return
+
+  if (stored.backendKey) {
+    const hasStoredBackend = catalogProviders.value.some(
+      (item) => (item.backendKey || item.backend) === stored.backendKey
+    )
+    if (hasStoredBackend) {
+      selectedBackendKey.value = stored.backendKey
+    }
+  }
+
+  const backendInfo = catalogProviders.value.find(
+    (item) => (item.backendKey || item.backend) === selectedBackendKey.value
+  )
+  if (stored.modelId && Array.isArray(backendInfo?.models)) {
+    const hasStoredModel = backendInfo.models.some((item) => item.id === stored.modelId)
+    if (hasStoredModel) {
+      selectedModelId.value = stored.modelId
+    }
+  }
+  applyDefaultModelForBackend()
+
+  chatSessionId.value = stored.chatSessionId
+
+  try {
+    const historyResult = await fetchChatHistory(stored.chatSessionId)
+    const historyMessages = Array.isArray(historyResult?.messages) ? historyResult.messages : []
+    if (!historyMessages.length) {
+      return
+    }
+
+    messages.value = historyMessages.map((item) => ({
+      role: item?.role === 'user' ? 'user' : 'assistant',
+      content: formatTextForBubble(item?.content || '')
+    }))
+    scrollToBottom()
+  } catch {
+    chatSessionId.value = null
+    clearStoredChatSession()
+  }
+}
 
 // 切换AI面板
 function toggleAIPanel() {
@@ -341,6 +432,7 @@ async function queryAI(text) {
 
   if (response?.chatSessionId) {
     chatSessionId.value = response.chatSessionId
+    saveCurrentChatSession()
   }
 
   return response?.reply || '暂无可用回复，请稍后重试。'
@@ -362,11 +454,13 @@ function applyDefaultModelForBackend() {
 
 function handleBackendChange() {
   chatSessionId.value = null
+  clearStoredChatSession()
   applyDefaultModelForBackend()
 }
 
 function handleModelChange() {
   chatSessionId.value = null
+  clearStoredChatSession()
 }
 
 async function loadAICatalog() {
@@ -410,7 +504,7 @@ async function loadAICatalog() {
 }
 
 onMounted(() => {
-  void loadAICatalog()
+  void loadAICatalog().finally(() => restoreChatSessionIfExists())
 })
 
 function formatTextForBubble(text) {

@@ -1,8 +1,46 @@
 import { createId } from '../../shared/utils.js'
+import { loadJsonFile, saveJsonFile } from '../../shared/persistence.js'
 
 export class SessionRepository {
-  constructor() {
+  constructor({ filePath } = {}) {
+    this.filePath = filePath || ''
     this.sessions = new Map()
+    this.restore()
+  }
+
+  restore() {
+    if (!this.filePath) return
+    const list = loadJsonFile(this.filePath, [])
+    if (!Array.isArray(list)) return
+
+    for (const item of list) {
+      if (!item || typeof item !== 'object') continue
+      const session = {
+        tenantId: String(item.tenantId || 'default'),
+        userId: String(item.userId || 'anonymous'),
+        chatSessionId: String(item.chatSessionId || ''),
+        conversationId: String(item.conversationId || createId()),
+        backendKey: String(item.backendKey || ''),
+        backend: String(item.backend || ''),
+        modelId: String(item.modelId || ''),
+        providerId: String(item.providerId || ''),
+        customAgentId: String(item.customAgentId || ''),
+        status: String(item.status || 'active'),
+        initialized: !!item.initialized,
+        createdAt: Number(item.createdAt || Date.now()),
+        updatedAt: Number(item.updatedAt || Date.now()),
+        lastActiveAt: Number(item.lastActiveAt || Date.now()),
+      }
+
+      if (!session.chatSessionId) continue
+      const key = this.sessionKey(session.tenantId, session.userId, session.chatSessionId)
+      this.sessions.set(key, session)
+    }
+  }
+
+  persist() {
+    if (!this.filePath) return
+    saveJsonFile(this.filePath, [...this.sessions.values()])
   }
 
   sessionKey(tenantId, userId, chatSessionId) {
@@ -20,6 +58,8 @@ export class SessionRepository {
     const existing = this.sessions.get(key)
     if (existing) {
       existing.lastActiveAt = Date.now()
+      existing.updatedAt = Date.now()
+      this.persist()
       return { session: existing, created: false }
     }
 
@@ -41,6 +81,7 @@ export class SessionRepository {
     }
 
     this.sessions.set(key, session)
+    this.persist()
     return { session, created: true }
   }
 
@@ -70,6 +111,8 @@ export class SessionRepository {
     session.customAgentId = customAgentId
     session.updatedAt = Date.now()
     session.lastActiveAt = Date.now()
+    session.status = 'active'
+    this.persist()
 
     return changed
   }
@@ -79,11 +122,34 @@ export class SessionRepository {
     session.updatedAt = Date.now()
     session.lastActiveAt = Date.now()
     session.status = 'active'
+    this.persist()
   }
 
   markError(session) {
     session.status = 'error'
     session.updatedAt = Date.now()
     session.lastActiveAt = Date.now()
+    this.persist()
+  }
+
+  markReleased(session) {
+    session.status = 'released'
+    session.updatedAt = Date.now()
+    this.persist()
+  }
+
+  markActive(session) {
+    session.status = 'active'
+    session.updatedAt = Date.now()
+    session.lastActiveAt = Date.now()
+    this.persist()
+  }
+
+  listIdleSessions({ idleBefore }) {
+    return [...this.sessions.values()].filter((session) => {
+      if (!session.initialized) return false
+      if (session.status !== 'active' && session.status !== 'error') return false
+      return session.lastActiveAt <= idleBefore
+    })
   }
 }
