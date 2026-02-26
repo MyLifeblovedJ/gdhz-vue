@@ -585,6 +585,34 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - [ ] `auth-expired -> refresh/login -> WS 重建` 的“强制过期演练”需实机验证。
 - [ ] “双用户并发压测 + 尾包干扰场景”需按验收脚本专项验证。
 
+## 阶段 1 增量执行状态（2026-02-26 晚）
+
+### A. 本次增量已完成（部署与运维侧）
+
+- [x] 公网入口收口为 `3000` 单入口访问（`gdhz`、`aionui`、`mihomo` 全部走 nginx 子路径）。
+- [x] 已补齐 AionUi 子路径代理适配：`/aionui/` 下静态资源、登录与 API 路径可正常工作。
+- [x] 已新增 AionUi WebSocket 代理入口：`/aionui-ws`（用于浏览器侧桥接连接）。
+- [x] 已固定 mihomo 面板入口为 `/mihomo/`（代理到 `9090/ui/`），不再直接落到 controller 根路径。
+- [x] 已提供 mihomo API 代理 `/mihomo-api/`（nginx 注入 `Authorization`）。
+- [x] 防火墙策略已收口：`ALLOW 22/3000`，`DENY 25808/9090`（避免 AionUi 与 mihomo 直暴公网）。
+- [x] 运维交接文档已补充：`doc/GDHZ-运维与交接手册.md`。
+
+### B. 当前阶段定位
+
+> 当前处于“阶段1收尾”，主干能力与部署链路已可用，下一步应完成专项验证后再进入阶段2。
+
+### C. 下一步准备清单（建议按顺序执行）
+
+1. 阶段1收尾验证：
+   - [ ] 执行“强制 token 过期演练”，验证 `auth-expired -> refresh/login -> WS 重建` 全链路。
+   - [ ] 执行双用户并发压测（不同 `x-user-id`）并记录“不串话”证据。
+   - [ ] 执行“尾包干扰”场景并确认 `finish cooldown` 策略稳定。
+2. 文档固化：
+   - [ ] 产出独立 PoC 协议文档（事件名、入参、回调、完成信号、错误格式），补齐阶段0产物缺口。
+3. 阶段2启动准备：
+   - [ ] 明确流式输出改造边界（SSE/WS 二选一）。
+   - [ ] 明确审批接口 `/api/ai/confirm` 的前后端契约。
+
 ## 阶段 1 部署链路确认（本期）
 
 本期部署链路按以下方式执行（与你描述一致）：
