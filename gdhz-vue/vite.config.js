@@ -1,12 +1,15 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+const devHost = process.env.VITE_HOST || '0.0.0.0'
+const devPort = Number.parseInt(process.env.VITE_PORT || '3000', 10)
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
   server: {
-    host: '0.0.0.0',
-    port: 3000,
+    host: devHost,
+    port: Number.isFinite(devPort) ? devPort : 3000,
     strictPort: true,
     proxy: {
       '/api': {
