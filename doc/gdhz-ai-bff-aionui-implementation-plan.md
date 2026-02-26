@@ -556,6 +556,98 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - 摘要 API 能稳定返回 `{ snapshot + summaryText }`（数字由代码保证，文本由 AI 生成）。
 - 前端无 mock，真实返回 AI 内容。
 
+## 阶段 1 当前执行状态（2026-02-26）
+
+### A. 已完成（代码已落地）
+
+- [x] `gdhz-vue/bff` 已创建并可启动，已提供：
+  - `POST /api/ai/chat`
+  - `POST /api/ai/summary/current`
+  - `GET /api/ai/history`
+  - `GET /api/ai/catalog`
+- [x] BFF 已接通 AionUi 登录与 WebSocket（含 `ping/pong`）。
+- [x] BFF 已实现 `create-conversation(id=UUID)` + `chat.send.message` 调用链路。
+- [x] 已按 AionUi `@office-ai/platform` 协议修正 provider 调用方式：`subscribe-<event>` -> `subscribe.callback-<event><id>`。
+- [x] BFF 已实现按 `conversation_id` 的串行队列（同会话串行，不同会话并行）。
+- [x] BFF 已实现 `chat.response.stream` 聚合与超时控制（首包/空闲/总超时 + finish cooldown）。
+- [x] BFF 已实现 CSRF + cookie 维护，并优先 `POST /api/auth/refresh`，失败再 `/login`。
+- [x] 前端 `FloatingToolbar.vue` 已接 `/api/ai/chat` 与 `/api/ai/summary/current`，不再走本地 mock。
+- [x] 前端已支持“供应商 + 模型”选择，选择项来源为 `/api/ai/catalog`，不在前端硬编码。
+- [x] 目录对齐策略已落地：`/api/ai/catalog` 由 BFF 读取 AionUi 本地配置（`acp.customAgents`、`acp.cachedModels`、`guid.lastSelectedAgent`）并按 AionUi `acpTypes.ts` 探测规则生成列表（不修改 AionUi 代码）。
+- [x] custom/preset 选择语义已对齐：使用 `backendKey`（如 `custom:xxx`）区分具体助手，`backend` 维持 `custom`。
+- [x] 会话创建已按后端路由到正确 `type`（`gemini`/`codex`/`openclaw-gateway`/`nanobot`/`acp`），避免 `Unsupported backend`。
+- [x] 模型默认值与 AionUi 对齐：Gemini 默认 `auto`（Google Auth 占位 provider），Codex 默认 `gpt-5.2-codex`。
+- [x] `chat.send.message` provider 超时已按总超时动态放宽，兼容 Codex 长耗时首轮。
+
+### B. 尚未完成或待专项验证
+
+- [ ] 阶段0“协议文档产物”未单独沉淀为独立 PoC 文档（当前以实现代码为准）。
+- [ ] `auth-expired -> refresh/login -> WS 重建` 的“强制过期演练”需实机验证。
+- [ ] “双用户并发压测 + 尾包干扰场景”需按验收脚本专项验证。
+
+## 阶段 1 部署链路确认（本期）
+
+本期部署链路按以下方式执行（与你描述一致）：
+
+```text
+公网浏览器
+  -> gdhz Web（同域 /api 反代到 gdhz-bff）
+  -> gdhz-bff（本机:3001）
+  -> AionUi（本机:25808）
+```
+
+关键配置：
+
+- `bff/.env` 中设置 `AIONUI_BASE_URL=http://127.0.0.1:25808`
+- 前端统一请求 `/api/*`（由反向代理转发到 BFF）
+
+> 说明：即使 AionUi 当前对外暴露 25808，本方案下 gdhz 业务链路应固定走“BFF -> 本机 25808”，前端不直接访问 AionUi。
+
+## 阶段 1 验收验证步骤（可逐条打勾）
+
+### 1) 基础连通
+
+- [ ] AionUi 正常监听：`ss -ltnp | grep 25808`
+- [ ] BFF 正常监听：`ss -ltnp | grep 3001`
+- [ ] 健康检查通过：`curl -s http://127.0.0.1:3001/api/health`
+
+### 2) 目录一致性（供应商/模型）
+
+- [ ] 执行：`curl -s http://127.0.0.1:3001/api/ai/catalog | jq`
+- [ ] 验证返回包含 `providers[].backendKey`、`providers[].backend`、`providers[].models`
+- [ ] 验证存在 `custom:*` 类型 `backendKey`（如配置了内置/自定义助手）
+- [ ] 打开 gdhz 页面，确认下拉项与 AionUi WebUI 的有效助手集合一致
+
+### 3) 聊天链路
+
+- [ ] 页面发送第1条消息，返回真实 AI 回复（非 mock 文案）
+- [ ] 同一会话继续追问，能保持上下文连续
+- [ ] 切换供应商或模型后再发消息，能成功返回（新配置生效）
+
+### 4) 摘要链路
+
+- [ ] 调用摘要接口：
+  `curl -s -X POST http://127.0.0.1:3001/api/ai/summary/current -H 'Content-Type: application/json' -d '{"region":"gd","timeRange":"24h","detailLevel":"standard","snapshot":{"alertCount":1}}' | jq`
+- [ ] 验证返回同时包含 `snapshot` 和 `summaryText`
+
+### 5) 稳定性与隔离
+
+- [ ] 两个不同用户标识并发请求（`x-user-id` 不同）不串话
+- [ ] 人为断开/重启 AionUi 后，BFF 能恢复连接并继续可用
+
+## 阶段 1 本地自测记录（2026-02-26）
+
+- [x] `AionUi` 本机服务可达：`GET http://127.0.0.1:25808/api/auth/status` 返回 `success=true`。
+- [x] `BFF` 可启动且 `GET /api/health` 返回 `status=ok`。
+- [x] `GET /api/ai/catalog` 返回结构正确，包含 `providers[].backendKey/backend/models`，且存在 `custom:*` 形式 `backendKey`。
+- [x] `catalog` 中 `gemini`/`codex` 均返回可选模型列表与默认模型（`auto` / `gpt-5.2-codex`）。
+- [x] `AIONUI_PASSWORD` 已配置后，BFF warmup 显示 `AionUi warmup success`（登录链路可用）。
+- [x] `POST /api/ai/summary/current`（`selection.backendKey=gemini`）可稳定返回 `summaryText`（默认模型自动回落 `auto`）。
+- [x] `POST /api/ai/chat`（`selection.backendKey=gemini`）可稳定返回真实回复（非 mock）。
+- [x] `POST /api/ai/summary/current`（`selection.backendKey=codex`）可稳定返回 `summaryText`（默认模型 `gpt-5.2-codex`）。
+- [x] `POST /api/ai/chat`（`selection.backendKey=codex`）可稳定返回真实回复（非 mock）。
+- [x] 连通性补充验证：配置 dummy 密码时，`summary/chat` 返回 `Invalid username or password`（证明 BFF -> AionUi 登录校验路径可达）。
+
 ## 阶段 2（下一期）
 
 - 改为 SSE/WS 前端流式渲染（打字效果）。

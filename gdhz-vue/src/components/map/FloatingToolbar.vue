@@ -108,6 +108,36 @@
             <div class="outer-ring"></div>
             <div class="inner-glow"></div>
             <div class="main-border"></div>
+            <div class="ai-selector-row">
+              <select
+                v-model="selectedBackendKey"
+                class="ai-select"
+                :disabled="catalogLoading || isTyping"
+                @change="handleBackendChange"
+              >
+                <option
+                  v-for="item in catalogProviders"
+                  :key="item.backendKey || item.backend"
+                  :value="item.backendKey || item.backend"
+                >
+                  {{ item.name || item.backend }}
+                </option>
+              </select>
+              <select
+                v-model="selectedModelId"
+                class="ai-select"
+                :disabled="catalogLoading || isTyping || modelOptions.length === 0"
+                @change="handleModelChange"
+              >
+                <option
+                  v-for="item in modelOptions"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.label || item.id }}
+                </option>
+              </select>
+            </div>
             <div class="input-wrapper">
               <input
                 v-model="inputText"
@@ -131,8 +161,9 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useAppStore } from '../../stores/app'
+import { chatWithAI, fetchCurrentSummary, fetchAICatalog } from '../../api/ai'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
 
@@ -178,14 +209,21 @@ const inputText = ref('')
 const isTyping = ref(false)
 const messagesRef = ref(null)
 const inputFocused = ref(false)
+const chatSessionId = ref(null)
+const catalogLoading = ref(false)
+const catalogProviders = ref([])
+const selectedBackendKey = ref('')
+const selectedModelId = ref('')
 
-// 快捷建议
-const suggestions = [
-  '介绍一下系统功能',
-  '当前台风动态如何？',
-  '有什么防御建议？',
-  '总结目前灾情'
-]
+const selectedBackend = computed(() => {
+  const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
+  return current?.backend || ''
+})
+
+const modelOptions = computed(() => {
+  const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
+  return Array.isArray(current?.models) ? current.models : []
+})
 
 // 消息列表
 const messages = ref([
@@ -201,6 +239,9 @@ function toggleAIPanel() {
   // 关闭其他面板
   if (showAIPanel.value) {
     store.closeFloatingPanel()
+    if (!catalogProviders.value.length) {
+      void loadAICatalog()
+    }
   }
 }
 
@@ -221,25 +262,160 @@ async function handleSend() {
 
 async function sendMessage(text) {
   // 用户发送
-  messages.value.push({ role: 'user', content: text })
+  messages.value.push({ role: 'user', content: formatTextForBubble(text) })
   inputText.value = ''
   scrollToBottom()
 
-  // AI 模拟回复
   isTyping.value = true
   messages.value.push({ role: 'assistant', content: '', loading: true })
   scrollToBottom()
 
-  // 模拟网络延迟
-  await new Promise(r => setTimeout(r, 1200 + Math.random() * 800))
+  try {
+    const response = await queryAI(text)
+    messages.value = messages.value.filter(item => !item.loading)
+    messages.value.push({ role: 'assistant', content: formatTextForBubble(response) })
+  } catch (_error) {
+    messages.value = messages.value.filter(item => !item.loading)
+    messages.value.push({ role: 'assistant', content: getMockResponse(text) })
+  } finally {
+    isTyping.value = false
+    scrollToBottom()
+  }
+}
 
-  // 移除loading
-  messages.value.pop()
+function shouldUseSummaryApi(text) {
+  return /(灾情.*(总结|摘要)|总结.*灾情|态势总结|生成摘要|当前灾情)/.test(text)
+}
 
-  const response = getMockResponse(text)
-  messages.value.push({ role: 'assistant', content: response })
-  isTyping.value = false
-  scrollToBottom()
+function buildSummarySnapshot() {
+  const alertCount = Array.isArray(store.alerts) ? store.alerts.length : 0
+  const maxTyphoonLevel = store.typhoonData?.intensity || store.typhoonData?.maxLevel || '未知'
+  const affectedPopulation = Number(store.riskDecisions?.risks?.[0]?.affectedPopulation || 0)
+  const evacuatedPopulation = Number(store.riskDecisions?.recommendations?.evacuatedPopulation || 0)
+
+  return {
+    alertCount,
+    maxTyphoonLevel,
+    affectedPopulation,
+    evacuatedPopulation
+  }
+}
+
+async function queryAI(text) {
+  if (shouldUseSummaryApi(text)) {
+    const response = await fetchCurrentSummary({
+      region: 'gd',
+      timeRange: '24h',
+      detailLevel: 'standard',
+      snapshot: buildSummarySnapshot(),
+      selection: {
+        backendKey: selectedBackendKey.value,
+        backend: selectedBackend.value,
+        modelId: selectedModelId.value
+      }
+    })
+
+    return response?.summaryText || '暂无可用摘要，请稍后重试。'
+  }
+
+  const response = await chatWithAI({
+    chatSessionId: chatSessionId.value,
+    message: text,
+    context: {
+      page: store.currentPage,
+      region: 'gd'
+    },
+    selection: {
+      backendKey: selectedBackendKey.value,
+      backend: selectedBackend.value,
+      modelId: selectedModelId.value
+    }
+  })
+
+  if (response?.chatSessionId) {
+    chatSessionId.value = response.chatSessionId
+  }
+
+  return response?.reply || '暂无可用回复，请稍后重试。'
+}
+
+function applyDefaultModelForBackend() {
+  const options = modelOptions.value
+  if (!options.length) {
+    selectedModelId.value = ''
+    return
+  }
+
+  const stillExists = options.some(item => item.id === selectedModelId.value)
+  if (stillExists) {
+    return
+  }
+  selectedModelId.value = options[0].id
+}
+
+function handleBackendChange() {
+  chatSessionId.value = null
+  applyDefaultModelForBackend()
+}
+
+function handleModelChange() {
+  chatSessionId.value = null
+}
+
+async function loadAICatalog() {
+  if (catalogLoading.value) return
+
+  catalogLoading.value = true
+  try {
+    const result = await fetchAICatalog()
+    const providers = Array.isArray(result?.providers) ? result.providers : []
+    catalogProviders.value = providers
+
+    if (!providers.length) {
+      selectedBackendKey.value = ''
+      selectedModelId.value = ''
+      return
+    }
+
+    const preferredBackend = providers.some(item => (item.backendKey || item.backend) === result?.lastSelectedAgent)
+      ? result.lastSelectedAgent
+      : (providers[0].backendKey || providers[0].backend)
+
+    selectedBackendKey.value = preferredBackend
+    const backendInfo = providers.find(item => (item.backendKey || item.backend) === preferredBackend)
+    const preferredModelId = backendInfo?.currentModelId || ''
+    const hasPreferred = Array.isArray(backendInfo?.models) && backendInfo.models.some(item => item.id === preferredModelId)
+    selectedModelId.value = hasPreferred ? preferredModelId : ''
+    applyDefaultModelForBackend()
+  } catch (_error) {
+    if (!catalogProviders.value.length) {
+      catalogProviders.value = [
+        { backendKey: 'gemini', backend: 'gemini', name: 'Gemini CLI', models: [] },
+        { backendKey: 'codex', backend: 'codex', name: 'Codex CLI', models: [] }
+      ]
+      selectedBackendKey.value = 'gemini'
+      selectedModelId.value = ''
+    }
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+onMounted(() => {
+  void loadAICatalog()
+})
+
+function formatTextForBubble(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 // 模拟AI回复
@@ -869,7 +1045,8 @@ function getMockResponse(text) {
 .halo-search-input {
   position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
   margin: 16px;
   margin-top: 0;
@@ -881,6 +1058,30 @@ function getMockResponse(text) {
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+.halo-search-input .ai-selector-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.halo-search-input .ai-select {
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(3, 6, 18, 0.88);
+  color: #e9dcff;
+  font-size: 12px;
+  padding: 0 8px;
+}
+
+.halo-search-input .ai-select:disabled {
+  opacity: 0.55;
 }
 
 .halo-search-input .search-field {
