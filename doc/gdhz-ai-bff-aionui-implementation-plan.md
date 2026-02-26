@@ -12,7 +12,7 @@
 - `src/components/map/FloatingToolbar.vue` 的 `sendMessage()` 使用本地模拟延迟和 `getMockResponse()`。
 - `src/components/ai/AIAssistant.vue` 也是 mock 逻辑。
 
-结论：`gdhz` 现在“有 AI UI、无真实 AI 服务”。
+结论：`gdhz` 现在"有 AI UI、无真实 AI 服务"。
 
 ---
 
@@ -23,14 +23,14 @@
 在尽量少改动前端的前提下，交付两类 AI 能力，并支持多用户隔离：
 
 1. 自然问答接口（聊天）。
-2. 业务调用接口（生成“当前灾情摘要/总结”）。
+2. 业务调用接口（生成"当前灾情摘要/总结"）。
 
 ## 2.2 本期约束（按当前决策执行）
 
 - 暂不引入 HTTPS。
 - 暂不轮换 AionUi 密码。
 - 暂不关闭二维码登录。
-- 优先“先能用”，安全加固和平台化能力后置。
+- 优先"先能用"，安全加固和平台化能力后置。
 
 ---
 
@@ -42,15 +42,20 @@
 
 ```text
 Browser(gdhz-vue)
-   -> /api/ai/chat                 (自然问答)
-   -> /api/ai/summary/current      (灾情摘要 API)
+   -> /api/ai/chat                 (自然问答，长会话复用)
+   -> /api/ai/summary/current      (业务 API，独立短会话)
 gdhz-bff
-   -> AionUi HTTP /login（拿会话 cookie）
-   -> AionUi WebSocket（bridge 协议）
-   -> 调用 create-conversation / chat.send.message（本质都走 CLI）
-   <- 监听 chat.response.stream
-   -> 回传给 gdhz 前端
+   -> AionUi HTTP POST /login（拿 JWT Token）
+   -> AionUi WebSocket 连接（携带 Token，{ name, data } JSON 格式）
+   -> 发送 bridge 事件：create-conversation / chat.send.message
+   <- 监听 bridge 广播：chat.response.stream（按 conversation_id 过滤）
+   -> 聚合流式响应后回传给 gdhz 前端
 ```
+
+> **协议说明**：AionUi 的 bridge 是全量广播模式（所有 WebSocket 客户端收到所有事件），
+> BFF 须在内部按 `conversation_id` 做路由过滤，丢弃不属于自己的消息。
+> bridge 事件格式由 `@office-ai/platform` 定义，`buildProvider` 为请求-回调模式，
+> `buildEmitter` 为单向推送模式，具体回调约定须通过 **阶段0 PoC** 验证后固化。
 
 这样做的价值：
 
@@ -81,10 +86,12 @@ gdhz-bff
 建议分两层：
 
 1. 必需层（本期必须）：
+
 - 在 BFF 数据库保存 `用户会话 -> AionUi conversation_id` 映射。
 - 保存最后活跃时间、状态、错误信息。
 
-2. 增强层（本期建议实现）：
+1. 增强层（本期建议实现）：
+
 - BFF 本地镜像消息（user/assistant/time/traceId）。
 - 优点：便于审计、回放、故障恢复，不依赖 AionUi 内部库结构。
 
@@ -94,29 +101,124 @@ gdhz-bff
 
 ## 5.1 必要能力
 
-BFF 需要完成 3 件事：
+BFF 需要完成 4 件事：
 
-1. 登录 AionUi（HTTP）并维护会话 cookie。
-2. 建立到 AionUi 的 WebSocket 长连接。
-3. 调用/监听 bridge 事件：
-- `create-conversation`
-- `chat.send.message`
-- `chat.response.stream`
+1. 登录 AionUi（`POST /login`）获取 JWT Token。
+2. 建立到 AionUi 的 WebSocket 长连接。Token 传递方式（**不支持 URL query**）：
+   - `Authorization: Bearer <token>`（推荐）
+   - `Cookie: aionui-session=<token>`
+   - `Sec-WebSocket-Protocol: <token>`（仅当前两种不可用时）
+3. 发送 bridge 事件（JSON `{ name, data }` 格式）：
+   - `create-conversation`（创建会话，最小 payload 见下方 5.4）
+   - `chat.send.message`（发送消息，参数含 `input`, `msg_id`, `conversation_id`）
+   - `chat.stop.stream`（停止会话）
+4. 监听 bridge 广播事件：
+   - `chat.response.stream`（流式响应，含 `conversation_id`, `msg_id`, `type`, `data`）
+   - `ping`（心跳，需回复 `pong`）
 
 ## 5.2 关键实现建议
 
-不要在前端或 BFF 手搓 AionUi 私有协议细节，优先复用 AionUi 同构桥接能力（`@office-ai/platform` + 事件适配模式）。
+AionUi 的 `@office-ai/platform` bridge 协议是"事件 + 回调"模型（`buildProvider` 有回调约定），不是普通 REST。
 
-原因：
+**实施策略**：
 
-- AionUi provider 调用是“事件 + 回调”模型，不是普通 REST。
-- 若手写协议，版本升级风险高、调试成本高。
+- BFF 封装 `aionui.client.ts`，所有与 AionUi 的交互统一收敛在此模块。
+- **阶段0 必须先做 PoC**：用 raw WebSocket 抓取 `create-conversation` 和 `chat.send.message` 的真实 invoke -> callback 往返协议，确认回调是通过函数返回值还是独立事件完成。
+- PoC 结论固化为协议文档后再正式开发，避免基于猜测编码。
+- 锁定 AionUi 版本，升级前先在测试环境验证 bridge 兼容性。
 
 ## 5.3 与 AionUi 的职责边界
 
 - AionUi：Agent 执行、工具调用、流式消息产生。
 - BFF：业务身份、多用户隔离、会话映射、输出裁剪、错误标准化。
 - gdhz 前端：仅负责 UI 展示和输入。
+
+## 5.4 `create-conversation` 入参契约（不可变更）
+
+AionUi 的 `ICreateConversationParams` 接口要求以下必填字段（源自 `ipcBridge.ts`）：
+
+```typescript
+{
+  id?: string,  // 可选，BFF 应主动传入自生成的 UUID（见下方说明）
+  type: 'gemini' | 'acp' | 'codex' | 'openclaw-gateway' | 'nanobot',
+  model: TProviderWithModel,  // 完整 provider 配置（见下方）
+  extra: {
+    workspace?: string,       // 工作目录（可选）
+    backend?: string,         // ACP 后端类型（acp 类型时需要）
+    agentName?: string,       // Agent 名称（可选）
+    webSearchEngine?: string  // 搜索引擎（可选）
+  }
+}
+```
+
+### `model` 字段：完整 `TProviderWithModel` 类型
+
+> [!CAUTION]
+> `model` **不是** `{ id, useModel }` 两字段对象，而是完整的 `TProviderWithModel`。
+> 源自 `ipcBridge.ts:419`、`storage.ts:309`、`storage.ts:347`。
+
+```typescript
+// TProviderWithModel 完整定义
+interface TProviderWithModel {
+  id: string;           // provider 唯一标识（必填）
+  platform: string;     // 平台标识（如 'google', 'openai'）
+  name: string;         // provider 名称
+  baseUrl: string;      // API 基础地址
+  apiKey: string;       // API 密钥
+  useModel: string;     // 模型标识（如 'gemini-2.0-flash'）
+  // ...其他 provider 配置字段
+}
+```
+
+BFF 需要在配置中维护一套**完整的默认 model 配置**（含 `platform/name/baseUrl/apiKey/useModel` 等），
+参考前端占位模型写法：`useGuidSend.ts:102`。避免硬编码到业务逻辑。
+具体可用的 `type` 和 `model` 组合，须在阶段0 PoC 中确认。
+
+### `id` 字段：BFF 主动传入 conversation_id
+
+> [!IMPORTANT]
+> **BFF 必须主动生成 `id`（UUID）并在 `create-conversation` 时传入。**
+>
+> WebSocket 路径下 `create-conversation` 的回调返回值会被丢弃（`adapter.ts:36` 证实 `emitter.emit()` 无 return），
+> 因此 BFF 无法从回调中获取 `conversation_id`。同理，`database.getUserConversations` 也走同一 provider 回调链路，
+> 同样拿不到返回值——**轮询不是可行的兜底方案**。
+>
+> 代码已支持自定义 `id`：`ipcBridge.ts:417`、`conversationService.ts:162`。
+>
+> **正确做法**：BFF 在调用 `create-conversation` 前自行生成 UUID 作为 `id` 传入，
+> 后续直接使用该 `conversation_id` 发送消息，无需等待任何回调。
+
+### 新会话首问：确定性握手策略（P0）
+
+> [!CAUTION]
+> **时序竞争风险**：WS 入口 `emitter.emit()` 不 await（`adapter.ts:36`），`create-conversation` 和
+> `chat.send.message` 都是 fire-and-forget。如果 BFF 在 `create` 后立即发 `sendMessage`，
+> 后端可能还未完成会话初始化，导致 `conversation not found`（`conversationBridge.ts:416`）。
+>
+> **这是上线阻断点**，必须在阶段0 PoC 中验证并固化策略。
+
+**BFF 新会话首问时序**：
+
+```text
+BFF                              AionUi WS
+ |-- create-conversation(id=X) --> |
+ |                                 | (emit → 异步初始化会话)
+ |   ┌──────────────────────────┐  |
+ |   │ 等待 ack 或固定延迟      │  |
+ |   └──────────────────────────┘  |
+ |-- chat.send.message(id=X) ----> |
+```
+
+**三种候选策略（PoC 验证后选一固化）**：
+
+| 策略 | 描述 | 优点 | 缺点 |
+|------|------|------|------|
+| A. 固定延迟 | `create` 后等待固定时间（如 500ms）再发 `sendMessage` | 实现最简单 | 不确定性高，慢环境可能不够 |
+| B. 重试补偿 | `sendMessage` 失败时短间隔重试（最多3次，间隔200ms） | 兼容性好 | 增加首问延迟 |
+| C. 事件确认 | 监听会话创建完成的广播事件（如有），收到后再发 `sendMessage` | 最可靠 | 依赖 AionUi 是否广播创建完成事件 |
+
+> **PoC 必须验证**：`create-conversation` 后最短多久可以安全发送 `sendMessage`，
+> 以及是否有可监听的"会话就绪"广播事件。验证结论固化到协议文档中。
 
 ---
 
@@ -167,7 +269,9 @@ gdhz-vue/bff/
 
 ### 2) `POST /api/ai/summary/current`
 
-用途：供前端业务模块一键获取“当前灾情摘要”，不依赖聊天面板的自由提问。
+用途：供前端业务模块一键获取"当前灾情摘要"，不依赖聊天面板的自由提问。
+
+**核心原则**：结构化数字由代码保证权威性，AI 只负责生成文本描述。
 
 请求：
 
@@ -185,22 +289,17 @@ gdhz-vue/bff/
 }
 ```
 
-响应（建议结构化，便于卡片渲染）：
+响应：
 
 ```json
 {
-  "summary": "当前灾情总体为III级响应，粤东和珠三角沿海风险较高……",
-  "riskLevel": "III",
-  "keyFacts": [
-    "告警数量: 12",
-    "最大风力: 12级",
-    "影响人口: 120万人",
-    "已转移: 8500人"
-  ],
-  "actions": [
-    "继续组织渔船回港",
-    "加强堤防和低洼区巡查"
-  ],
+  "snapshot": {
+    "alertCount": 12,
+    "maxTyphoonLevel": "12",
+    "affectedPopulation": 1200000,
+    "evacuatedPopulation": 8500
+  },
+  "summaryText": "当前灾情总体为III级响应，粤东和珠三角沿海风险较高。建议继续组织渔船回港，加强堤防和低洼区巡查。",
   "generatedAt": 1730000000000,
   "traceId": "uuid"
 }
@@ -208,8 +307,10 @@ gdhz-vue/bff/
 
 说明：
 
-- `snapshot` 本期可由前端传入（快速落地）。
-- 下一期改为 BFF 自行聚合数据源生成 `snapshot`，前端只传 `region/timeRange`。
+- `snapshot` 原样返回（代码权威数据），前端直接用于数字/卡片渲染。
+- `summaryText` 由 AI 生成（纯文本），使用强约束 Prompt 限制"仅可引用 snapshot 提供的数据，不得编造数值"。
+- 前端对 `snapshot` 和 `summaryText` 分开渲染：数字区域用 snapshot，文字区域用 summaryText。
+- 本期 `snapshot` 由前端传入（快速落地）；下一期改为 BFF 自行聚合数据源。
 
 ### 3) `GET /api/ai/history?chatSessionId=...`
 
@@ -220,35 +321,124 @@ gdhz-vue/bff/
 ### A. 自然问答流程（`/api/ai/chat`）
 
 1. 根据登录态拿到 `tenant_id/user_id`。
-2. 查映射表是否已有 `aionui_conversation_id`。
-3. 无则调用 `create-conversation` 创建。
-4. 调用 `chat.send.message` 发送提问。
-5. 监听 `chat.response.stream`，按 `conversation_id` 聚合文本。
-6. 收到完成信号或超时后返回最终 `reply`。
-7. 写入会话表和消息表。
+2. 查会话路由表是否已有 `aionui_conversation_id`。
+3. 无则发送 `create-conversation(id=UUID)` 创建，按 §5.4 首问握手策略等待就绪后再发消息。
+4. 进入该 `conversation_id` 的**串行队列**（同一会话同一时刻只允许一个请求在跑）。
+5. 发送 `chat.send.message`（含 `input`, `msg_id`, `conversation_id`）。
+6. 监听 `chat.response.stream` 广播，**双层过滤 + 状态机聚合**：
+   - **第一层过滤**：按 `conversation_id` 过滤，不属于当前路由表的 -> 丢弃。
+   - **第二层过滤**：仅接受 `type='content' && typeof data === 'string'` 的消息追加到缓冲区。
+   - `type='thought'` / `type='tool_group'` / `type='agent_status'` 等非内容事件 -> 记录日志但不追加到响应。
+   - `type='system'` -> 忽略（Agent 内部系统消息），避免串入用户回复。
+
+7. **每个会话维护活跃请求状态机**：
+
+   ```text
+   [idle] --sendMessage--> [active: 等待首包]
+     ^                          |
+     |                    收到content
+     |                          |
+     |                    [streaming: 聚合中]
+     |                          |
+     |                  finish/error/超时
+     |                          |
+     +----[cooldown: 300ms静默期]<-+
+   ```
+
+   - **活跃请求窗口**：`active`/`streaming` 期间接受 stream 消息。
+   - **终止态**：收到 `finish`/`error`/超时后进入 `cooldown`，丢弃该窗口内的迟到包。
+   - **短暂静默期**（300ms）：防止"同会话尾包串入下一问"（全量广播 + 多 Agent 事件导致的延迟包）。
+   - 静默期结束后回到 `idle`，队列中的下一个请求方可执行。
+
+8. **完成判定（三条件，满足任一即结束）**：
+   - 收到 `type='finish'` -> 正常完成，返回最终 `reply`。
+   - 收到 `type='error'` -> 异常完成，返回错误信息。
+   - 超时触发 -> 返回已聚合的部分内容或超时错误。
+9. 写入会话表和消息表（`msg_id` 作为辅助追踪字段写入日志）。
 
 ### B. 灾情摘要流程（`/api/ai/summary/current`）
 
-1. 接收 `region/timeRange` 和 `snapshot`（本期）。
-2. 组装“强约束 Prompt”：仅允许基于 `snapshot` 输出，不得编造数值。
-3. 调用 AionUi `chat.send.message`（建议使用独立 summary 会话池，避免污染聊天上下文）。
-4. 聚合 `chat.response.stream`，解析为结构化响应。
-5. 返回 `summary/riskLevel/keyFacts/actions/traceId`。
+1. 接收 `region/timeRange` 和 `snapshot`（本期由前端传入）。
+2. 组装"强约束 Prompt"：仅允许基于 `snapshot` 输出文本描述，不得编造数值。
+3. 使用独立短会话（从摘要会话池分配，不复用用户自由聊天会话）。
+4. 发送 `chat.send.message`，同样进入串行队列。
+5. 聚合 `chat.response.stream`，提取 AI 生成的文本。
+6. 返回 `{ snapshot（原样返回）, summaryText（AI 文本）, traceId }`。
 
 建议：
 
-- 摘要接口使用“短会话或专用会话”，不要复用用户自由聊天会话。
-- 摘要接口输出固定 JSON schema，前端不再解析自由文本。
+- 摘要接口用完即释放会话，或使用专用会话池。
+- AI 只输出 `summaryText` 纯文本，结构化数字全部由 `snapshot` 保证。
 
-## 6.4 并发控制
+## 6.4 会话路由表与并发控制
 
-按 `conversation_id` 做串行队列，禁止同一会话并发发送，避免流式内容交叉。
+**路由表**（BFF 内存 Map）：
+
+```text
+conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, status }
+```
+
+- 收到 `chat.response.stream` 广播时，查路由表找到对应用户请求。
+- 不在路由表中的 `conversation_id`（如 AionUi 桌面端操作）-> 直接丢弃。
+
+**并发策略**：
+
+- 按 `conversation_id` 做**串行队列**，同一会话同一时刻只有一个请求在执行。
+- 不同 `conversation_id` 之间可并行，互不影响。
+- `msg_id` 作为辅助追踪字段，用于日志和诊断，不作为路由主键。
 
 ## 6.5 超时与重试
 
-- 单次问答超时建议：`90s`。
-- AionUi WS 断线自动重连；重连后恢复会话映射。
+**三级超时策略**：
+
+| 超时类型 | 时长 | 含义 |
+|----------|------|------|
+| 首包超时 | `30s` | 发送 `chat.send.message` 后，30s 内未收到任何 stream 数据 -> AI 可能无响应 |
+| 空闲超时 | `15s` | 两条 stream 数据之间超过 15s 无新内容 -> 可能卡住 |
+| 总超时 | `120s` | 单次问答从发送到完成的总时长上限 |
+
+- AionUi WS 心跳：收到 `ping` 需回复 `pong`，否则会被服务端断开。
 - 问答失败返回标准错误码，不把 AionUi 内部错误原文直接暴露前端。
+
+## 6.6 WS 断线重连与 Token 刷新
+
+> [!WARNING]
+> AionUi Token 默认有效期 24h（`constants.ts:21`），过期后服务端推送 `auth-expired` 并断开连接（`WebSocketManager.ts:199`）。
+> 仅重连不换 Token 会导致持续失败。
+
+**BFF 重连状态机**：
+
+```text
+[已连接] --WS断开--> [判断断开原因]
+                          |
+                  +-------+-------+
+                  |               |
+            [网络抖动]      [auth-expired]
+                  |               |
+            [指数退避重连]   [POST /login 刷新Token]
+                  |               |
+                  |         [拿到新Token]
+                  |               |
+                  +-------+-------+
+                          |
+                   [用(新)Token重建WS]
+                          |
+                   [恢复会话映射]
+```
+
+- **网络断线**：指数退避重连（1s -> 2s -> 4s -> ...最大30s），复用现有 Token。
+- **`auth-expired` 断线**：先尝试 `POST /api/auth/refresh` 续期，若失败再兜底 `POST /login` 重新登录，用新 Token 重建 WS。
+- **Token 主动刷新**：BFF 在 Token 到期前（如 23h 时）调用 `/api/auth/refresh`（`authRoutes.ts:281`）主动续期，避免临界断线。`/api/auth/refresh` 不受登录限流约束，优先使用；仅在 refresh 失败时才回退到 `/login`。
+- **重连后**：恢复会话映射，正在进行的请求返回超时错误让前端重试。
+
+**登录刷新保护（必须实现）**：
+
+> [!WARNING]
+> AionUi `/login` 有严格限流（`security.ts:14`、`authRoutes.ts:100`），多协程同时重登会触发限流拒绝。
+
+- **Single-flight**：全局只允许一个 `/login` 请求在飞，其他协程等待同一个 Promise 结果。
+- **指数退避**：登录失败后退避重试（1s -> 2s -> 4s），避免密集打击。
+- **熔断时间窗**：连续登录失败 3 次后进入 60s 熔断期，期间直接返回"服务不可用"，不再尝试登录。
 
 ---
 
@@ -261,7 +451,7 @@ gdhz-vue/bff/
   - 返回后写入 `messages`
 - 新增一个摘要调用方法（供业务按钮或面板初始化时触发）：
   - `POST /api/ai/summary/current`
-  - 将 `summary/keyFacts/actions` 渲染到摘要卡片
+  - 将 `snapshot` 渲染到数字区域，`summaryText` 渲染到文字区域
 - 可选：抽一个 `src/api/ai.js`，避免组件内直接写 fetch。
 
 后续可再改造 `AIAssistant.vue` 复用同一 API。
@@ -304,19 +494,49 @@ gdhz-vue/bff/
 
 ## 9. 分阶段实施计划
 
+## 阶段 0（PoC 预验证，1-2 天）
+
+用 Node.js 脚本验证 AionUi bridge 协议的完整链路：
+
+- [ ] `POST /login` 获取 JWT Token，确认 Token 格式（Cookie / Body）。
+- [ ] WebSocket 连接（用 `Authorization` header 传 Token），维持心跳（`ping/pong`）。
+- [ ] 发送 `create-conversation`（BFF 自行生成 UUID 作为 `id` 传入，含完整 `TProviderWithModel` 作为 `model`）：
+  - 验证传入自定义 `id` 后，后续发送 `chat.send.message` 使用该 `id` 是否正常工作。
+  - ~~场景B（已废弃）：`database.getUserConversations` 轮询不可行，因走同一 provider 回调链路。~~
+- [ ] **首问握手验证**：`create-conversation` 后立即发 `sendMessage`，测量最短安全间隔，确认握手策略（A/B/C）。
+- [ ] 发送 `chat.send.message`，完整记录 `chat.response.stream` 事件序列。
+- [ ] 确认每种 `type`（content/thought/finish/error/tool_group/agent_status/system）的 `data` 结构。
+- [ ] 验证完成信号：`finish` 和 `error` 哪些会出现、是否还有其他终止类型。
+- [ ] 验证 `finish` 后是否仍有迟到包（尾包问题），确认静默期策略的必要性。
+- [ ] 并发测试：同时两个 conversation 各发消息，验证 `conversation_id` 隔离。
+- [ ] Token 过期测试：验证 `auth-expired` 事件格式，确认 `/login` 刷新后能正常重连。
+- [ ] 输出：**协议文档**（固化事件名、数据格式、回调约定），作为 BFF 开发的基准。
+
+**PoC 通过标准（阶段1 启动门禁，不可变更）**：
+
+1. `create-conversation`（BFF 传入自定义 `id`）-> 后续 `chat.send.message` 使用该 `id` 正常工作。
+2. **新会话首问握手策略已固化**：确认 `create` 与 `sendMessage` 的安全时序（A/B/C 选一），写入协议文档。
+3. `chat.send.message` -> `chat.response.stream` 全链路在 WebSocket 侧已验证通过。
+4. 完成判定策略已验证：`finish`/`error` 信号 + 尾包静默期是否必要。
+5. Token 刷新链路已验证：`auth-expired` -> `/login` -> 重建 WS 可正常恢复。
+6. 协议文档已产出并包含：事件名、入参结构（含完整 `TProviderWithModel`）、完成信号、错误格式。
+
+**若 `create-conversation` 自定义 `id` 方案或首问握手策略未跑通，阶段1 不得启动。**
+
 ## 阶段 1（本期）
 
-- 新建 BFF。
+- 新建 BFF（基于 PoC 协议文档开发 `aionui.client.ts`）。
 - 接通 AionUi 登录、WS、会话创建、消息发送、流式聚合。
+- 实现 conversation_id 串行队列 + 路由表过滤 + unknown 消息丢弃。
 - 前端 `FloatingToolbar` 改为调用 `/api/ai/chat`。
 - 新增 `/api/ai/summary/current` 并在前端接入一个入口（按钮或自动加载）。
 - 实现用户会话映射与基础历史。
 
 验收标准：
 
-- 多个用户同时问答不串话。
-- 同一用户连续提问有上下文。
-- 摘要 API 能稳定返回结构化数据（`summary + keyFacts + actions`）。
+- 多个用户同时问答不串话（conversation_id 隔离 + 串行队列）。
+- 同一用户连续提问有上下文（长会话复用 conversation_id）。
+- 摘要 API 能稳定返回 `{ snapshot + summaryText }`（数字由代码保证，文本由 AI 生成）。
 - 前端无 mock，真实返回 AI 内容。
 
 ## 阶段 2（下一期）
@@ -334,17 +554,27 @@ gdhz-vue/bff/
 
 ## 10. 风险与规避
 
-1. AionUi 协议变更风险：
-- 规避：BFF 封装 `aionui.client.ts` 单点适配，禁止业务层直接依赖协议字段。
+1. AionUi bridge 协议变更风险：
 
-2. 单实例 AionUi 性能瓶颈：
+- 规避：BFF 封装 `aionui.client.ts` 单点适配，禁止业务层直接依赖协议字段。
+- 锁定 AionUi 版本，升级前先在测试环境验证兼容性。
+
+1. 单实例 AionUi 性能瓶颈：
+
 - 规避：BFF 限流 + 会话队列；必要时扩展为多 AionUi 实例池。
 
-3. 问答长耗时导致接口超时：
-- 规避：本期可先阻塞式 + 90s 超时；下一期切 SSE。
+1. 问答长耗时导致接口超时：
 
-4. 摘要接口“幻觉”风险：
-- 规避：摘要入参使用结构化 `snapshot`，Prompt 限制“仅可引用提供数据”，并要求固定 JSON schema 输出。
+- 规避：本期可先阻塞式 + 总超时 120s（与 §6.5 三级超时策略一致）；下一期切 SSE。
+
+1. 摘要接口"幻觉"风险：
+
+- 规避：摘要入参使用结构化 `snapshot`，Prompt 限制"仅可引用提供数据"。
+- `snapshot` 由代码保证权威性，AI 只生成 `summaryText`，不产核心结构化数字。
+
+1. bridge invoke 回调协议不确定性：
+
+- 规避：阶段0 PoC 先验证完整协议，固化文档后再开发。
 
 ---
 
@@ -353,3 +583,5 @@ gdhz-vue/bff/
 1. 本期不要把安全项扩大为阻塞条件（按当前约束执行）。
 2. 先保交付：问答可用 + 用户隔离可验证 + 会话可追踪。
 3. 所有与 AionUi 的交互统一收敛在 `aionui.client.ts`，不要散落到 controller。
+4. **阶段0 PoC 是阶段1 的前置依赖**，PoC 协议文档未产出前不启动 BFF 正式开发。
+5. `msg_id` 定位为辅助追踪字段（日志/诊断），不作为路由或并发控制的主键。
