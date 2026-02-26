@@ -214,6 +214,7 @@ const catalogLoading = ref(false)
 const catalogProviders = ref([])
 const selectedBackendKey = ref('')
 const selectedModelId = ref('')
+const allowedBackends = new Set(['gemini', 'codex'])
 
 const selectedBackend = computed(() => {
   const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
@@ -274,9 +275,15 @@ async function sendMessage(text) {
     const response = await queryAI(text)
     messages.value = messages.value.filter(item => !item.loading)
     messages.value.push({ role: 'assistant', content: formatTextForBubble(response) })
-  } catch (_error) {
+  } catch (error) {
     messages.value = messages.value.filter(item => !item.loading)
-    messages.value.push({ role: 'assistant', content: getMockResponse(text) })
+    const errorText = (error && typeof error === 'object' && 'message' in error)
+      ? String(error.message || 'AI 服务请求失败')
+      : 'AI 服务请求失败'
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`)
+    })
   } finally {
     isTyping.value = false
     scrollToBottom()
@@ -368,7 +375,8 @@ async function loadAICatalog() {
   catalogLoading.value = true
   try {
     const result = await fetchAICatalog()
-    const providers = Array.isArray(result?.providers) ? result.providers : []
+    const providers = (Array.isArray(result?.providers) ? result.providers : [])
+      .filter(item => allowedBackends.has(item?.backend))
     catalogProviders.value = providers
 
     if (!providers.length) {
@@ -416,23 +424,6 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#39;')
-}
-
-// 模拟AI回复
-function getMockResponse(text) {
-  if (text.includes('台风')) {
-    return '当前台风 <strong>"格美"</strong> 位于我省东南方向约300公里处，中心风力12级（33m/s），移动速度约15km/h。<br><br><strong>预计路径：</strong>未来24小时将向西北方向移动，对我省沿海造成风雨影响。<br><br><strong>影响区域：</strong>粤东沿海、珠三角部分地区'
-  }
-  if (text.includes('建议') || text.includes('防御')) {
-    return '根据当前响应等级（<strong>III级</strong>），建议采取以下措施：<br><br>1️⃣ 通知海上作业渔船回港避风<br>2️⃣ 加强沿海堤防巡查<br>3️⃣ 准备好应急物资和抢险队伍<br>4️⃣ 提前转移低洼地区群众<br>5️⃣ 做好城市排涝准备'
-  }
-  if (text.includes('系统') || text.includes('介绍') || text.includes('功能')) {
-    return '本系统是<strong>广东省自然灾害应急指挥平台</strong>，核心功能包括：<br><br>📍 <strong>态势感知</strong>：实时监测灾情动态<br>🎯 <strong>指挥调度</strong>：一键下达应急指令<br>📊 <strong>风险研判</strong>：AI辅助决策分析<br>🔍 <strong>数据总览</strong>：多源数据融合展示'
-  }
-  if (text.includes('灾情') || text.includes('总结')) {
-    return '<strong>当前灾情态势总结：</strong><br><br>🌀 台风"格美"接近中，预计24h内影响我省<br>⚠️ 已发布III级应急响应<br>📊 受影响人口：预估120万人<br>🚢 回港渔船：1,234艘<br>🏠 转移群众：8,500人<br><br>建议持续关注气象预警信息。'
-  }
-  return '收到您的问题：<em>' + text + '</em><br><br>我正在为您分析处理，由于目前是演示版本，仅支持部分特定领域的问答。如需更多帮助，请联系技术支持。'
 }
 </script>
 

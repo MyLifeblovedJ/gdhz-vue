@@ -33,6 +33,7 @@ export const config = {
     totalTimeoutMs: readNumber('AI_TOTAL_TIMEOUT_MS', 120_000),
     finishCooldownMs: readNumber('AI_FINISH_COOLDOWN_MS', 300),
     createReadyDelayMs: readNumber('AI_CREATE_READY_DELAY_MS', 700),
+    visibleBackends: splitCsv(process.env.BFF_AI_VISIBLE_BACKENDS || 'gemini,codex'),
   },
   aionui: {
     baseUrl: aionuiBaseUrl,

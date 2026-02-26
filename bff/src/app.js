@@ -18,6 +18,10 @@ app.use(
         callback(null, true)
         return
       }
+      if (config.allowedOrigins.includes('*')) {
+        callback(null, true)
+        return
+      }
       if (config.allowedOrigins.includes(origin)) {
         callback(null, true)
         return

@@ -146,24 +146,32 @@ export class AiService {
     const catalog = await this.aionuiClient.getAiCatalog({ force: true })
     const agents = Array.isArray(catalog.agents) ? catalog.agents : []
     const modelProviders = Array.isArray(catalog.modelProviders) ? catalog.modelProviders : []
+    const visibleBackends = new Set(config.ai.visibleBackends || [])
 
-    const providers = agents.map((agent) => ({
-      backendKey: agent.key || agent.backend,
-      backend: agent.backend,
-      name: agent.name,
-      cliPath: agent.cliPath || '',
-      customAgentId: agent.customAgentId || '',
-      isPreset: !!agent.isPreset,
-      presetAgentType: agent.presetAgentType || '',
-      supportedTransports: agent.supportedTransports || [],
-      models: Array.isArray(agent.cachedModelInfo?.availableModels) ? agent.cachedModelInfo.availableModels : [],
-      currentModelId: agent.cachedModelInfo?.currentModelId || '',
-    }))
+    const providers = agents
+      .filter((agent) => visibleBackends.size === 0 || visibleBackends.has(agent.backend))
+      .map((agent) => ({
+        backendKey: agent.key || agent.backend,
+        backend: agent.backend,
+        name: agent.name,
+        cliPath: agent.cliPath || '',
+        customAgentId: agent.customAgentId || '',
+        isPreset: !!agent.isPreset,
+        presetAgentType: agent.presetAgentType || '',
+        supportedTransports: agent.supportedTransports || [],
+        models: Array.isArray(agent.cachedModelInfo?.availableModels) ? agent.cachedModelInfo.availableModels : [],
+        currentModelId: agent.cachedModelInfo?.currentModelId || '',
+      }))
+
+    const fallbackSelectedAgent = providers[0]?.backendKey || providers[0]?.backend || ''
+    const normalizedLastSelectedAgent = providers.some((item) => item.backendKey === catalog.lastSelectedAgent || item.backend === catalog.lastSelectedAgent)
+      ? catalog.lastSelectedAgent || ''
+      : fallbackSelectedAgent
 
     return {
       providers,
       modelProviders,
-      lastSelectedAgent: catalog.lastSelectedAgent || '',
+      lastSelectedAgent: normalizedLastSelectedAgent,
     }
   }
 
