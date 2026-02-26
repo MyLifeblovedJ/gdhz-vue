@@ -20,7 +20,10 @@
 
 ## 2.1 目标
 
-在尽量少改动前端的前提下，让 `gdhz` AI 组件可以真实问答，并支持多用户隔离。
+在尽量少改动前端的前提下，交付两类 AI 能力，并支持多用户隔离：
+
+1. 自然问答接口（聊天）。
+2. 业务调用接口（生成“当前灾情摘要/总结”）。
 
 ## 2.2 本期约束（按当前决策执行）
 
@@ -39,11 +42,12 @@
 
 ```text
 Browser(gdhz-vue)
-   -> /api/ai/chat
+   -> /api/ai/chat                 (自然问答)
+   -> /api/ai/summary/current      (灾情摘要 API)
 gdhz-bff
    -> AionUi HTTP /login（拿会话 cookie）
    -> AionUi WebSocket（bridge 协议）
-   -> 调用 create-conversation / chat.send.message
+   -> 调用 create-conversation / chat.send.message（本质都走 CLI）
    <- 监听 chat.response.stream
    -> 回传给 gdhz 前端
 ```
@@ -161,11 +165,59 @@ gdhz-vue/bff/
 }
 ```
 
-### 2) `GET /api/ai/history?chatSessionId=...`
+### 2) `POST /api/ai/summary/current`
+
+用途：供前端业务模块一键获取“当前灾情摘要”，不依赖聊天面板的自由提问。
+
+请求：
+
+```json
+{
+  "region": "gd",
+  "timeRange": "24h",
+  "detailLevel": "standard",
+  "snapshot": {
+    "alertCount": 12,
+    "maxTyphoonLevel": "12",
+    "affectedPopulation": 1200000,
+    "evacuatedPopulation": 8500
+  }
+}
+```
+
+响应（建议结构化，便于卡片渲染）：
+
+```json
+{
+  "summary": "当前灾情总体为III级响应，粤东和珠三角沿海风险较高……",
+  "riskLevel": "III",
+  "keyFacts": [
+    "告警数量: 12",
+    "最大风力: 12级",
+    "影响人口: 120万人",
+    "已转移: 8500人"
+  ],
+  "actions": [
+    "继续组织渔船回港",
+    "加强堤防和低洼区巡查"
+  ],
+  "generatedAt": 1730000000000,
+  "traceId": "uuid"
+}
+```
+
+说明：
+
+- `snapshot` 本期可由前端传入（快速落地）。
+- 下一期改为 BFF 自行聚合数据源生成 `snapshot`，前端只传 `region/timeRange`。
+
+### 3) `GET /api/ai/history?chatSessionId=...`
 
 返回会话历史（从 BFF 本地库读取）。
 
 ## 6.3 BFF 内部流程（阻塞式首版）
+
+### A. 自然问答流程（`/api/ai/chat`）
 
 1. 根据登录态拿到 `tenant_id/user_id`。
 2. 查映射表是否已有 `aionui_conversation_id`。
@@ -174,6 +226,19 @@ gdhz-vue/bff/
 5. 监听 `chat.response.stream`，按 `conversation_id` 聚合文本。
 6. 收到完成信号或超时后返回最终 `reply`。
 7. 写入会话表和消息表。
+
+### B. 灾情摘要流程（`/api/ai/summary/current`）
+
+1. 接收 `region/timeRange` 和 `snapshot`（本期）。
+2. 组装“强约束 Prompt”：仅允许基于 `snapshot` 输出，不得编造数值。
+3. 调用 AionUi `chat.send.message`（建议使用独立 summary 会话池，避免污染聊天上下文）。
+4. 聚合 `chat.response.stream`，解析为结构化响应。
+5. 返回 `summary/riskLevel/keyFacts/actions/traceId`。
+
+建议：
+
+- 摘要接口使用“短会话或专用会话”，不要复用用户自由聊天会话。
+- 摘要接口输出固定 JSON schema，前端不再解析自由文本。
 
 ## 6.4 并发控制
 
@@ -194,6 +259,9 @@ gdhz-vue/bff/
 - 改造 `FloatingToolbar.vue` 的 `sendMessage()`：
   - 从 mock 改为 `POST /api/ai/chat`
   - 返回后写入 `messages`
+- 新增一个摘要调用方法（供业务按钮或面板初始化时触发）：
+  - `POST /api/ai/summary/current`
+  - 将 `summary/keyFacts/actions` 渲染到摘要卡片
 - 可选：抽一个 `src/api/ai.js`，避免组件内直接写 fetch。
 
 后续可再改造 `AIAssistant.vue` 复用同一 API。
@@ -241,12 +309,14 @@ gdhz-vue/bff/
 - 新建 BFF。
 - 接通 AionUi 登录、WS、会话创建、消息发送、流式聚合。
 - 前端 `FloatingToolbar` 改为调用 `/api/ai/chat`。
+- 新增 `/api/ai/summary/current` 并在前端接入一个入口（按钮或自动加载）。
 - 实现用户会话映射与基础历史。
 
 验收标准：
 
 - 多个用户同时问答不串话。
 - 同一用户连续提问有上下文。
+- 摘要 API 能稳定返回结构化数据（`summary + keyFacts + actions`）。
 - 前端无 mock，真实返回 AI 内容。
 
 ## 阶段 2（下一期）
@@ -273,6 +343,9 @@ gdhz-vue/bff/
 3. 问答长耗时导致接口超时：
 - 规避：本期可先阻塞式 + 90s 超时；下一期切 SSE。
 
+4. 摘要接口“幻觉”风险：
+- 规避：摘要入参使用结构化 `snapshot`，Prompt 限制“仅可引用提供数据”，并要求固定 JSON schema 输出。
+
 ---
 
 ## 11. 实施备注（给改造执行方）
@@ -280,4 +353,3 @@ gdhz-vue/bff/
 1. 本期不要把安全项扩大为阻塞条件（按当前约束执行）。
 2. 先保交付：问答可用 + 用户隔离可验证 + 会话可追踪。
 3. 所有与 AionUi 的交互统一收敛在 `aionui.client.ts`，不要散落到 controller。
-
