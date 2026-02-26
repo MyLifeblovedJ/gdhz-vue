@@ -415,7 +415,11 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
                   |               |
             [网络抖动]      [auth-expired]
                   |               |
-            [指数退避重连]   [POST /login 刷新Token]
+            [指数退避重连]   [POST /api/auth/refresh]
+                  |               |
+                  |         [refresh失败?]
+                  |               |
+                  |         [POST /login 兜底]
                   |               |
                   |         [拿到新Token]
                   |               |
@@ -430,6 +434,19 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - **`auth-expired` 断线**：先尝试 `POST /api/auth/refresh` 续期，若失败再兜底 `POST /login` 重新登录，用新 Token 重建 WS。
 - **Token 主动刷新**：BFF 在 Token 到期前（如 23h 时）调用 `/api/auth/refresh`（`authRoutes.ts:281`）主动续期，避免临界断线。`/api/auth/refresh` 不受登录限流约束，优先使用；仅在 refresh 失败时才回退到 `/login`。
 - **重连后**：恢复会话映射，正在进行的请求返回超时错误让前端重试。
+
+**`/api/auth/refresh` 调用前置条件（必须实现）**：
+
+> [!IMPORTANT]
+> `/api/auth/refresh` 是 POST 接口，受全局 CSRF 保护；`/login` 是例外（在排除列表）。
+> 因此 BFF 不能仅带 token 就调用 refresh，需满足以下条件。
+
+- 携带会话 token：请求体中传 `token`（`authRoutes.ts:283`）。
+- 携带 CSRF：从前序响应获取 `aionui-csrf-token`，并在 POST body 中携带 `_csrf` 字段（tiny-csrf 读取 body）。
+- 维持 cookie jar：保证 `aionui-session` 与 `aionui-csrf-token` 在同一会话上下文中发送。
+
+> 实施建议：BFF 将 `login -> refresh -> ws` 统一走同一个 HTTP 客户端实例（带 cookie jar），
+> 并封装 `withCsrf(body)` 自动注入 `_csrf`，避免调用方遗漏。
 
 **登录刷新保护（必须实现）**：
 
@@ -509,7 +526,7 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - [ ] 验证完成信号：`finish` 和 `error` 哪些会出现、是否还有其他终止类型。
 - [ ] 验证 `finish` 后是否仍有迟到包（尾包问题），确认静默期策略的必要性。
 - [ ] 并发测试：同时两个 conversation 各发消息，验证 `conversation_id` 隔离。
-- [ ] Token 过期测试：验证 `auth-expired` 事件格式，确认 `/login` 刷新后能正常重连。
+- [ ] Token 过期测试：验证 `auth-expired` 事件格式，确认 `refresh优先 + login兜底` 链路可恢复。
 - [ ] 输出：**协议文档**（固化事件名、数据格式、回调约定），作为 BFF 开发的基准。
 
 **PoC 通过标准（阶段1 启动门禁，不可变更）**：
@@ -518,7 +535,7 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 2. **新会话首问握手策略已固化**：确认 `create` 与 `sendMessage` 的安全时序（A/B/C 选一），写入协议文档。
 3. `chat.send.message` -> `chat.response.stream` 全链路在 WebSocket 侧已验证通过。
 4. 完成判定策略已验证：`finish`/`error` 信号 + 尾包静默期是否必要。
-5. Token 刷新链路已验证：`auth-expired` -> `/login` -> 重建 WS 可正常恢复。
+5. Token 刷新链路已验证：`auth-expired` -> `/api/auth/refresh` -> (失败则 `/login`) -> 重建 WS 可正常恢复。
 6. 协议文档已产出并包含：事件名、入参结构（含完整 `TProviderWithModel`）、完成信号、错误格式。
 
 **若 `create-conversation` 自定义 `id` 方案或首问握手策略未跑通，阶段1 不得启动。**

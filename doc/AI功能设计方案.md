@@ -6,11 +6,18 @@
 
 ```mermaid
 graph LR
-    A[Vue 前端] -->|fetch / SSE| B[后端代理层]
-    B -->|API Key| C[大模型 API<br/>通义千问 / DeepSeek]
-    B -->|RAG| D[知识库<br/>政策文档 & 预案模板]
-    B -->|SQL / API| E[业务数据<br/>潮位 / 台风 / 预警]
+    A[Vue 前端] -->|fetch / SSE| B[gdhz-bff]
+    B -->|WebSocket bridge| C[AionUi Agent Gateway<br/>:25808]
+    B -->|SQL / API| D[业务数据<br/>潮位 / 台风 / 预警]
+    B -->|RAG 检索(二期)| E[知识库<br/>政策文档 & 预案模板]
+    C --> F[Agent / CLI / 模型]
 ```
+
+### 分期基线（与 BFF 实施方案对齐）
+
+- **本期（阶段1）唯一基线**：前端仅调用 `gdhz-bff`，由 BFF 对接 `AionUi bridge`；不在 gdhz 侧新增“直连大模型 API”链路。
+- **二期/三期演进**：在 BFF 内增加 RAG、模板生成、更多业务 API；前端接口保持 `/api/ai/*` 不变。
+- **实施主文档**：`gdhz-ai-bff-aionui-implementation-plan.md`，本文档定位为能力规划与功能拆解。
 
 ### 核心原则：代码 + AI 分工
 
@@ -244,7 +251,7 @@ graph TB
 
 ### 第一阶段：基础对接（1-2 周）
 
-- [ ] 搭建后端 AI 代理层
+- [ ] 搭建后端 AI 代理层（gdhz-bff，对接 AionUi）
 - [ ] 新增 `src/api/ai.js` API 模块
 - [ ] 升级 `AIAssistant.vue` → 流式对话 + 上下文感知
 - [ ] 创建 `src/utils/riskEngine.js` 规则引擎
@@ -268,7 +275,8 @@ graph TB
 
 | 组件 | 推荐方案 |
 |------|----------|
-| 大模型 | 通义千问 (Qwen) / DeepSeek |
+| Agent 网关（本期） | AionUi WebServer + Bridge（25808） |
+| 大模型（经 AionUi 配置） | 通义千问 (Qwen) / DeepSeek |
 | 流式传输 | SSE (Server-Sent Events) |
 | RAG 向量库 | FAISS（轻量）/ Milvus（生产级） |
 | 文档嵌入 | text-embedding-v3 (阿里) |
