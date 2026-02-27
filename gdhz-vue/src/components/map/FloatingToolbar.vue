@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="floating-toolbar">
     <!-- 左侧控制区 -->
     <div class="left-controls">
@@ -63,14 +63,10 @@
         <div class="halo-glow-bg"></div>
         <div class="dialog-content ai-layout-shell">
           <aside class="ai-session-sider">
-            <button class="session-btn new-session" :disabled="catalogLoading || isTyping" @click="showProviderPicker = true">
+            <button class="session-btn new-session" :disabled="catalogLoading || isTyping" @click="startNewSession({ typedGreeting: true })">
               <i class="fa-solid fa-plus"></i>
               新建会话
             </button>
-            <div class="sider-actions">
-              <button class="session-btn" :disabled="!chatSessionId || isTyping" @click="renameCurrentSession">重命名</button>
-              <button class="session-btn danger" :disabled="!chatSessionId || isTyping" @click="deleteCurrentSession">删除</button>
-            </div>
             <div class="sider-history">
               <template v-for="group in sessionGroups" :key="group.key">
                 <div v-if="group.items.length" class="sider-group">
@@ -99,18 +95,40 @@
 
           <section class="ai-chat-pane">
             <div class="dialog-header">
-              <div class="header-info">
-                <div class="ai-icon-pulse">
-                  <i class="fa-solid fa-robot"></i>
-                </div>
-                <div class="header-title-wrap">
-                  <div class="header-title">{{ currentSessionTitle }}</div>
-                  <div class="header-subtitle">{{ currentBackendName }} · {{ currentModelLabel }}</div>
-                </div>
+              <div class="header-title-wrap">
+                <div class="header-title">{{ currentSessionTitle }}</div>
+                <div class="header-subtitle">{{ currentBackendName }} · {{ currentModelLabel }}</div>
               </div>
               <button class="close-btn" @click="showAIPanel = false">
                 <i class="fa-solid fa-xmark"></i>
               </button>
+            </div>
+
+            <div class="welcome-shell" v-if="showWelcomeHero">
+              <h2 class="welcome-title">您好，我是您的智能防灾助手</h2>
+              <div class="model-switcher" :class="`active-${activeModelKey}`">
+                <div class="switcher-highlight" :class="{ codex: activeModelKey === 'codex' }"></div>
+                <button
+                  type="button"
+                  class="model-switch-btn"
+                  :class="{ active: activeModelKey === 'gemini' }"
+                  :disabled="catalogLoading || isTyping"
+                  @click="switchBackend('gemini')"
+                >
+                  <span class="model-dot">G</span>
+                  <span class="model-label">Gemini</span>
+                </button>
+                <button
+                  type="button"
+                  class="model-switch-btn"
+                  :class="{ active: activeModelKey === 'codex' }"
+                  :disabled="catalogLoading || isTyping"
+                  @click="switchBackend('codex')"
+                >
+                  <span class="model-dot">C</span>
+                  <span class="model-label">Codex</span>
+                </button>
+              </div>
             </div>
 
             <div class="dialog-messages" ref="messagesRef">
@@ -137,42 +155,19 @@
               <div class="outer-ring"></div>
               <div class="inner-glow"></div>
               <div class="main-border"></div>
-              <div class="ai-selector-row">
-                <select
-                  v-model="selectedBackendKey"
-                  class="ai-select"
-                  :disabled="catalogLoading || isTyping"
-                  @change="handleBackendChange"
-                >
-                  <option
-                    v-for="item in catalogProviders"
-                    :key="item.backendKey || item.backend"
-                    :value="item.backendKey || item.backend"
-                  >
-                    {{ item.name || item.backend }}
-                  </option>
-                </select>
-                <select
-                  v-model="selectedModelId"
-                  class="ai-select"
-                  :disabled="catalogLoading || isTyping || modelOptions.length === 0"
-                  @change="handleModelChange"
-                >
-                  <option v-for="item in modelOptions" :key="item.id" :value="item.id">
-                    {{ item.label || item.id }}
-                  </option>
-                </select>
-              </div>
               <div class="input-wrapper">
-                <input
+                <textarea
+                  ref="inputRef"
                   v-model="inputText"
-                  @keyup.enter="handleSend"
+                  @keydown.enter.exact.prevent="handleSend"
+                  @input="resizeInput"
                   @focus="inputFocused = true"
                   @blur="inputFocused = false"
-                  placeholder="询问当前灾情、防御建议..."
+                  placeholder="请输入您的问题..."
                   :disabled="isTyping"
                   class="search-field"
-                />
+                  rows="1"
+                ></textarea>
                 <div class="search-btn-border"></div>
                 <button class="send-btn" @click="handleSend" :disabled="!inputText || isTyping">
                   <i class="fa-solid fa-arrow-up"></i>
@@ -181,27 +176,6 @@
             </div>
           </section>
         </div>
-
-        <Transition name="picker-fade">
-          <div v-if="showProviderPicker" class="provider-picker-mask" @click.self="showProviderPicker = false">
-            <div class="provider-picker">
-              <div class="provider-picker-title">请选择模型供应商</div>
-              <div class="provider-list">
-                <button
-                  v-for="item in catalogProviders"
-                  :key="item.backendKey || item.backend"
-                  class="provider-card"
-                  @click="createSessionWithProvider(item)"
-                >
-                  <span class="provider-avatar" :class="getBackendClass(item.backend || item.backendKey)">
-                    {{ getBackendAvatar(item.backend || item.backendKey) }}
-                  </span>
-                  <span class="provider-name">{{ item.name || item.backend }}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </Transition>
       </div>
     </Transition>
   </div>
@@ -216,8 +190,6 @@ import {
   fetchAICatalog,
   fetchChatHistory,
   fetchAISessions,
-  renameAISession,
-  deleteAISession,
 } from '../../api/ai'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
@@ -263,6 +235,7 @@ const showAIPanel = ref(false)
 const inputText = ref('')
 const isTyping = ref(false)
 const messagesRef = ref(null)
+const inputRef = ref(null)
 const inputFocused = ref(false)
 const chatSessionId = ref(null)
 const catalogLoading = ref(false)
@@ -272,20 +245,194 @@ const selectedModelId = ref('')
 const sessionLoading = ref(false)
 const sessionOptions = ref([])
 const selectedSessionId = ref('')
-const showProviderPicker = ref(false)
 const allowedBackends = new Set(['gemini', 'codex'])
 const CHAT_SESSION_STORAGE_KEY = 'gdhz.ai.chatSession.v1'
 const HISTORY_PAGE_SIZE = 100
 const SESSION_PAGE_SIZE = 50
-const DEFAULT_ASSISTANT_GREETING_TEXT = [
-  '您好，我是您的智能防灾助手。我可以为您提供：',
-  '• 实时灾情分析与态势研判',
-  '• 应急决策辅助建议',
-  '• 系统操作指引',
-  '',
-  '请问有什么可以帮您？'
-].join('\n')
+const WELCOME_MESSAGE_POOL = [
+  `我可以为您提供：
+• 实时灾情分析与态势研判
+• 应急决策辅助建议
+• 系统操作指引
+
+请问有什么可以帮您？`,
+  `您好，当前海洋灾害监测系统已就绪。
+• 风暴潮趋势分析可实时更新
+• 重点岸段风险等级可快速查询
+• 应急联动建议支持一键生成
+
+请告诉我您关注的区域。`,
+  `欢迎进入海洋灾害决策模式。
+• 台风路径与海浪影响可联动研判
+• 潮位异常可自动预警
+• 防御措施可按等级推荐
+
+您想先看哪一项？`,
+  `您好，我可以协助您开展应急值守。
+• 快速汇总当前灾情
+• 识别高风险岸段与港区
+• 生成处置与调度建议
+
+请直接输入任务目标。`,
+  `智能防灾助手已在线。
+• 支持多源监测数据综合分析
+• 支持会商纪要要点提炼
+• 支持阶段性防御行动建议
+
+现在需要我先分析什么？`,
+  `已进入海洋灾害研判界面。
+• 我可以解释预警信号含义
+• 我可以辅助制定分级响应建议
+• 我可以给出巡查重点清单
+
+请描述您的问题。`,
+  `您好，系统当前可用能力如下：
+• 灾情态势自动总结
+• 应急资源调度建议
+• 现场处置流程指引
+
+需要我先输出哪部分内容？`,
+  `欢迎使用智能防灾助手。
+• 可按“今天/昨天”查看会话历史
+• 可在 Gemini/Codex 之间快速切换
+• 可基于上下文持续追问
+
+请输入您关心的灾情。`,
+  `海洋灾害综合决策助手已准备就绪。
+• 风暴潮风险评估
+• 海堤防护薄弱点提示
+• 应急行动优先级建议
+
+请问是否需要立即生成简报？`,
+  `您好，我可以作为您的值班研判助手。
+• 监测异常快速识别
+• 风险区域自动标注
+• 防灾建议结构化输出
+
+告诉我当前场景即可。`,
+  `欢迎回来，已为您开启智能决策支持。
+• 提供灾情快照与变化趋势
+• 提供跨部门协同建议
+• 提供公众提醒要点
+
+您希望从哪里开始？`,
+  `当前系统运行稳定。
+• 可分析台风、海浪、潮位联动影响
+• 可生成分区分级防御建议
+• 可输出现场执行清单
+
+请输入您的任务。`,
+  `您好，我可以协助您完成会商准备。
+• 一键整理关键风险点
+• 形成可执行应急建议
+• 提炼汇报口径与重点结论
+
+现在开始吗？`,
+  `智能助手已连接到灾情上下文。
+• 可快速回答系统操作问题
+• 可解释模型输出结果
+• 可给出下一步处置建议
+
+请告诉我您的目标。`,
+  `欢迎使用海洋防灾决策支持。
+• 重点区域风险热度可说明
+• 资源布控建议可生成
+• 风险沟通要点可提炼
+
+您希望查看哪个模块？`,
+  `您好，我是您的智能防灾助手。
+• 支持实时态势分析
+• 支持应急处置建议
+• 支持操作流程指引
+
+请问有什么可以帮您？`,
+  `系统已进入应急决策协同状态。
+• 可识别高优先级处置任务
+• 可汇总监测站异常信息
+• 可输出阶段性研判结论
+
+请描述当前需求。`,
+  `欢迎接入海洋灾害智能会话。
+• 我可以帮您快速看清风险
+• 我可以帮您拟定行动方案
+• 我可以帮您完成值班记录要点
+
+请直接下达任务。`,
+  `您好，防灾助手已准备完毕。
+• 提供沿海区域风险对比
+• 提供巡查重点与频次建议
+• 提供响应升级参考意见
+
+您现在最关注什么？`,
+  `当前可执行的智能能力包括：
+• 灾情摘要自动生成
+• 风险等级趋势说明
+• 指挥调度建议输出
+
+需要我先生成一版摘要吗？`,
+  `欢迎进入海洋灾害工作台。
+• 可快速定位重点风险区
+• 可生成分时段防御策略
+• 可输出值班交接提示
+
+请告诉我当前班次任务。`,
+  `您好，我可以为您提供决策辅助。
+• 风险研判结果结构化呈现
+• 处置建议按优先级排序
+• 关键事项自动提醒
+
+请输入您想分析的问题。`,
+  `智能防灾助手在线响应中。
+• 支持多轮问答与连续追踪
+• 支持历史会话快速回看
+• 支持不同模型策略切换
+
+请继续输入。`,
+  `欢迎，系统已准备好应急支持。
+• 当前海域态势可即时汇总
+• 防御动作建议可直接生成
+• 重点部门联动可给出提示
+
+请问先看哪部分？`,
+  `您好，今天也一起高效值守。
+• 监测数据异常快速提示
+• 风险趋势可视化解读
+• 处置方案可操作化建议
+
+告诉我您需要的输出格式。`,
+  `海洋灾害决策助手已启动。
+• 可生成“现状-风险-行动”三段式结论
+• 可针对重点岸段给出建议
+• 可辅助会商发言提纲整理
+
+是否现在开始分析？`,
+  `欢迎进入智能研判对话。
+• 我可以帮您压缩信息噪声
+• 我可以帮您突出关键风险
+• 我可以帮您形成明确行动项
+
+请输入当前事件。`,
+  `您好，已为您打开应急辅助模式。
+• 支持防汛防潮场景分析
+• 支持灾后复盘要点整理
+• 支持跨时段趋势对比
+
+需要我先给出总体态势吗？`,
+  `当前会话可用于海洋灾害快速决策。
+• 可在一分钟内形成初步建议
+• 可结合历史会话追溯结论
+• 可输出简洁行动清单
+
+请告诉我任务背景。`,
+  `您好，我会持续为您提供防灾支持。
+• 实时灾情分析与态势研判
+• 应急决策辅助建议
+• 系统操作指引
+
+请问有什么可以帮您？`
+]
 let greetingTimer = null
+let lastGreetingIndex = -1
 
 const selectedBackend = computed(() => {
   const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
@@ -315,20 +462,31 @@ const currentModelLabel = computed(() => {
   return model?.label || selectedModelId.value || '默认模型'
 })
 
+const activeModelKey = computed(() => {
+  const backend = String(selectedBackend.value || '').toLowerCase()
+  const backendKey = String(selectedBackendKey.value || '').toLowerCase()
+  if (backend.includes('codex') || backendKey.includes('codex')) return 'codex'
+  if (backend.includes('gemini') || backendKey.includes('gemini')) return 'gemini'
+  return 'gemini'
+})
+
+const showWelcomeHero = computed(() => !messages.value.some((item) => item.role === 'user'))
+
 const sessionGroups = computed(() => {
   const today = []
-  const last7 = []
+  const yesterday = []
   const older = []
   const now = Date.now()
   const dayMs = 24 * 60 * 60 * 1000
-  const startOfToday = new Date(new Date(now).toDateString()).getTime()
+  const startOfToday = new Date(new Date(now).setHours(0, 0, 0, 0)).getTime()
+  const startOfYesterday = startOfToday - dayMs
 
   for (const item of sessionOptions.value) {
     const updatedAt = Number(item?.updatedAt || 0)
     if (updatedAt >= startOfToday) {
       today.push(item)
-    } else if (updatedAt >= startOfToday - 6 * dayMs) {
-      last7.push(item)
+    } else if (updatedAt >= startOfYesterday) {
+      yesterday.push(item)
     } else {
       older.push(item)
     }
@@ -336,7 +494,7 @@ const sessionGroups = computed(() => {
 
   return [
     { key: 'today', label: '今天', items: today },
-    { key: 'last7', label: '过去 7 天', items: last7 },
+    { key: 'yesterday', label: '昨天', items: yesterday },
     { key: 'older', label: '更早', items: older },
   ]
 })
@@ -362,6 +520,30 @@ function getBackendAvatar(value) {
   return 'AI'
 }
 
+function matchProviderByBackend(provider, backendFamily) {
+  const normalized = String(backendFamily || '').toLowerCase()
+  const key = String(provider?.backendKey || '').toLowerCase()
+  const backend = String(provider?.backend || '').toLowerCase()
+  return key.includes(normalized) || backend.includes(normalized)
+}
+
+function switchBackend(backendFamily) {
+  if (catalogLoading.value || isTyping.value) return
+  const normalized = String(backendFamily || '').toLowerCase()
+  if (!normalized || normalized === activeModelKey.value) return
+
+  if (!catalogProviders.value.length) {
+    startNewSession({ backendKey: normalized, typedGreeting: true })
+    return
+  }
+
+  const provider = catalogProviders.value.find((item) => matchProviderByBackend(item, normalized))
+  if (!provider) return
+
+  const backendKey = provider.backendKey || provider.backend
+  startNewSession({ backendKey, typedGreeting: true })
+}
+
 function normalizeErrorText(error, fallback = 'AI 服务请求失败') {
   if (error && typeof error === 'object' && 'message' in error) {
     return String(error.message || fallback)
@@ -376,11 +558,24 @@ function stopGreetingTyping() {
   }
 }
 
+function pickRandomGreetingText() {
+  if (!WELCOME_MESSAGE_POOL.length) {
+    return '您好，我是您的智能防灾助手。\n\n请问有什么可以帮您？'
+  }
+  let index = Math.floor(Math.random() * WELCOME_MESSAGE_POOL.length)
+  if (WELCOME_MESSAGE_POOL.length > 1 && index === lastGreetingIndex) {
+    index = (index + 1) % WELCOME_MESSAGE_POOL.length
+  }
+  lastGreetingIndex = index
+  return WELCOME_MESSAGE_POOL[index]
+}
+
 function setGreetingMessage({ typed = true } = {}) {
   stopGreetingTyping()
+  const greetingText = pickRandomGreetingText()
   messages.value = [{ role: 'assistant', content: '' }]
   if (!typed) {
-    messages.value[0].content = formatTextForBubble(DEFAULT_ASSISTANT_GREETING_TEXT)
+    messages.value[0].content = formatTextForBubble(greetingText)
     scrollToBottom()
     return
   }
@@ -389,12 +584,12 @@ function setGreetingMessage({ typed = true } = {}) {
   greetingTimer = setInterval(() => {
     const step = 2
     index += step
-    const text = DEFAULT_ASSISTANT_GREETING_TEXT.slice(0, index)
+    const text = greetingText.slice(0, index)
     if (messages.value[0]) {
       messages.value[0].content = formatTextForBubble(text)
     }
     scrollToBottom()
-    if (index >= DEFAULT_ASSISTANT_GREETING_TEXT.length) {
+    if (index >= greetingText.length) {
       stopGreetingTyping()
     }
   }, 16)
@@ -596,60 +791,15 @@ function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
   }
   chatSessionId.value = null
   selectedSessionId.value = ''
-  showProviderPicker.value = false
   applyHistoryMessages([], { typedOnEmpty: typedGreeting })
   clearStoredChatSession()
-}
-
-function createSessionWithProvider(provider) {
-  const backendKey = provider?.backendKey || provider?.backend || ''
-  startNewSession({ backendKey, typedGreeting: true })
-}
-
-async function renameCurrentSession() {
-  if (!chatSessionId.value) return
-  const current = sessionOptions.value.find((item) => item.chatSessionId === chatSessionId.value)
-  const titleInput = window.prompt('请输入新的会话标题', String(current?.title || ''))
-  if (titleInput == null) return
-  const normalized = String(titleInput || '').trim()
-  if (!normalized) return
-
-  try {
-    await renameAISession(chatSessionId.value, normalized)
-    await loadSessionOptions()
-  } catch (error) {
-    const errorText = normalizeErrorText(error, '重命名会话失败')
-    messages.value.push({
-      role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`),
-    })
-    scrollToBottom()
-  }
-}
-
-async function deleteCurrentSession() {
-  if (!chatSessionId.value) return
-  const ok = window.confirm('确认删除当前会话及其历史消息？')
-  if (!ok) return
-
-  try {
-    await deleteAISession(chatSessionId.value)
-    startNewSession()
-    await loadSessionOptions()
-  } catch (error) {
-    const errorText = normalizeErrorText(error, '删除会话失败')
-    messages.value.push({
-      role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`),
-    })
-    scrollToBottom()
-  }
+  inputText.value = ''
+  resizeInput()
 }
 
 // 切换AI面板
 function toggleAIPanel() {
   showAIPanel.value = !showAIPanel.value
-  // 关闭其他面板
   if (showAIPanel.value) {
     store.closeFloatingPanel()
     if (!catalogProviders.value.length) {
@@ -658,11 +808,11 @@ function toggleAIPanel() {
     if (!sessionOptions.value.length) {
       void loadSessionOptions()
     }
-    if (!messages.value.length) {
+    const hasUserMessage = messages.value.some((item) => item.role === 'user')
+    if (!chatSessionId.value && !hasUserMessage) {
       setGreetingMessage({ typed: true })
     }
-  } else {
-    showProviderPicker.value = false
+    resizeInput()
   }
 }
 
@@ -672,6 +822,14 @@ function scrollToBottom() {
     if (messagesRef.value) {
       messagesRef.value.scrollTop = messagesRef.value.scrollHeight
     }
+  })
+}
+
+function resizeInput() {
+  nextTick(() => {
+    if (!inputRef.value) return
+    inputRef.value.style.height = '48px'
+    inputRef.value.style.height = `${Math.min(inputRef.value.scrollHeight, 148)}px`
   })
 }
 
@@ -689,6 +847,7 @@ async function sendMessage(text) {
   // 用户发送
   messages.value.push({ role: 'user', content: formatTextForBubble(normalizedText) })
   inputText.value = ''
+  resizeInput()
   scrollToBottom()
 
   isTyping.value = true
@@ -821,15 +980,6 @@ function applyDefaultModelForBackend() {
   selectedModelId.value = options[0].id
 }
 
-function handleBackendChange() {
-  startNewSession({ typedGreeting: false })
-  applyDefaultModelForBackend()
-}
-
-function handleModelChange() {
-  startNewSession({ typedGreeting: false })
-}
-
 async function loadAICatalog() {
   if (catalogLoading.value) return
 
@@ -874,6 +1024,7 @@ onMounted(() => {
   void loadAICatalog()
     .finally(() => restoreChatSessionIfExists())
     .finally(() => loadSessionOptions().catch(() => undefined))
+  resizeInput()
 })
 
 onBeforeUnmount(() => {
@@ -1306,10 +1457,10 @@ function escapeHtml(text) {
 .halo-chat-dialog {
   position: absolute;
   left: 70px;
-  top: 0; /* Align with top of toolbar */
-  width: min(760px, calc(100vw - 96px));
-  height: 550px;
-  background: rgba(15, 23, 42, 0.95); /* Deep dark blue */
+  top: 0;
+  width: min(680px, calc(100vw - 96px));
+  height: 600px;
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(20px);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1348,18 +1499,18 @@ function escapeHtml(text) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .session-btn {
-  height: 30px;
-  border-radius: 8px;
+  height: 34px;
+  border-radius: 10px;
   border: 1px solid rgba(167, 139, 250, 0.35);
   background: rgba(39, 22, 91, 0.45);
   color: #ede9fe;
-  font-size: 12px;
-  padding: 0 8px;
+  font-size: 13px;
+  padding: 0 10px;
   cursor: pointer;
 }
 
@@ -1367,44 +1518,19 @@ function escapeHtml(text) {
   background: rgba(109, 40, 217, 0.45);
 }
 
-.session-btn.danger {
-  border-color: rgba(248, 113, 113, 0.4);
-  background: rgba(127, 29, 29, 0.4);
-}
-
-.session-btn.danger:hover:not(:disabled) {
-  background: rgba(153, 27, 27, 0.55);
-}
-
 .session-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.header-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ai-icon-pulse {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 14px;
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
-}
-
 .header-title {
   color: #fff;
   font-weight: 600;
-  font-size: 15px;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .close-btn {
@@ -1420,14 +1546,122 @@ function escapeHtml(text) {
   color: #fff;
 }
 
+.welcome-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 26px 20px 12px;
+}
+
+.welcome-title {
+  margin: 0;
+  color: #f8fafc;
+  font-size: clamp(25px, 3vw, 32px);
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.8px;
+  line-height: 1.2;
+}
+
+.model-switcher {
+  position: relative;
+  width: min(340px, 100%);
+  background: rgba(2, 6, 20, 0.82);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  border-radius: 999px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.switcher-highlight {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  bottom: 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+  transition: transform 0.28s ease;
+  pointer-events: none;
+}
+
+.switcher-highlight.codex {
+  transform: translateX(100%);
+}
+
+.model-switch-btn {
+  position: relative;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.78);
+  height: 38px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: color 0.2s ease;
+  padding: 0 12px;
+}
+
+.model-switch-btn:hover {
+  color: #f8fafc;
+}
+
+.model-switch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.model-switch-btn.active {
+  color: #ffffff;
+}
+
+.model-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.model-label {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: max-width 0.24s ease, opacity 0.24s ease;
+}
+
+.model-switch-btn.active .model-label,
+.model-switch-btn:hover .model-label {
+  max-width: 70px;
+  opacity: 1;
+}
+
 /* Messages */
 .dialog-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  margin: 0 16px 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  background: rgba(2, 6, 20, 0.4);
 }
 
 /* Scrollbar styling */
@@ -1445,7 +1679,7 @@ function escapeHtml(text) {
 .halo-message {
   display: flex;
   gap: 10px;
-  max-width: 90%;
+  max-width: 92%;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -1543,44 +1777,27 @@ function escapeHtml(text) {
   position: relative;
   z-index: 2;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   width: 100%;
-}
-
-.halo-search-input .ai-selector-row {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: 100%;
-  margin-bottom: 8px;
-}
-
-.halo-search-input .ai-select {
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  background: rgba(3, 6, 18, 0.88);
-  color: #e9dcff;
-  font-size: 12px;
-  padding: 0 8px;
-}
-
-.halo-search-input .ai-select:disabled {
-  opacity: 0.55;
 }
 
 .halo-search-input .search-field {
   background-color: #010201;
   border: none;
   width: 100%;
-  height: 48px;
+  min-height: 48px;
+  max-height: 148px;
   border-radius: 10px;
   color: white;
   padding-right: 54px;
   padding-left: 16px;
+  padding-top: 13px;
+  padding-bottom: 13px;
   font-size: 14px;
+  line-height: 1.55;
+  resize: none;
+  overflow-y: auto;
+  font-family: inherit;
 }
 
 .halo-search-input .search-field::placeholder {
@@ -1593,7 +1810,7 @@ function escapeHtml(text) {
 
 .halo-search-input .send-btn {
   position: absolute;
-  top: 4px;
+  bottom: 4px;
   right: 4px;
   width: 40px;
   height: 40px;
@@ -1624,11 +1841,10 @@ function escapeHtml(text) {
 .halo-search-input .main-border,
 .halo-search-input .outer-ring,
 .halo-search-input .aurora-glow {
-  max-height: 62px;
-  max-width: calc(100% + 8px);
-  height: 100%;
-  width: calc(100% + 8px);
   position: absolute;
+  inset: -4px;
+  height: auto;
+  width: auto;
   overflow: hidden;
   z-index: 1;
   border-radius: 12px;
@@ -1637,8 +1853,7 @@ function escapeHtml(text) {
 }
 
 .halo-search-input .inner-glow {
-  max-height: 55px;
-  max-width: calc(100% + 1px);
+  inset: -1px;
   border-radius: 10px;
   filter: blur(2px);
 }
@@ -1668,8 +1883,7 @@ function escapeHtml(text) {
 }
 
 .halo-search-input .main-border {
-  max-height: 51px;
-  max-width: calc(100% - 3px);
+  inset: 1px;
   border-radius: 11px;
   filter: blur(0.5px);
 }
@@ -1699,8 +1913,7 @@ function escapeHtml(text) {
 }
 
 .halo-search-input .outer-ring {
-  max-height: 57px;
-  max-width: calc(100% + 4px);
+  inset: -2px;
 }
 
 .halo-search-input .outer-ring::before {
@@ -1727,11 +1940,10 @@ function escapeHtml(text) {
 }
 
 .halo-search-input .aurora-glow {
+  inset: -18px -20px;
   overflow: hidden;
   filter: blur(30px);
   opacity: 0.4;
-  max-height: 100px;
-  max-width: calc(100% + 40px);
 }
 
 .halo-search-input .aurora-glow::before {
@@ -1755,7 +1967,7 @@ function escapeHtml(text) {
   width: 42px;
   position: absolute;
   overflow: hidden;
-  top: 3px;
+  bottom: 3px;
   right: 3px;
   border-radius: 10px;
   pointer-events: none;
@@ -2230,16 +2442,17 @@ function escapeHtml(text) {
   display: flex;
   flex-direction: row;
   min-width: 0;
+  height: 100%;
 }
 
 .ai-session-sider {
-  width: 210px;
+  width: 200px;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(2, 6, 20, 0.35);
-  padding: 10px;
+  background: rgba(2, 6, 20, 0.42);
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .session-btn.new-session {
@@ -2247,12 +2460,6 @@ function escapeHtml(text) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-}
-
-.sider-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
@@ -2376,95 +2583,16 @@ function escapeHtml(text) {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .header-subtitle {
   color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
-}
-
-.provider-picker-mask {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3;
-}
-
-.provider-picker {
-  width: min(420px, calc(100% - 32px));
-  background: rgba(15, 23, 42, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.provider-picker-title {
-  color: #fff;
-  font-size: 14px;
-  margin-bottom: 10px;
-}
-
-.provider-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.provider-card {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #e2e8f0;
-  padding: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.provider-card:hover {
-  border-color: rgba(139, 92, 246, 0.45);
-  background: rgba(139, 92, 246, 0.12);
-}
-
-.provider-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 10px;
-}
-
-.provider-avatar.gemini {
-  background: #10b981;
-}
-
-.provider-avatar.codex {
-  background: #3b82f6;
-}
-
-.provider-avatar.generic {
-  background: #6b7280;
-}
-
-.provider-name {
-  font-size: 12px;
-}
-
-.picker-fade-enter-active,
-.picker-fade-leave-active {
-  transition: opacity 0.16s ease;
-}
-
-.picker-fade-enter-from,
-.picker-fade-leave-to {
-  opacity: 0;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -2494,8 +2622,6 @@ function escapeHtml(text) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .provider-list {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
+
