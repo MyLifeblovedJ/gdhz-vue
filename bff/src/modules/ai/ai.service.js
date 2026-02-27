@@ -51,6 +51,8 @@ export class AiService {
       chatSessionId,
     })
     this.sessionRepository.markActive(session)
+    this.evictOverflowSessions({ tenantId, userId, keepChatSessionId: session.chatSessionId })
+    this.sessionRepository.ensureTitle(session, message, config.ai.sessionTitleMaxLength)
     this.sessionRepository.syncSelection(session, {
       backendKey: resolvedSelection.backendKey,
       backend: resolvedSelection.backend,
@@ -61,11 +63,10 @@ export class AiService {
 
     const reply = await this.runConversationTask(session.conversationId, async () => {
       const firstTurn = !session.initialized
-      await this.ensureConversationReady(session, resolvedSelection)
-
       const input = this.buildChatInput({ message, context })
 
       try {
+        await this.ensureConversationReady(session, resolvedSelection)
         const content = await this.aionuiClient.ask({
           conversationId: session.conversationId,
           input,
@@ -80,6 +81,88 @@ export class AiService {
             conversationId: session.conversationId,
             input,
             timeouts: config.ai,
+          })
+        }
+        throw error
+      }
+    }).catch((error) => {
+      this.sessionRepository.markError(session)
+      throw error
+    })
+
+    const normalizedReply = (reply || '').trim()
+    this.messageRepository.append({
+      tenantId,
+      userId,
+      chatSessionId: session.chatSessionId,
+      role: 'user',
+      content: message,
+      traceId,
+    })
+    this.messageRepository.append({
+      tenantId,
+      userId,
+      chatSessionId: session.chatSessionId,
+      role: 'assistant',
+      content: normalizedReply,
+      traceId,
+    })
+
+    return {
+      chatSessionId: session.chatSessionId,
+      reply: normalizedReply,
+      traceId,
+      selection: {
+        backendKey: session.backendKey,
+        backend: session.backend,
+        modelId: session.modelId,
+        providerId: session.providerId,
+        customAgentId: session.customAgentId,
+      },
+    }
+  }
+
+  async chatStream({ tenantId, userId, chatSessionId, message, context, selection, onChunk }) {
+    const traceId = createTraceId()
+    const catalog = await this.aionuiClient.getAiCatalog()
+    const resolvedSelection = this.aionuiClient.resolveConversationConfig(selection, catalog)
+
+    const { session } = this.sessionRepository.getOrCreate({
+      tenantId,
+      userId,
+      chatSessionId,
+    })
+    this.sessionRepository.markActive(session)
+    this.evictOverflowSessions({ tenantId, userId, keepChatSessionId: session.chatSessionId })
+    this.sessionRepository.ensureTitle(session, message, config.ai.sessionTitleMaxLength)
+    this.sessionRepository.syncSelection(session, {
+      backendKey: resolvedSelection.backendKey,
+      backend: resolvedSelection.backend,
+      modelId: resolvedSelection.modelId,
+      providerId: resolvedSelection.providerId,
+      customAgentId: resolvedSelection.customAgentId,
+    })
+
+    const reply = await this.runConversationTask(session.conversationId, async () => {
+      const firstTurn = !session.initialized
+      const input = this.buildChatInput({ message, context })
+      try {
+        await this.ensureConversationReady(session, resolvedSelection)
+        return await this.aionuiClient.askStream({
+          conversationId: session.conversationId,
+          input,
+          timeouts: config.ai,
+          onChunk,
+        })
+      } catch (error) {
+        if (this.shouldRetryAfterCreate(error, firstTurn)) {
+          session.initialized = false
+          await this.ensureConversationReady(session, resolvedSelection)
+          return await this.aionuiClient.askStream({
+            conversationId: session.conversationId,
+            input,
+            timeouts: config.ai,
+            onChunk,
           })
         }
         throw error
@@ -194,11 +277,96 @@ export class AiService {
     }
   }
 
-  listHistory({ tenantId, userId, chatSessionId }) {
+  listHistory({ tenantId, userId, chatSessionId, page = 1, pageSize = 200 }) {
     if (!chatSessionId) {
-      return []
+      return {
+        messages: [],
+        page: 1,
+        pageSize: Number(pageSize || 200),
+        total: 0,
+        hasMore: false,
+      }
     }
-    return this.messageRepository.list({ tenantId, userId, chatSessionId })
+    return this.messageRepository.listPaginated({
+      tenantId,
+      userId,
+      chatSessionId,
+      page,
+      pageSize,
+    })
+  }
+
+  listSessions({ tenantId, userId, page = 1, pageSize = 20 }) {
+    const sessionsPage = this.sessionRepository.listByUser({
+      tenantId,
+      userId,
+      page,
+      pageSize,
+    })
+
+    const sessions = sessionsPage.data.map((session) => ({
+      chatSessionId: session.chatSessionId,
+      title: session.title || '未命名会话',
+      status: session.status,
+      backendKey: session.backendKey,
+      backend: session.backend,
+      modelId: session.modelId,
+      updatedAt: session.updatedAt,
+      lastActiveAt: session.lastActiveAt,
+      createdAt: session.createdAt,
+      messageCount: this.messageRepository.count({
+        tenantId,
+        userId,
+        chatSessionId: session.chatSessionId,
+      }),
+    }))
+
+    return {
+      sessions,
+      page: sessionsPage.page,
+      pageSize: sessionsPage.pageSize,
+      total: sessionsPage.total,
+      hasMore: sessionsPage.hasMore,
+    }
+  }
+
+  renameSession({ tenantId, userId, chatSessionId, title }) {
+    const session = this.sessionRepository.get({ tenantId, userId, chatSessionId })
+    if (!session) {
+      return null
+    }
+    const ok = this.sessionRepository.updateTitle(session, title, config.ai.sessionTitleMaxLength)
+    if (!ok) {
+      return null
+    }
+    return {
+      chatSessionId: session.chatSessionId,
+      title: session.title,
+      updatedAt: session.updatedAt,
+    }
+  }
+
+  async removeSession({ tenantId, userId, chatSessionId }) {
+    const session = this.sessionRepository.removeSession({
+      tenantId,
+      userId,
+      chatSessionId,
+    })
+    if (!session) {
+      return false
+    }
+    this.messageRepository.deleteBySession({
+      tenantId,
+      userId,
+      chatSessionId,
+    })
+
+    try {
+      await this.aionuiClient.resetConversation({ conversationId: session.conversationId })
+    } catch {
+      // ignore reset errors during deletion
+    }
+    return true
   }
 
   async listCatalog() {
@@ -273,6 +441,9 @@ export class AiService {
 
     const message = normalizeErrorMessage(error, '')
     return (
+      message.includes('create-conversation') ||
+      message.includes('MCP server to be ready') ||
+      message.includes('UNIQUE constraint failed: conversations.id') ||
       message.includes('conversation not found') ||
       message.includes('首包超时') ||
       message.includes('请求失败')
@@ -284,12 +455,69 @@ export class AiService {
       return
     }
 
-    await this.aionuiClient.createConversation({
-      conversationId: session.conversationId,
-      selection: resolvedSelection,
-    })
+    let lastError = null
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await this.aionuiClient.createConversation({
+          conversationId: session.conversationId,
+          selection: resolvedSelection,
+        })
+        lastError = null
+        break
+      } catch (error) {
+        lastError = error
+        const message = normalizeErrorMessage(error, '')
+        const canRetry =
+          attempt === 0 &&
+          (
+            message.includes('create-conversation') ||
+            message.includes('WebSocket') ||
+            message.includes('连接')
+          )
+
+        if (!canRetry) {
+          throw error
+        }
+
+        if (typeof this.aionuiClient.reconnectWebSocket === 'function') {
+          try {
+            await this.aionuiClient.reconnectWebSocket()
+          } catch {
+            // ignore reconnect failure and keep retrying create
+          }
+        }
+        await sleep(300)
+      }
+    }
+
+    if (lastError) {
+      throw lastError
+    }
+
     await sleep(config.ai.createReadyDelayMs)
     this.sessionRepository.markInitialized(session)
+  }
+
+  evictOverflowSessions({ tenantId, userId, keepChatSessionId }) {
+    const overflow = this.sessionRepository.trimOverflowForUser({
+      tenantId,
+      userId,
+      maxSessions: config.ai.maxSessionsPerUser,
+      keepChatSessionId,
+    })
+    if (!overflow.length) return
+
+    for (const session of overflow) {
+      if (session.chatSessionId === keepChatSessionId) {
+        continue
+      }
+      this.messageRepository.deleteBySession({
+        tenantId,
+        userId,
+        chatSessionId: session.chatSessionId,
+      })
+      void this.aionuiClient.resetConversation({ conversationId: session.conversationId }).catch(() => undefined)
+    }
   }
 
   runConversationTask(conversationId, task) {

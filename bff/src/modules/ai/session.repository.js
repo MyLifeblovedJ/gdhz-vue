@@ -20,6 +20,7 @@ export class SessionRepository {
         userId: String(item.userId || 'anonymous'),
         chatSessionId: String(item.chatSessionId || ''),
         conversationId: String(item.conversationId || createId()),
+        title: String(item.title || ''),
         backendKey: String(item.backendKey || ''),
         backend: String(item.backend || ''),
         modelId: String(item.modelId || ''),
@@ -68,6 +69,7 @@ export class SessionRepository {
       userId,
       chatSessionId: resolvedChatSessionId,
       conversationId: createId(),
+      title: '',
       backendKey: '',
       backend: '',
       modelId: '',
@@ -117,6 +119,30 @@ export class SessionRepository {
     return changed
   }
 
+  ensureTitle(session, message, maxLength = 80) {
+    if (session.title) {
+      return session.title
+    }
+    const normalized = String(message || '').replace(/\s+/g, ' ').trim()
+    if (!normalized) return ''
+    session.title = normalized.slice(0, Math.max(8, maxLength))
+    session.updatedAt = Date.now()
+    this.persist()
+    return session.title
+  }
+
+  updateTitle(session, title, maxLength = 80) {
+    const normalized = String(title || '').replace(/\s+/g, ' ').trim().slice(0, Math.max(8, maxLength))
+    if (!normalized) {
+      return false
+    }
+    session.title = normalized
+    session.updatedAt = Date.now()
+    session.lastActiveAt = Date.now()
+    this.persist()
+    return true
+  }
+
   markInitialized(session) {
     session.initialized = true
     session.updatedAt = Date.now()
@@ -133,6 +159,10 @@ export class SessionRepository {
   }
 
   markReleased(session) {
+    // Idle recycled sessions should lazily rebuild a fresh upstream
+    // conversation on next user message.
+    session.conversationId = createId()
+    session.initialized = false
     session.status = 'released'
     session.updatedAt = Date.now()
     this.persist()
@@ -151,5 +181,54 @@ export class SessionRepository {
       if (session.status !== 'active' && session.status !== 'error') return false
       return session.lastActiveAt <= idleBefore
     })
+  }
+
+  listByUser({ tenantId, userId, page = 1, pageSize = 20 }) {
+    const normalizedPage = Math.max(1, Number(page || 1))
+    const normalizedPageSize = Math.min(100, Math.max(1, Number(pageSize || 20)))
+    const all = [...this.sessions.values()]
+      .filter((item) => item.tenantId === tenantId && item.userId === userId)
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+
+    const total = all.length
+    const start = (normalizedPage - 1) * normalizedPageSize
+    const end = start + normalizedPageSize
+    const data = all.slice(start, end)
+
+    return {
+      data,
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      hasMore: end < total,
+    }
+  }
+
+  removeSession({ tenantId, userId, chatSessionId }) {
+    const key = this.sessionKey(tenantId, userId, chatSessionId)
+    const existing = this.sessions.get(key)
+    if (!existing) return null
+    this.sessions.delete(key)
+    this.persist()
+    return existing
+  }
+
+  trimOverflowForUser({ tenantId, userId, maxSessions, keepChatSessionId = '' }) {
+    const maxAllowed = Math.max(1, Number(maxSessions || 1))
+    const list = [...this.sessions.values()]
+      .filter((item) => item.tenantId === tenantId && item.userId === userId)
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+
+    if (list.length <= maxAllowed) {
+      return []
+    }
+
+    const overflow = list.slice(maxAllowed).filter((session) => session.chatSessionId !== keepChatSessionId)
+    for (const session of overflow) {
+      const key = this.sessionKey(session.tenantId, session.userId, session.chatSessionId)
+      this.sessions.delete(key)
+    }
+    this.persist()
+    return overflow
   }
 }

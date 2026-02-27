@@ -57,113 +57,168 @@
       </div>
     </Transition>
     
-    <!-- AI 聊天面板 (New Halo Design) -->
+    <!-- AI 聊天面板（保持原视觉，仅调整布局） -->
     <Transition name="ai-scale">
       <div v-if="showAIPanel" class="halo-chat-dialog">
-        <!-- 装饰光晕背景 -->
         <div class="halo-glow-bg"></div>
-
-        <div class="dialog-content">
-          <!-- 头部 -->
-          <div class="dialog-header">
-            <div class="header-info">
-              <div class="ai-icon-pulse">
-                <i class="fa-solid fa-robot"></i>
-              </div>
-              <span class="header-title">智能防灾助手</span>
-            </div>
-            <button class="close-btn" @click="showAIPanel = false">
-              <i class="fa-solid fa-xmark"></i>
+        <div class="dialog-content ai-layout-shell">
+          <aside class="ai-session-sider">
+            <button class="session-btn new-session" :disabled="catalogLoading || isTyping" @click="showProviderPicker = true">
+              <i class="fa-solid fa-plus"></i>
+              新建会话
             </button>
-          </div>
-          
-          <!-- 消息区域 -->
-          <div class="dialog-messages" ref="messagesRef">
-            <div 
-              v-for="(msg, index) in messages" 
-              :key="index" 
-              class="halo-message"
-              :class="msg.role"
-            >
-              <div v-if="msg.role === 'assistant'" class="msg-avatar-box">
-                <div class="avatar-glow"></div>
-                <div class="avatar-inner">
-                  <span>AI</span>
+            <div class="sider-actions">
+              <button class="session-btn" :disabled="!chatSessionId || isTyping" @click="renameCurrentSession">重命名</button>
+              <button class="session-btn danger" :disabled="!chatSessionId || isTyping" @click="deleteCurrentSession">删除</button>
+            </div>
+            <div class="sider-history">
+              <template v-for="group in sessionGroups" :key="group.key">
+                <div v-if="group.items.length" class="sider-group">
+                  <div class="sider-group-title">{{ group.label }}</div>
+                  <button
+                    v-for="item in group.items"
+                    :key="item.chatSessionId"
+                    class="sider-item"
+                    :class="{ active: item.chatSessionId === selectedSessionId }"
+                    :disabled="isTyping"
+                    @click="activateSession(item)"
+                  >
+                    <span class="sider-item-avatar" :class="getBackendClass(item.backend || item.backendKey)">
+                      {{ getBackendAvatar(item.backend || item.backendKey) }}
+                    </span>
+                    <span class="sider-item-text">
+                      <span class="sider-item-title">{{ item.title || '未命名会话' }}</span>
+                      <span class="sider-item-model">{{ item.modelId || (item.backend || '') }}</span>
+                    </span>
+                  </button>
+                </div>
+              </template>
+              <div v-if="!sessionOptions.length" class="sider-empty">暂无会话历史</div>
+            </div>
+          </aside>
+
+          <section class="ai-chat-pane">
+            <div class="dialog-header">
+              <div class="header-info">
+                <div class="ai-icon-pulse">
+                  <i class="fa-solid fa-robot"></i>
+                </div>
+                <div class="header-title-wrap">
+                  <div class="header-title">{{ currentSessionTitle }}</div>
+                  <div class="header-subtitle">{{ currentBackendName }} · {{ currentModelLabel }}</div>
                 </div>
               </div>
-              <div class="msg-content">
-                <div v-if="msg.loading" class="typing-indicator">
-                  <span></span><span></span><span></span>
-                </div>
-                <span v-else v-html="msg.content"></span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 输入区域 (光晕流转样式) -->
-          <div class="halo-search-input" :class="{ focused: inputFocused }">
-            <div class="aurora-glow"></div>
-            <div class="outer-ring"></div>
-            <div class="outer-ring"></div>
-            <div class="outer-ring"></div>
-            <div class="inner-glow"></div>
-            <div class="main-border"></div>
-            <div class="ai-selector-row">
-              <select
-                v-model="selectedBackendKey"
-                class="ai-select"
-                :disabled="catalogLoading || isTyping"
-                @change="handleBackendChange"
-              >
-                <option
-                  v-for="item in catalogProviders"
-                  :key="item.backendKey || item.backend"
-                  :value="item.backendKey || item.backend"
-                >
-                  {{ item.name || item.backend }}
-                </option>
-              </select>
-              <select
-                v-model="selectedModelId"
-                class="ai-select"
-                :disabled="catalogLoading || isTyping || modelOptions.length === 0"
-                @change="handleModelChange"
-              >
-                <option
-                  v-for="item in modelOptions"
-                  :key="item.id"
-                  :value="item.id"
-                >
-                  {{ item.label || item.id }}
-                </option>
-              </select>
-            </div>
-            <div class="input-wrapper">
-              <input
-                v-model="inputText"
-                @keyup.enter="handleSend"
-                @focus="inputFocused = true"
-                @blur="inputFocused = false"
-                placeholder="询问当前灾情、防御建议..."
-                :disabled="isTyping"
-                class="search-field"
-              />
-              <div class="search-btn-border"></div>
-              <button class="send-btn" @click="handleSend" :disabled="!inputText || isTyping">
-                <i class="fa-solid fa-arrow-up"></i>
+              <button class="close-btn" @click="showAIPanel = false">
+                <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
-          </div>
+
+            <div class="dialog-messages" ref="messagesRef">
+              <div v-for="(msg, index) in messages" :key="index" class="halo-message" :class="msg.role">
+                <div v-if="msg.role === 'assistant'" class="msg-avatar-box">
+                  <div class="avatar-glow"></div>
+                  <div class="avatar-inner">
+                    <span>{{ getBackendAvatar(selectedBackend.value || selectedBackendKey) }}</span>
+                  </div>
+                </div>
+                <div class="msg-content">
+                  <div v-if="msg.loading" class="typing-indicator">
+                    <span></span><span></span><span></span>
+                  </div>
+                  <span v-else v-html="msg.content"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="halo-search-input" :class="{ focused: inputFocused }">
+              <div class="aurora-glow"></div>
+              <div class="outer-ring"></div>
+              <div class="outer-ring"></div>
+              <div class="outer-ring"></div>
+              <div class="inner-glow"></div>
+              <div class="main-border"></div>
+              <div class="ai-selector-row">
+                <select
+                  v-model="selectedBackendKey"
+                  class="ai-select"
+                  :disabled="catalogLoading || isTyping"
+                  @change="handleBackendChange"
+                >
+                  <option
+                    v-for="item in catalogProviders"
+                    :key="item.backendKey || item.backend"
+                    :value="item.backendKey || item.backend"
+                  >
+                    {{ item.name || item.backend }}
+                  </option>
+                </select>
+                <select
+                  v-model="selectedModelId"
+                  class="ai-select"
+                  :disabled="catalogLoading || isTyping || modelOptions.length === 0"
+                  @change="handleModelChange"
+                >
+                  <option v-for="item in modelOptions" :key="item.id" :value="item.id">
+                    {{ item.label || item.id }}
+                  </option>
+                </select>
+              </div>
+              <div class="input-wrapper">
+                <input
+                  v-model="inputText"
+                  @keyup.enter="handleSend"
+                  @focus="inputFocused = true"
+                  @blur="inputFocused = false"
+                  placeholder="询问当前灾情、防御建议..."
+                  :disabled="isTyping"
+                  class="search-field"
+                />
+                <div class="search-btn-border"></div>
+                <button class="send-btn" @click="handleSend" :disabled="!inputText || isTyping">
+                  <i class="fa-solid fa-arrow-up"></i>
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
+
+        <Transition name="picker-fade">
+          <div v-if="showProviderPicker" class="provider-picker-mask" @click.self="showProviderPicker = false">
+            <div class="provider-picker">
+              <div class="provider-picker-title">请选择模型供应商</div>
+              <div class="provider-list">
+                <button
+                  v-for="item in catalogProviders"
+                  :key="item.backendKey || item.backend"
+                  class="provider-card"
+                  @click="createSessionWithProvider(item)"
+                >
+                  <span class="provider-avatar" :class="getBackendClass(item.backend || item.backendKey)">
+                    {{ getBackendAvatar(item.backend || item.backendKey) }}
+                  </span>
+                  <span class="provider-name">{{ item.name || item.backend }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
     </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '../../stores/app'
-import { chatWithAI, fetchCurrentSummary, fetchAICatalog, fetchChatHistory } from '../../api/ai'
+import {
+  chatWithAIStream,
+  fetchCurrentSummary,
+  fetchAICatalog,
+  fetchChatHistory,
+  fetchAISessions,
+  renameAISession,
+  deleteAISession,
+} from '../../api/ai'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
 
@@ -214,9 +269,23 @@ const catalogLoading = ref(false)
 const catalogProviders = ref([])
 const selectedBackendKey = ref('')
 const selectedModelId = ref('')
+const sessionLoading = ref(false)
+const sessionOptions = ref([])
+const selectedSessionId = ref('')
+const showProviderPicker = ref(false)
 const allowedBackends = new Set(['gemini', 'codex'])
 const CHAT_SESSION_STORAGE_KEY = 'gdhz.ai.chatSession.v1'
-const DEFAULT_ASSISTANT_GREETING = '您好，我是您的<strong>智能防灾助手</strong>。我可以为您提供：<br>• 实时灾情分析与态势研判<br>• 应急决策辅助建议<br>• 系统操作指引<br><br>请问有什么可以帮您？'
+const HISTORY_PAGE_SIZE = 100
+const SESSION_PAGE_SIZE = 50
+const DEFAULT_ASSISTANT_GREETING_TEXT = [
+  '您好，我是您的智能防灾助手。我可以为您提供：',
+  '• 实时灾情分析与态势研判',
+  '• 应急决策辅助建议',
+  '• 系统操作指引',
+  '',
+  '请问有什么可以帮您？'
+].join('\n')
+let greetingTimer = null
 
 const selectedBackend = computed(() => {
   const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
@@ -228,13 +297,121 @@ const modelOptions = computed(() => {
   return Array.isArray(current?.models) ? current.models : []
 })
 
-// 消息列表
-const messages = ref([
-  { 
-    role: 'assistant', 
-    content: DEFAULT_ASSISTANT_GREETING 
+const messages = ref([])
+
+const currentSession = computed(() =>
+  sessionOptions.value.find((item) => item.chatSessionId === chatSessionId.value) || null
+)
+
+const currentSessionTitle = computed(() => currentSession.value?.title || '新会话')
+
+const currentBackendName = computed(() => {
+  const provider = catalogProviders.value.find((item) => (item.backendKey || item.backend) === selectedBackendKey.value)
+  return provider?.name || normalizeBackendName(selectedBackend.value || selectedBackendKey.value)
+})
+
+const currentModelLabel = computed(() => {
+  const model = modelOptions.value.find((item) => item.id === selectedModelId.value)
+  return model?.label || selectedModelId.value || '默认模型'
+})
+
+const sessionGroups = computed(() => {
+  const today = []
+  const last7 = []
+  const older = []
+  const now = Date.now()
+  const dayMs = 24 * 60 * 60 * 1000
+  const startOfToday = new Date(new Date(now).toDateString()).getTime()
+
+  for (const item of sessionOptions.value) {
+    const updatedAt = Number(item?.updatedAt || 0)
+    if (updatedAt >= startOfToday) {
+      today.push(item)
+    } else if (updatedAt >= startOfToday - 6 * dayMs) {
+      last7.push(item)
+    } else {
+      older.push(item)
+    }
   }
-])
+
+  return [
+    { key: 'today', label: '今天', items: today },
+    { key: 'last7', label: '过去 7 天', items: last7 },
+    { key: 'older', label: '更早', items: older },
+  ]
+})
+
+function normalizeBackendName(value) {
+  const backend = String(value || '').toLowerCase()
+  if (backend.includes('gemini')) return 'Gemini'
+  if (backend.includes('codex')) return 'Codex'
+  return backend || 'Unknown'
+}
+
+function getBackendClass(value) {
+  const backend = String(value || '').toLowerCase()
+  if (backend.includes('gemini')) return 'gemini'
+  if (backend.includes('codex')) return 'codex'
+  return 'generic'
+}
+
+function getBackendAvatar(value) {
+  const backend = String(value || '').toLowerCase()
+  if (backend.includes('gemini')) return 'G'
+  if (backend.includes('codex')) return 'C'
+  return 'AI'
+}
+
+function normalizeErrorText(error, fallback = 'AI 服务请求失败') {
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String(error.message || fallback)
+  }
+  return fallback
+}
+
+function stopGreetingTyping() {
+  if (greetingTimer) {
+    clearInterval(greetingTimer)
+    greetingTimer = null
+  }
+}
+
+function setGreetingMessage({ typed = true } = {}) {
+  stopGreetingTyping()
+  messages.value = [{ role: 'assistant', content: '' }]
+  if (!typed) {
+    messages.value[0].content = formatTextForBubble(DEFAULT_ASSISTANT_GREETING_TEXT)
+    scrollToBottom()
+    return
+  }
+
+  let index = 0
+  greetingTimer = setInterval(() => {
+    const step = 2
+    index += step
+    const text = DEFAULT_ASSISTANT_GREETING_TEXT.slice(0, index)
+    if (messages.value[0]) {
+      messages.value[0].content = formatTextForBubble(text)
+    }
+    scrollToBottom()
+    if (index >= DEFAULT_ASSISTANT_GREETING_TEXT.length) {
+      stopGreetingTyping()
+    }
+  }, 16)
+}
+
+function applyHistoryMessages(historyMessages = [], { typedOnEmpty = false } = {}) {
+  if (!Array.isArray(historyMessages) || historyMessages.length === 0) {
+    setGreetingMessage({ typed: typedOnEmpty })
+    return
+  }
+
+  stopGreetingTyping()
+  messages.value = historyMessages.map((item) => ({
+    role: item?.role === 'user' ? 'user' : 'assistant',
+    content: formatTextForBubble(item?.content || '')
+  }))
+}
 
 function readStoredChatSession() {
   try {
@@ -276,14 +453,78 @@ function saveCurrentChatSession() {
         updatedAt: Date.now(),
       })
     )
+    selectedSessionId.value = chatSessionId.value
   } catch {
     // ignore storage errors
   }
 }
 
+async function fetchAllHistoryPages(targetChatSessionId) {
+  if (!targetChatSessionId) return []
+
+  let page = 1
+  const allMessages = []
+
+  while (true) {
+    const result = await fetchChatHistory(targetChatSessionId, {
+      page,
+      pageSize: HISTORY_PAGE_SIZE,
+    })
+    const part = Array.isArray(result?.messages) ? result.messages : []
+    allMessages.push(...part)
+    if (!result?.hasMore) break
+    page += 1
+  }
+
+  return allMessages
+}
+
+async function loadHistoryForSession(targetChatSessionId) {
+  const historyMessages = await fetchAllHistoryPages(targetChatSessionId)
+  chatSessionId.value = targetChatSessionId || null
+  selectedSessionId.value = targetChatSessionId || ''
+
+  if (chatSessionId.value) {
+    saveCurrentChatSession()
+  } else {
+    clearStoredChatSession()
+  }
+
+  applyHistoryMessages(historyMessages, { typedOnEmpty: false })
+  scrollToBottom()
+}
+
+async function loadSessionOptions() {
+  if (sessionLoading.value) return
+  sessionLoading.value = true
+
+  try {
+    let page = 1
+    const all = []
+    while (true) {
+      const result = await fetchAISessions({
+        page,
+        pageSize: SESSION_PAGE_SIZE,
+      })
+      const batch = Array.isArray(result?.sessions) ? result.sessions : []
+      all.push(...batch)
+      if (!result?.hasMore) break
+      page += 1
+    }
+    sessionOptions.value = all
+    selectedSessionId.value = chatSessionId.value || ''
+  } finally {
+    sessionLoading.value = false
+  }
+}
+
 async function restoreChatSessionIfExists() {
   const stored = readStoredChatSession()
-  if (!stored?.chatSessionId) return
+  if (!stored?.chatSessionId) {
+    await loadSessionOptions().catch(() => undefined)
+    setGreetingMessage({ typed: true })
+    return
+  }
 
   if (stored.backendKey) {
     const hasStoredBackend = catalogProviders.value.some(
@@ -305,23 +546,103 @@ async function restoreChatSessionIfExists() {
   }
   applyDefaultModelForBackend()
 
-  chatSessionId.value = stored.chatSessionId
+  try {
+    await loadHistoryForSession(stored.chatSessionId)
+    await loadSessionOptions().catch(() => undefined)
+  } catch {
+    startNewSession({ typedGreeting: false })
+  }
+}
+
+function syncSelectionFromSession(session) {
+  const backendKey = session?.backendKey || session?.backend || ''
+  if (backendKey) {
+    const hasBackend = catalogProviders.value.some((item) => (item.backendKey || item.backend) === backendKey)
+    if (hasBackend) {
+      selectedBackendKey.value = backendKey
+      applyDefaultModelForBackend()
+    }
+  }
+
+  const modelId = String(session?.modelId || '')
+  if (modelId && modelOptions.value.some((item) => item.id === modelId)) {
+    selectedModelId.value = modelId
+  }
+}
+
+async function activateSession(session) {
+  if (!session?.chatSessionId) {
+    startNewSession()
+    return
+  }
+  syncSelectionFromSession(session)
+  try {
+    await loadHistoryForSession(session.chatSessionId)
+  } catch (error) {
+    const errorText = normalizeErrorText(error, '读取会话失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`),
+    })
+    scrollToBottom()
+  }
+}
+
+function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
+  stopGreetingTyping()
+  if (backendKey) {
+    selectedBackendKey.value = backendKey
+    applyDefaultModelForBackend()
+  }
+  chatSessionId.value = null
+  selectedSessionId.value = ''
+  showProviderPicker.value = false
+  applyHistoryMessages([], { typedOnEmpty: typedGreeting })
+  clearStoredChatSession()
+}
+
+function createSessionWithProvider(provider) {
+  const backendKey = provider?.backendKey || provider?.backend || ''
+  startNewSession({ backendKey, typedGreeting: true })
+}
+
+async function renameCurrentSession() {
+  if (!chatSessionId.value) return
+  const current = sessionOptions.value.find((item) => item.chatSessionId === chatSessionId.value)
+  const titleInput = window.prompt('请输入新的会话标题', String(current?.title || ''))
+  if (titleInput == null) return
+  const normalized = String(titleInput || '').trim()
+  if (!normalized) return
 
   try {
-    const historyResult = await fetchChatHistory(stored.chatSessionId)
-    const historyMessages = Array.isArray(historyResult?.messages) ? historyResult.messages : []
-    if (!historyMessages.length) {
-      return
-    }
-
-    messages.value = historyMessages.map((item) => ({
-      role: item?.role === 'user' ? 'user' : 'assistant',
-      content: formatTextForBubble(item?.content || '')
-    }))
+    await renameAISession(chatSessionId.value, normalized)
+    await loadSessionOptions()
+  } catch (error) {
+    const errorText = normalizeErrorText(error, '重命名会话失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`),
+    })
     scrollToBottom()
-  } catch {
-    chatSessionId.value = null
-    clearStoredChatSession()
+  }
+}
+
+async function deleteCurrentSession() {
+  if (!chatSessionId.value) return
+  const ok = window.confirm('确认删除当前会话及其历史消息？')
+  if (!ok) return
+
+  try {
+    await deleteAISession(chatSessionId.value)
+    startNewSession()
+    await loadSessionOptions()
+  } catch (error) {
+    const errorText = normalizeErrorText(error, '删除会话失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`),
+    })
+    scrollToBottom()
   }
 }
 
@@ -334,6 +655,14 @@ function toggleAIPanel() {
     if (!catalogProviders.value.length) {
       void loadAICatalog()
     }
+    if (!sessionOptions.value.length) {
+      void loadSessionOptions()
+    }
+    if (!messages.value.length) {
+      setGreetingMessage({ typed: true })
+    }
+  } else {
+    showProviderPicker.value = false
   }
 }
 
@@ -353,28 +682,54 @@ async function handleSend() {
 }
 
 async function sendMessage(text) {
+  stopGreetingTyping()
+  const normalizedText = String(text || '').trim()
+  if (!normalizedText) return
+
   // 用户发送
-  messages.value.push({ role: 'user', content: formatTextForBubble(text) })
+  messages.value.push({ role: 'user', content: formatTextForBubble(normalizedText) })
   inputText.value = ''
   scrollToBottom()
 
   isTyping.value = true
-  messages.value.push({ role: 'assistant', content: '', loading: true })
+  const assistantIndex = messages.value.push({ role: 'assistant', content: '', loading: true }) - 1
+  let streamReply = ''
   scrollToBottom()
 
   try {
-    const response = await queryAI(text)
-    messages.value = messages.value.filter(item => !item.loading)
-    messages.value.push({ role: 'assistant', content: formatTextForBubble(response) })
-  } catch (error) {
-    messages.value = messages.value.filter(item => !item.loading)
-    const errorText = (error && typeof error === 'object' && 'message' in error)
-      ? String(error.message || 'AI 服务请求失败')
-      : 'AI 服务请求失败'
-    messages.value.push({
-      role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`)
+    const result = await queryAI(normalizedText, (chunk) => {
+      if (!chunk) return
+      streamReply += chunk
+      const bubble = messages.value[assistantIndex]
+      if (!bubble) return
+      bubble.loading = false
+      bubble.content = formatTextForBubble(streamReply)
+      scrollToBottom()
     })
+
+    const finalReply = String(result?.reply || streamReply || '暂无可用回复，请稍后重试。')
+    if (messages.value[assistantIndex]) {
+      messages.value[assistantIndex] = {
+        role: 'assistant',
+        content: formatTextForBubble(finalReply),
+      }
+    } else {
+      messages.value.push({ role: 'assistant', content: formatTextForBubble(finalReply) })
+    }
+    await loadSessionOptions().catch(() => undefined)
+  } catch (error) {
+    const errorText = normalizeErrorText(error, 'AI 服务请求失败')
+    if (messages.value[assistantIndex]) {
+      messages.value[assistantIndex] = {
+        role: 'assistant',
+        content: formatTextForBubble(`请求失败：${errorText}`)
+      }
+    } else {
+      messages.value.push({
+        role: 'assistant',
+        content: formatTextForBubble(`请求失败：${errorText}`)
+      })
+    }
   } finally {
     isTyping.value = false
     scrollToBottom()
@@ -399,7 +754,7 @@ function buildSummarySnapshot() {
   }
 }
 
-async function queryAI(text) {
+async function queryAI(text, onStreamChunk) {
   if (shouldUseSummaryApi(text)) {
     const response = await fetchCurrentSummary({
       region: 'gd',
@@ -413,10 +768,13 @@ async function queryAI(text) {
       }
     })
 
-    return response?.summaryText || '暂无可用摘要，请稍后重试。'
+    return {
+      chatSessionId: chatSessionId.value,
+      reply: response?.summaryText || '暂无可用摘要，请稍后重试。',
+    }
   }
 
-  const response = await chatWithAI({
+  const response = await chatWithAIStream({
     chatSessionId: chatSessionId.value,
     message: text,
     context: {
@@ -427,15 +785,26 @@ async function queryAI(text) {
       backendKey: selectedBackendKey.value,
       backend: selectedBackend.value,
       modelId: selectedModelId.value
-    }
+    },
+    onDelta: onStreamChunk,
   })
 
   if (response?.chatSessionId) {
     chatSessionId.value = response.chatSessionId
+    selectedSessionId.value = response.chatSessionId
+    if (response?.selection?.backendKey) {
+      selectedBackendKey.value = response.selection.backendKey
+    }
+    if (response?.selection?.modelId && modelOptions.value.some((item) => item.id === response.selection.modelId)) {
+      selectedModelId.value = response.selection.modelId
+    }
     saveCurrentChatSession()
   }
 
-  return response?.reply || '暂无可用回复，请稍后重试。'
+  return {
+    chatSessionId: response?.chatSessionId || chatSessionId.value,
+    reply: response?.reply || '暂无可用回复，请稍后重试。'
+  }
 }
 
 function applyDefaultModelForBackend() {
@@ -453,14 +822,12 @@ function applyDefaultModelForBackend() {
 }
 
 function handleBackendChange() {
-  chatSessionId.value = null
-  clearStoredChatSession()
+  startNewSession({ typedGreeting: false })
   applyDefaultModelForBackend()
 }
 
 function handleModelChange() {
-  chatSessionId.value = null
-  clearStoredChatSession()
+  startNewSession({ typedGreeting: false })
 }
 
 async function loadAICatalog() {
@@ -504,7 +871,13 @@ async function loadAICatalog() {
 }
 
 onMounted(() => {
-  void loadAICatalog().finally(() => restoreChatSessionIfExists())
+  void loadAICatalog()
+    .finally(() => restoreChatSessionIfExists())
+    .finally(() => loadSessionOptions().catch(() => undefined))
+})
+
+onBeforeUnmount(() => {
+  stopGreetingTyping()
 })
 
 function formatTextForBubble(text) {
@@ -934,7 +1307,7 @@ function escapeHtml(text) {
   position: absolute;
   left: 70px;
   top: 0; /* Align with top of toolbar */
-  width: 380px;
+  width: min(760px, calc(100vw - 96px));
   height: 550px;
   background: rgba(15, 23, 42, 0.95); /* Deep dark blue */
   backdrop-filter: blur(20px);
@@ -977,6 +1350,35 @@ function escapeHtml(text) {
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.session-btn {
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(39, 22, 91, 0.45);
+  color: #ede9fe;
+  font-size: 12px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.session-btn:hover:not(:disabled) {
+  background: rgba(109, 40, 217, 0.45);
+}
+
+.session-btn.danger {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.4);
+}
+
+.session-btn.danger:hover:not(:disabled) {
+  background: rgba(153, 27, 27, 0.55);
+}
+
+.session-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .header-info {
@@ -1821,6 +2223,279 @@ function escapeHtml(text) {
   }
   30% {
     transform: translateY(-8px);
+  }
+}
+
+.ai-layout-shell {
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+}
+
+.ai-session-sider {
+  width: 210px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 6, 20, 0.35);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-btn.new-session {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sider-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.sider-history {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 2px;
+}
+
+.sider-history::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sider-history::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.sider-group {
+  margin-bottom: 8px;
+}
+
+.sider-group-title {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.48);
+  margin: 0 4px 6px;
+}
+
+.sider-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 8px;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.sider-item:hover:not(:disabled) {
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.sider-item.active {
+  border-color: rgba(139, 92, 246, 0.6);
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.sider-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sider-item-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sider-item-avatar.gemini {
+  background: #10b981;
+}
+
+.sider-item-avatar.codex {
+  background: #3b82f6;
+}
+
+.sider-item-avatar.generic {
+  background: #6b7280;
+}
+
+.sider-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sider-item-title,
+.sider-item-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sider-item-title {
+  color: #e2e8f0;
+  font-size: 12px;
+}
+
+.sider-item-model {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+.sider-empty {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 12px;
+  text-align: center;
+  padding: 14px 8px;
+}
+
+.ai-chat-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-title-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.header-subtitle {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+.provider-picker-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.provider-picker {
+  width: min(420px, calc(100% - 32px));
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.provider-picker-title {
+  color: #fff;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.provider-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.provider-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.provider-card:hover {
+  border-color: rgba(139, 92, 246, 0.45);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.provider-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+}
+
+.provider-avatar.gemini {
+  background: #10b981;
+}
+
+.provider-avatar.codex {
+  background: #3b82f6;
+}
+
+.provider-avatar.generic {
+  background: #6b7280;
+}
+
+.provider-name {
+  font-size: 12px;
+}
+
+.picker-fade-enter-active,
+.picker-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.picker-fade-enter-from,
+.picker-fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .floating-toolbar {
+    left: 8px;
+    top: 8px;
+  }
+
+  .halo-chat-dialog {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: 72px;
+    width: auto;
+    height: calc(100vh - 84px);
+    max-height: 620px;
+  }
+
+  .ai-layout-shell {
+    flex-direction: column;
+  }
+
+  .ai-session-sider {
+    width: auto;
+    max-height: 42%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .provider-list {
+    grid-template-columns: 1fr;
   }
 }
 </style>

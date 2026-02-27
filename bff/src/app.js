@@ -44,6 +44,7 @@ const sessionRepository = new SessionRepository({
 })
 const messageRepository = new MessageRepository({
   filePath: config.ai.messageStoreFile,
+  maxMessagesPerSession: config.ai.maxMessagesPerSession,
 })
 const aiService = new AiService({
   aionuiClient,

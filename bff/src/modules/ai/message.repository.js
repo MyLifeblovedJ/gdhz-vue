@@ -1,8 +1,9 @@
 import { loadJsonFile, saveJsonFile } from '../../shared/persistence.js'
 
 export class MessageRepository {
-  constructor({ filePath } = {}) {
+  constructor({ filePath, maxMessagesPerSession = 200 } = {}) {
     this.filePath = filePath || ''
+    this.maxMessagesPerSession = Math.max(20, Number(maxMessagesPerSession || 200))
     this.messages = new Map()
     this.restore()
   }
@@ -51,6 +52,9 @@ export class MessageRepository {
       createdAt: Date.now(),
     }
     list.push(item)
+    if (list.length > this.maxMessagesPerSession) {
+      list.splice(0, list.length - this.maxMessagesPerSession)
+    }
     this.messages.set(key, list)
     this.persist()
     return item
@@ -59,5 +63,37 @@ export class MessageRepository {
   list({ tenantId, userId, chatSessionId }) {
     const key = this.sessionKey(tenantId, userId, chatSessionId)
     return [...(this.messages.get(key) || [])]
+  }
+
+  listPaginated({ tenantId, userId, chatSessionId, page = 1, pageSize = 50 }) {
+    const key = this.sessionKey(tenantId, userId, chatSessionId)
+    const normalizedPage = Math.max(1, Number(page || 1))
+    const normalizedPageSize = Math.min(200, Math.max(1, Number(pageSize || 50)))
+    const all = [...(this.messages.get(key) || [])]
+    const total = all.length
+    const start = (normalizedPage - 1) * normalizedPageSize
+    const end = start + normalizedPageSize
+
+    return {
+      messages: all.slice(start, end),
+      page: normalizedPage,
+      pageSize: normalizedPageSize,
+      total,
+      hasMore: end < total,
+    }
+  }
+
+  count({ tenantId, userId, chatSessionId }) {
+    const key = this.sessionKey(tenantId, userId, chatSessionId)
+    return (this.messages.get(key) || []).length
+  }
+
+  deleteBySession({ tenantId, userId, chatSessionId }) {
+    const key = this.sessionKey(tenantId, userId, chatSessionId)
+    const had = this.messages.has(key)
+    if (!had) return false
+    this.messages.delete(key)
+    this.persist()
+    return true
   }
 }

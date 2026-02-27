@@ -176,6 +176,19 @@ AIONUI_PASSWORD='<AionUi密码>' npm run verify:stage1
 2. 最终输出 `总结果: PASS`。
 3. 生成报告文件：`/usr/local/project/dzh/gdhz-vue/doc/verification/stage1-closeout-*.json`。
 
+### 6.5 阶段2核心验证（不含审批）
+
+```bash
+cd /usr/local/project/dzh/gdhz-vue/bff
+npm run verify:stage2
+```
+
+预期：
+
+1. 最终输出 `\"result\": \"PASS\"`。
+2. 包含 `chatStream`、`historyPagination`、`sessionRename`、`sessionOverflowEviction`、`messageTrim`、`sessionDelete` 等检查项。
+3. 生成报告文件：`/usr/local/project/dzh/gdhz-vue/doc/verification/stage2-core-verify-*.json`。
+
 ---
 
 ## 7. 端口与安全策略
@@ -249,6 +262,20 @@ ufw status numbered
 2. `tail -n 100 /var/log/nginx/error.log`。
 3. `ss -ltnp` 检查 `3100/3001/25808/9090` 是否监听。
 4. `curl 127.0.0.1` 本机链路验证，区分“应用问题”与“公网链路问题”。
+
+### 9.5 AI 问答超时（AionUi 线程数打满）
+
+症状：
+
+1. 前端提示超时或长时间无返回。
+2. AionUi 日志出现 `pthread_create: Resource temporarily unavailable`。
+
+排查顺序：
+
+1. `systemctl show aionui-webui.service -p TasksCurrent -p TasksMax`
+2. `journalctl -u aionui-webui.service -n 200 --no-pager | grep -E 'pthread_create|Resource temporarily unavailable'`
+3. 确认 override 参数包含 `TasksMax=2048`、`LimitNPROC=8192`。
+4. 必要时重启：`systemctl restart aionui-webui gdhz-bff`。
 
 ---
 
@@ -332,6 +359,8 @@ systemctl restart nginx
 8. 空闲会话会自动回收（释放 AionUi 运行态 task），历史可继续。
 9. `aionui-webui.service` 已启用重启自愈与资源上限（内存/任务数）。
 10. 系统已启用 `8G` swap。
+11. 阶段2核心接口已可用：`/api/ai/chat/stream`、`/api/ai/history` 分页、`/api/ai/sessions`（查/改名/删）。
+12. 后台清理策略已配置化：会话上限、消息上限、标题长度上限。
 
 ---
 
@@ -357,16 +386,24 @@ systemctl restart nginx
 
 ### 14.4 自动回收与过期
 
-1. 空闲阈值：`AI_SESSION_IDLE_RELEASE_MS`（默认 `1800000`，30 分钟）。
-2. 扫描间隔：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（默认 `60000`，60 秒）。
+1. 空闲阈值：`AI_SESSION_IDLE_RELEASE_MS`（当前 `600000`，10 分钟）。
+2. 扫描间隔：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（当前 `30000`，30 秒）。
 3. 回收动作：调用 AionUi `reset-conversation`，会话状态改为 `released`。
-4. 历史消息不删除；用户继续发言时同 `chatSessionId` 会恢复为 `active` 并续聊。
+4. 历史消息不删除；用户继续发言时同 `chatSessionId` 会恢复为 `active`，并重建新的上游 `conversation_id`。
 
 ### 14.5 会话状态语义
 
 1. `active`：会话可用/最近活跃。
 2. `error`：最近一次调用失败。
 3. `released`：运行态已释放，历史保留，可重新激活。
+
+### 14.6 上限与裁剪策略（阶段2）
+
+1. 每用户会话上限：`AI_MAX_SESSIONS_PER_USER`（默认 `50`）。
+2. 单会话消息上限：`AI_MAX_MESSAGES_PER_SESSION`（默认 `200`）。
+3. 会话标题最大长度：`AI_SESSION_TITLE_MAX_LENGTH`（默认 `80`）。
+4. 达到会话上限时，按 `updatedAt` 淘汰旧会话，并同步删除其历史消息。
+5. 达到消息上限时，按时间滚动裁剪最旧消息。
 
 ---
 
@@ -385,9 +422,10 @@ systemctl restart nginx
 2. `RestartSec=5`
 3. `MemoryHigh=3584M`
 4. `MemoryMax=5120M`
-5. `TasksMax=320`
-6. `StartLimitIntervalSec=300`
-7. `StartLimitBurst=10`
+5. `TasksMax=2048`
+6. `LimitNPROC=8192`
+7. `StartLimitIntervalSec=300`
+8. `StartLimitBurst=10`
 
 ### 15.2 `gdhz-bff.service`
 
@@ -400,6 +438,12 @@ systemctl restart nginx
 
 1. `AIONUI_PASSWORD` 只放在 `EnvironmentFile`，不要写在命令行和仓库。
 2. `gdhz-bff.service` 与 `aionui-webui.service` 均启用开机自启。
+3. 当前重启与资源参数：
+   - `Restart=always`
+   - `RestartSec=5`
+   - `MemoryHigh=768M`
+   - `MemoryMax=1024M`
+   - `TasksMax=128`
 
 ### 15.3 swap 与内核参数
 
@@ -432,4 +476,7 @@ systemctl show gdhz-bff.service -p EnvironmentFiles
 # 4) 看 swap 状态
 free -h
 swapon --show
+
+# 5) 跑阶段2核心验收（不依赖外部模型）
+cd /usr/local/project/dzh/gdhz-vue/bff && npm run verify:stage2
 ```

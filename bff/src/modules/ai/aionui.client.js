@@ -455,12 +455,12 @@ export class AionUiClient {
       }
     }
 
-    const createdConversation = await this.invokeBridgeProvider('create-conversation', payload, {
-      timeoutMs: 20_000,
+    // Callback reliability for create-conversation is not stable across providers;
+    // send the command and rely on first-turn retry (`conversation not found`) in service layer.
+    await this.invokeBridgeProvider('create-conversation', payload, {
+      timeoutMs: Math.max(20_000, Number(config.ai.createConversationTimeoutMs || 60_000)),
+      waitForCallback: false,
     })
-    if (!createdConversation || typeof createdConversation !== 'object') {
-      throw new Error('AionUi create-conversation 未返回有效结果')
-    }
 
     return {
       backend: resolved.backend,
@@ -489,7 +489,7 @@ export class AionUiClient {
     this.sendRaw({ name, data })
   }
 
-  async invokeBridgeProvider(name, data, { timeoutMs = 20_000 } = {}) {
+  async invokeBridgeProvider(name, data, { timeoutMs = 20_000, waitForCallback = true } = {}) {
     await this.ensureWebSocket()
 
     const requestId = buildBridgeRequestId(name)
@@ -497,6 +497,17 @@ export class AionUiClient {
     const eventPayload = {
       id: requestId,
       data,
+    }
+
+    if (!waitForCallback) {
+      this.sendRaw({
+        name: `subscribe-${name}`,
+        data: eventPayload,
+      })
+      return {
+        success: true,
+        requestId,
+      }
     }
 
     return new Promise((resolve, reject) => {
@@ -554,7 +565,6 @@ export class AionUiClient {
 
   async ask({ conversationId, input, timeouts }) {
     const msgId = createId()
-    const sendTimeoutMs = Math.max(20_000, Number(timeouts?.totalTimeoutMs || 120_000) + 10_000)
 
     const replyPromise = this.waitForReply({
       conversationId,
@@ -574,7 +584,7 @@ export class AionUiClient {
           msg_id: msgId,
           conversation_id: conversationId,
         },
-        { timeoutMs: sendTimeoutMs }
+        { waitForCallback: false }
       )
     } catch (error) {
       const message = normalizeErrorMessage(error, 'AionUi 发送消息失败')
@@ -601,7 +611,56 @@ export class AionUiClient {
     return replyPromise
   }
 
-  waitForReply({ conversationId, msgId, timeouts }) {
+  async askStream({ conversationId, input, timeouts, onChunk }) {
+    const msgId = createId()
+
+    const replyPromise = this.waitForReply({
+      conversationId,
+      msgId,
+      timeouts,
+      onChunk,
+    })
+    void replyPromise.catch(() => undefined)
+
+    let sendResult = null
+    try {
+      sendResult = await this.invokeBridgeProvider(
+        'chat.send.message',
+        {
+          input,
+          msg_id: msgId,
+          conversation_id: conversationId,
+        },
+        { waitForCallback: false }
+      )
+    } catch (error) {
+      const message = normalizeErrorMessage(error, 'AionUi 发送消息失败')
+      this.events.emit('chat.response.stream', {
+        conversation_id: conversationId,
+        msg_id: msgId,
+        type: 'error',
+        data: { message },
+      })
+      await replyPromise.catch(() => undefined)
+      throw error
+    }
+
+    if (sendResult && typeof sendResult === 'object' && sendResult.success === false) {
+      const message = sendResult.msg || normalizeErrorMessage(sendResult, 'AionUi 发送消息失败')
+      this.events.emit('chat.response.stream', {
+        conversation_id: conversationId,
+        msg_id: msgId,
+        type: 'error',
+        data: { message },
+      })
+      await replyPromise.catch(() => undefined)
+      throw new Error(message)
+    }
+
+    return replyPromise
+  }
+
+  waitForReply({ conversationId, msgId, timeouts, onChunk }) {
     return new Promise((resolve, reject) => {
       const chunks = []
       let finished = false
@@ -653,10 +712,9 @@ export class AionUiClient {
         if (!message || typeof message !== 'object') return
         if (message.conversation_id !== conversationId) return
 
-        // Guard by both conversation_id and msg_id to prevent late chunks
-        // from the previous turn leaking into the next queued request.
-        const messageMsgId = typeof message.msg_id === 'string' ? message.msg_id : ''
-        if (!messageMsgId || messageMsgId !== msgId) return
+        // Some providers emit status/error chunks with synthetic msg_id values.
+        // We route by conversation_id and keep per-conversation queueing in service
+        // to avoid cross-turn interference.
 
         if (firstChunkTimer) {
           clearTimeout(firstChunkTimer)
@@ -666,6 +724,9 @@ export class AionUiClient {
         if (message.type === 'content' && typeof message.data === 'string') {
           resetIdleTimer()
           chunks.push(message.data)
+          if (typeof onChunk === 'function') {
+            onChunk(message.data)
+          }
           gotContent = true
           if (gotFinish) {
             scheduleFinish()

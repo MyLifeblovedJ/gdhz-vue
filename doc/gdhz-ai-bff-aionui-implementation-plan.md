@@ -696,14 +696,15 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - [x] BFF 消息历史持久化：
   - `bff/data/ai-messages.json`
 - [x] 会话自动回收（释放 AionUi 运行态任务）：
-  - 阈值：`AI_SESSION_IDLE_RELEASE_MS`（默认 `1800000`）
-  - 扫描：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（默认 `60000`）
+  - 阈值：`AI_SESSION_IDLE_RELEASE_MS`（当前 `600000`）
+  - 扫描：`AI_SESSION_RECYCLE_SCAN_INTERVAL_MS`（当前 `30000`）
   - 状态：`active/error/released`
 - [x] AionUi 资源保护与自愈：
   - `Restart=always`
   - `MemoryHigh=3584M`
   - `MemoryMax=5120M`
-  - `TasksMax=320`
+  - `TasksMax=2048`
+  - `LimitNPROC=8192`
 - [x] 主机内存回压能力：
   - `swapfile=8G`
   - `vm.swappiness=10`
@@ -721,15 +722,36 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
   - 默认恢复同一会话（非新建）
 - 过期与回收：
   - 空闲会话释放运行态，但保留历史并可继续话题
+  - 被释放会话恢复时，会保留 `chatSessionId`/历史消息并重建新的上游 `conversation_id`
 - 历史继续：
   - 依赖 `tenantId + userId + chatSessionId` 三元组定位
   - BFF 重启后仍可恢复（会话/消息已落盘）
 
-## 阶段 2（下一期）
+## 阶段 2（当前状态：核心能力已完成，审批项待定）
 
-- 改为 SSE/WS 前端流式渲染（打字效果）。
-- 增加 `/api/ai/confirm` 处理工具调用审批。
-- 历史查询分页、会话管理（重命名/删除）、后台清理策略配置化（按租户/用户上限）。
+- [x] 改为 SSE 前端流式渲染（打字效果）：
+  - BFF：`POST /api/ai/chat/stream`
+  - 前端：`FloatingToolbar.vue` 已接流式增量渲染
+- [x] AI 面板交互重构（参考 AionUi 布局逻辑）：
+  - 左侧新建/历史会话侧栏（按“今天/过去7天/更早”分组）
+  - 新建会话先选供应商（Gemini/Codex）再进入对话
+  - 会话头部显示当前会话标题与模型
+  - 对话输入区保留供应商与模型选择
+  - 欢迎语改为打字机式渐进展示
+- [ ] 增加 `/api/ai/confirm` 处理工具调用审批（待产品决策，当前默认不拦截）
+- [x] 历史查询分页：
+  - `GET /api/ai/history?chatSessionId=...&page=...&pageSize=...`
+- [x] 会话管理：
+  - `GET /api/ai/sessions`
+  - `PATCH /api/ai/sessions/:chatSessionId`（重命名）
+  - `DELETE /api/ai/sessions/:chatSessionId`（删除）
+- [x] 后台清理策略配置化：
+  - `AI_MAX_SESSIONS_PER_USER`
+  - `AI_MAX_MESSAGES_PER_SESSION`
+  - `AI_SESSION_TITLE_MAX_LENGTH`
+- [x] 阶段2核心验证脚本：
+  - `bff/scripts/stage2-core-verify.mjs`
+  - 报告：`doc/verification/stage2-core-verify-2026-02-26T16-04-41.json`
 
 ## 阶段 3（后续）
 

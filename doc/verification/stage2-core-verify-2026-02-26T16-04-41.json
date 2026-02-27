@@ -1,0 +1,53 @@
+{
+  "startedAt": "2026-02-26T16:04:38.793Z",
+  "config": {
+    "AI_MAX_SESSIONS_PER_USER": 2,
+    "AI_MAX_MESSAGES_PER_SESSION": 20,
+    "AI_SESSION_TITLE_MAX_LENGTH": 24
+  },
+  "checks": [
+    {
+      "name": "chatStream",
+      "pass": true,
+      "chatSessionId": "9c438981-48dc-4a8b-8fc4-76fe20ce928d",
+      "chunkCount": 2
+    },
+    {
+      "name": "historyPagination",
+      "pass": true,
+      "total": 2,
+      "page1HasMore": true
+    },
+    {
+      "name": "sessionRename",
+      "pass": true,
+      "title": "renamed-session-title"
+    },
+    {
+      "name": "sessionOverflowEviction",
+      "pass": true,
+      "keptSessionIds": [
+        "39733aeb-ecdb-41ab-ab85-a2727e31c158",
+        "86222111-9887-4dba-ab40-0dc6e16aa564"
+      ],
+      "evictedSessionId": "9c438981-48dc-4a8b-8fc4-76fe20ce928d"
+    },
+    {
+      "name": "messageTrim",
+      "pass": true,
+      "totalAfterTrim": 20
+    },
+    {
+      "name": "sessionDelete",
+      "pass": true,
+      "remaining": 1
+    },
+    {
+      "name": "resetConversationHook",
+      "pass": true,
+      "resetCallCount": 2
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-02-26T16:04:41.616Z"
+}
