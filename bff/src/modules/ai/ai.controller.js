@@ -66,10 +66,24 @@ export function createAiRouter(aiService) {
       }
     }
 
-    let closed = false
-    req.on('close', () => {
-      closed = true
+    let clientClosed = false
+    req.on('aborted', () => {
+      clientClosed = true
     })
+    res.on('close', () => {
+      // `req.close` may fire after body read in POST streaming requests.
+      // For SSE we only treat the connection as closed when response is not writable anymore.
+      if (!res.writableEnded) {
+        clientClosed = true
+      }
+    })
+
+    // Send an initial comment chunk so proxies/clients establish SSE stream immediately.
+    try {
+      res.write(': connected\n\n')
+    } catch {
+      // ignore write errors when connection has been closed
+    }
 
     try {
       const { tenantId, userId } = resolveUserContext(req)
@@ -83,7 +97,7 @@ export function createAiRouter(aiService) {
         context,
         selection,
         onChunk: (text) => {
-          if (closed) return
+          if (clientClosed) return
           if (!sentMeta) {
             sentMeta = true
             writeEvent('meta', {
@@ -94,17 +108,17 @@ export function createAiRouter(aiService) {
         },
       })
 
-      if (!closed) {
+      if (!clientClosed) {
         writeEvent('done', result)
       }
     } catch (error) {
-      if (!closed) {
+      if (!clientClosed) {
         writeEvent('error', {
           error: normalizeErrorMessage(error, '聊天接口调用失败'),
         })
       }
     } finally {
-      if (!closed) {
+      if (!res.writableEnded) {
         res.end()
       }
     }
