@@ -71,22 +71,59 @@
               <template v-for="group in sessionGroups" :key="group.key">
                 <div v-if="group.items.length" class="sider-group">
                   <div class="sider-group-title">{{ group.label }}</div>
-                  <button
+                  <div
                     v-for="item in group.items"
                     :key="item.chatSessionId"
-                    class="sider-item"
+                    class="sider-item-wrap"
                     :class="{ active: item.chatSessionId === selectedSessionId }"
-                    :disabled="isTyping"
-                    @click="activateSession(item)"
                   >
-                    <span class="sider-item-avatar" :class="getBackendClass(item.backend || item.backendKey)">
-                      {{ getBackendAvatar(item.backend || item.backendKey) }}
-                    </span>
-                    <span class="sider-item-text">
-                      <span class="sider-item-title">{{ item.title || '未命名会话' }}</span>
-                      <span class="sider-item-model">{{ item.modelId || (item.backend || '') }}</span>
-                    </span>
-                  </button>
+                    <button
+                      class="sider-item"
+                      :class="{ active: item.chatSessionId === selectedSessionId }"
+                      :disabled="isTyping"
+                      @click="activateSession(item)"
+                    >
+                      <span class="sider-item-avatar" :class="getBackendClass(item.backend || item.backendKey)">
+                        <img
+                          class="provider-icon provider-icon-session"
+                          :src="getBackendIcon(item.backend || item.backendKey)"
+                          :alt="normalizeBackendName(item.backend || item.backendKey)"
+                        />
+                      </span>
+                      <span class="sider-item-text">
+                        <span class="sider-item-title">{{ item.title || '未命名会话' }}</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      class="sider-item-menu-trigger"
+                      :class="{ open: sessionMenuId === item.chatSessionId }"
+                      :disabled="isTyping"
+                      @pointerdown.stop
+                      @click.stop="toggleSessionMenu(item.chatSessionId)"
+                    >
+                      <i class="fa-solid fa-ellipsis"></i>
+                    </button>
+                    <div
+                      v-if="sessionMenuId === item.chatSessionId"
+                      class="sider-item-menu"
+                      @pointerdown.stop
+                      @click.stop
+                    >
+                      <button class="sider-item-menu-option" @click="handleSessionMenuAction('pin', item)">
+                        <i class="fa-solid fa-thumbtack"></i>
+                        {{ isSessionPinned(item.chatSessionId) ? '取消置顶' : '置顶' }}
+                      </button>
+                      <button class="sider-item-menu-option" @click="handleSessionMenuAction('rename', item)">
+                        <i class="fa-solid fa-pen"></i>
+                        重命名
+                      </button>
+                      <button class="sider-item-menu-option danger" @click="handleSessionMenuAction('delete', item)">
+                        <i class="fa-solid fa-trash"></i>
+                        删除
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </template>
               <div v-if="!sessionOptions.length" class="sider-empty">暂无会话历史</div>
@@ -114,7 +151,9 @@
                   :disabled="catalogLoading || isTyping"
                   @click="switchBackend('gemini')"
                 >
-                  <span class="model-dot">G</span>
+                  <span class="model-dot">
+                    <img class="provider-icon provider-icon-switch" :src="getBackendIcon('gemini')" alt="Gemini" />
+                  </span>
                   <span class="model-label">Gemini CLI</span>
                 </button>
                 <span class="switch-divider"></span>
@@ -125,7 +164,9 @@
                   :disabled="catalogLoading || isTyping"
                   @click="switchBackend('codex')"
                 >
-                  <span class="model-dot">C</span>
+                  <span class="model-dot">
+                    <img class="provider-icon provider-icon-switch" :src="getBackendIcon('codex')" alt="Codex" />
+                  </span>
                   <span class="model-label">Codex</span>
                 </button>
               </div>
@@ -136,7 +177,11 @@
                 <div v-if="msg.role === 'assistant'" class="msg-avatar-box">
                   <div class="avatar-glow"></div>
                   <div class="avatar-inner">
-                    <span>{{ getBackendAvatar(selectedBackend.value || selectedBackendKey) }}</span>
+                    <img
+                      class="provider-icon provider-icon-assistant"
+                      :src="getBackendIcon(selectedBackend.value || selectedBackendKey)"
+                      :alt="currentBackendName"
+                    />
                   </div>
                 </div>
                 <div class="msg-content">
@@ -155,20 +200,6 @@
               <div class="outer-ring"></div>
               <div class="inner-glow"></div>
               <div class="main-border"></div>
-              <div class="model-select-row">
-                <span class="model-select-label">模型</span>
-                <select
-                  v-model="selectedModelId"
-                  class="model-select"
-                  :disabled="catalogLoading || isTyping || modelOptions.length === 0"
-                  @change="handleModelChange"
-                >
-                  <option v-if="modelOptions.length === 0" value="">默认模型</option>
-                  <option v-for="item in modelOptions" :key="item.id" :value="item.id">
-                    {{ item.label || item.id }}
-                  </option>
-                </select>
-              </div>
               <div class="input-wrapper">
                 <textarea
                   ref="inputRef"
@@ -182,6 +213,22 @@
                   class="search-field"
                   rows="1"
                 ></textarea>
+                <div class="composer-inline-toolbar">
+                  <div class="composer-model-select-wrap" :style="composerModelSelectStyle">
+                    <select
+                      v-model="selectedModelId"
+                      class="composer-model-select"
+                      :disabled="catalogLoading || isTyping || modelOptions.length === 0"
+                      @change="handleModelChange"
+                    >
+                      <option v-if="modelOptions.length === 0" value="">默认模型</option>
+                      <option v-for="item in modelOptions" :key="item.id" :value="item.id">
+                        {{ item.label || item.id }}
+                      </option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down composer-model-chevron"></i>
+                  </div>
+                </div>
                 <div class="search-btn-border"></div>
                 <button class="send-btn" @click="handleSend" :disabled="!inputText || isTyping">
                   <i class="fa-solid fa-arrow-up"></i>
@@ -204,6 +251,8 @@ import {
   fetchAICatalog,
   fetchChatHistory,
   fetchAISessions,
+  renameAISession,
+  deleteAISession,
 } from '../../api/ai'
 import LayerControl from './LayerControl.vue'
 import DeviceExplorer from '../device/DeviceExplorer.vue'
@@ -259,10 +308,20 @@ const selectedModelId = ref('')
 const sessionLoading = ref(false)
 const sessionOptions = ref([])
 const selectedSessionId = ref('')
+const sessionMenuId = ref('')
+const pinnedSessionIds = ref([])
+const composerPlaceholder = ref('请输入您的问题...')
 const allowedBackends = new Set(['gemini', 'codex'])
 const CHAT_SESSION_STORAGE_KEY = 'gdhz.ai.chatSession.v1'
+const PINNED_SESSION_STORAGE_KEY = 'gdhz.ai.pinnedSessions.v1'
+const DEFAULT_COMPOSER_PLACEHOLDER = '请输入您的问题...'
 const HISTORY_PAGE_SIZE = 100
 const SESSION_PAGE_SIZE = 50
+const BACKEND_ICON_MAP = Object.freeze({
+  gemini: '/icons/gemini-color.svg',
+  codex: '/icons/openai-light.svg',
+  generic: '/icons/openai-light.svg',
+})
 const WELCOME_MESSAGE_POOL = [
   `我可以为您提供：
 • 实时灾情分析与态势研判
@@ -476,6 +535,12 @@ const currentModelLabel = computed(() => {
   return model?.label || selectedModelId.value || '默认模型'
 })
 
+const composerModelSelectStyle = computed(() => {
+  const label = String(currentModelLabel.value || '默认模型')
+  const width = Math.max(82, Math.min(122, Math.round(label.length * 7.5 + 24)))
+  return { width: `${width}px` }
+})
+
 const activeModelKey = computed(() => {
   const backend = String(selectedBackend.value || '').toLowerCase()
   const backendKey = String(selectedBackendKey.value || '').toLowerCase()
@@ -487,6 +552,7 @@ const activeModelKey = computed(() => {
 const showWelcomeHero = computed(() => !messages.value.some((item) => item.role === 'user'))
 
 const sessionGroups = computed(() => {
+  const pinned = []
   const today = []
   const yesterday = []
   const older = []
@@ -494,8 +560,16 @@ const sessionGroups = computed(() => {
   const dayMs = 24 * 60 * 60 * 1000
   const startOfToday = new Date(new Date(now).setHours(0, 0, 0, 0)).getTime()
   const startOfYesterday = startOfToday - dayMs
+  const pinnedOrder = new Map(pinnedSessionIds.value.map((id, index) => [id, index]))
 
-  for (const item of sessionOptions.value) {
+  const sortedSessions = [...sessionOptions.value].sort((a, b) => Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0))
+  for (const item of sortedSessions) {
+    const chatId = String(item?.chatSessionId || '')
+    if (chatId && pinnedOrder.has(chatId)) {
+      pinned.push(item)
+      continue
+    }
+
     const updatedAt = Number(item?.updatedAt || 0)
     if (updatedAt >= startOfToday) {
       today.push(item)
@@ -506,7 +580,14 @@ const sessionGroups = computed(() => {
     }
   }
 
+  pinned.sort((a, b) => {
+    const aIndex = pinnedOrder.get(String(a?.chatSessionId || '')) ?? Number.MAX_SAFE_INTEGER
+    const bIndex = pinnedOrder.get(String(b?.chatSessionId || '')) ?? Number.MAX_SAFE_INTEGER
+    return aIndex - bIndex
+  })
+
   return [
+    { key: 'pinned', label: '置顶', items: pinned },
     { key: 'today', label: '今天', items: today },
     { key: 'yesterday', label: '昨天', items: yesterday },
     { key: 'older', label: '更早', items: older },
@@ -527,11 +608,9 @@ function getBackendClass(value) {
   return 'generic'
 }
 
-function getBackendAvatar(value) {
-  const backend = String(value || '').toLowerCase()
-  if (backend.includes('gemini')) return 'G'
-  if (backend.includes('codex')) return 'C'
-  return 'AI'
+function getBackendIcon(value) {
+  const backendClass = getBackendClass(value)
+  return BACKEND_ICON_MAP[backendClass] || BACKEND_ICON_MAP.generic
 }
 
 function matchProviderByBackend(provider, backendFamily) {
@@ -568,6 +647,131 @@ function normalizeErrorText(error, fallback = 'AI 服务请求失败') {
     return String(error.message || fallback)
   }
   return fallback
+}
+
+function readPinnedSessionIds() {
+  try {
+    const raw = window.localStorage.getItem(PINNED_SESSION_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return [...new Set(parsed.map((item) => String(item || '')).filter(Boolean))]
+  } catch {
+    return []
+  }
+}
+
+function savePinnedSessionIds() {
+  try {
+    window.localStorage.setItem(PINNED_SESSION_STORAGE_KEY, JSON.stringify(pinnedSessionIds.value))
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function isSessionPinned(chatSessionId) {
+  const normalizedId = String(chatSessionId || '')
+  return normalizedId ? pinnedSessionIds.value.includes(normalizedId) : false
+}
+
+function togglePinSession(chatSessionId) {
+  const normalizedId = String(chatSessionId || '')
+  if (!normalizedId) return
+  const next = [...pinnedSessionIds.value]
+  const existingIndex = next.indexOf(normalizedId)
+  if (existingIndex >= 0) {
+    next.splice(existingIndex, 1)
+  } else {
+    next.unshift(normalizedId)
+  }
+  pinnedSessionIds.value = next
+  savePinnedSessionIds()
+}
+
+function cleanPinnedSessionsByOptions() {
+  const valid = new Set(sessionOptions.value.map((item) => String(item?.chatSessionId || '')).filter(Boolean))
+  const filtered = pinnedSessionIds.value.filter((id) => valid.has(id))
+  if (filtered.length === pinnedSessionIds.value.length) return
+  pinnedSessionIds.value = filtered
+  savePinnedSessionIds()
+}
+
+function closeSessionMenu() {
+  sessionMenuId.value = ''
+}
+
+function toggleSessionMenu(chatSessionId) {
+  const normalizedId = String(chatSessionId || '')
+  if (!normalizedId) return
+  sessionMenuId.value = sessionMenuId.value === normalizedId ? '' : normalizedId
+}
+
+function handleDocumentClick() {
+  closeSessionMenu()
+}
+
+async function renameSessionByItem(session) {
+  const chatId = String(session?.chatSessionId || '')
+  if (!chatId) return
+  const currentTitle = String(session?.title || '')
+  const nextTitleInput = window.prompt('请输入新的会话标题', currentTitle)
+  if (nextTitleInput == null) return
+  const nextTitle = String(nextTitleInput).trim()
+  if (!nextTitle) return
+
+  try {
+    await renameAISession(chatId, nextTitle)
+    await loadSessionOptions()
+  } catch (error) {
+    const errorText = normalizeErrorText(error, '重命名会话失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`),
+    })
+    scrollToBottom()
+  }
+}
+
+async function deleteSessionByItem(session) {
+  const chatId = String(session?.chatSessionId || '')
+  if (!chatId) return
+  const ok = window.confirm('确认删除该会话及其历史消息？')
+  if (!ok) return
+
+  try {
+    await deleteAISession(chatId)
+    pinnedSessionIds.value = pinnedSessionIds.value.filter((item) => item !== chatId)
+    savePinnedSessionIds()
+    if (chatSessionId.value === chatId) {
+      startNewSession({ typedGreeting: true })
+    }
+    await loadSessionOptions()
+  } catch (error) {
+    const errorText = normalizeErrorText(error, '删除会话失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatTextForBubble(`请求失败：${errorText}`),
+    })
+    scrollToBottom()
+  }
+}
+
+async function handleSessionMenuAction(action, session) {
+  if (!session || isTyping.value) return
+  if (action === 'pin') {
+    togglePinSession(session.chatSessionId)
+    closeSessionMenu()
+    return
+  }
+  if (action === 'rename') {
+    await renameSessionByItem(session)
+    closeSessionMenu()
+    return
+  }
+  if (action === 'delete') {
+    await deleteSessionByItem(session)
+    closeSessionMenu()
+  }
 }
 
 function stopGreetingTyping() {
@@ -726,6 +930,7 @@ async function loadSessionOptions() {
       page += 1
     }
     sessionOptions.value = all
+    cleanPinnedSessionsByOptions()
     selectedSessionId.value = chatSessionId.value || ''
   } finally {
     sessionLoading.value = false
@@ -789,6 +994,7 @@ async function activateSession(session) {
     startNewSession()
     return
   }
+  closeSessionMenu()
   syncSelectionFromSession(session)
   try {
     await loadHistoryForSession(session.chatSessionId)
@@ -804,6 +1010,7 @@ async function activateSession(session) {
 
 function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
   stopGreetingTyping()
+  closeSessionMenu()
   if (backendKey) {
     selectedBackendKey.value = backendKey
     applyDefaultModelForBackend()
@@ -832,6 +1039,8 @@ function toggleAIPanel() {
       setGreetingMessage({ typed: true })
     }
     resizeInput()
+  } else {
+    closeSessionMenu()
   }
 }
 
@@ -847,8 +1056,8 @@ function scrollToBottom() {
 function resizeInput() {
   nextTick(() => {
     if (!inputRef.value) return
-    inputRef.value.style.height = '48px'
-    inputRef.value.style.height = `${Math.min(inputRef.value.scrollHeight, 148)}px`
+    inputRef.value.style.height = '84px'
+    inputRef.value.style.height = `${Math.min(inputRef.value.scrollHeight, 176)}px`
   })
 }
 
@@ -1040,6 +1249,8 @@ async function loadAICatalog() {
 }
 
 onMounted(() => {
+  pinnedSessionIds.value = readPinnedSessionIds()
+  document.addEventListener('click', handleDocumentClick)
   void loadAICatalog()
     .finally(() => restoreChatSessionIfExists())
     .finally(() => loadSessionOptions().catch(() => undefined))
@@ -1048,6 +1259,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopGreetingTyping()
+  document.removeEventListener('click', handleDocumentClick)
 })
 
 function formatTextForBubble(text) {
@@ -1585,14 +1797,14 @@ function escapeHtml(text) {
 
 .model-switcher {
   width: min(340px, 100%);
-  background: rgba(2, 6, 20, 0.82);
-  border: 1px solid rgba(139, 92, 246, 0.28);
+  background: rgba(15, 23, 42, 0.56);
+  border: none;
   border-radius: 999px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 4px 6px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: none;
 }
 
 .model-switch-btn {
@@ -1622,20 +1834,29 @@ function escapeHtml(text) {
 
 .model-switch-btn.active {
   color: #ffffff;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+  background: rgba(148, 163, 184, 0.3);
+  box-shadow: 0 0 0 1px rgba(203, 213, 225, 0.26);
 }
 
 .model-dot {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.45);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.provider-icon {
+  display: block;
+  object-fit: contain;
+}
+
+.provider-icon-switch {
+  width: 15px;
+  height: 15px;
 }
 
 .model-label {
@@ -1762,13 +1983,10 @@ function escapeHtml(text) {
   z-index: 1;
 }
 
-.msg-avatar-box .avatar-inner span {
-  font-family: 'Rajdhani', 'Orbitron', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  color: #c4b5fd;
-  text-shadow: 0 0 6px rgba(196, 181, 253, 0.6);
-  letter-spacing: 0.5px;
+.provider-icon-assistant {
+  width: 14px;
+  height: 14px;
+  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.4));
 }
 
 @keyframes avatarGlowRotate {
@@ -1791,58 +2009,71 @@ function escapeHtml(text) {
   margin-top: 0;
 }
 
-.halo-search-input .model-select-row {
+.halo-search-input .input-wrapper {
   position: relative;
   z-index: 2;
+  width: 100%;
+}
+
+.halo-search-input .composer-inline-toolbar {
+  position: absolute;
+  left: 16px;
+  right: 60px;
+  bottom: 10px;
+  z-index: 3;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  justify-content: flex-start;
+  pointer-events: none;
 }
 
-.halo-search-input .model-select-label {
-  color: rgba(226, 232, 240, 0.78);
-  font-size: 12px;
-  flex: 0 0 auto;
+.halo-search-input .composer-model-select-wrap {
+  position: relative;
+  max-width: min(124px, 42%);
+  pointer-events: auto;
 }
 
-.halo-search-input .model-select {
-  flex: 1;
-  height: 34px;
-  border-radius: 8px;
-  border: 1px solid rgba(167, 139, 250, 0.35);
-  background: rgba(3, 6, 18, 0.88);
-  color: #e9dcff;
-  font-size: 12px;
-  padding: 0 10px;
+.halo-search-input .composer-model-select {
+  width: 100%;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(3, 6, 18, 0.86);
+  color: rgba(241, 245, 249, 0.96);
+  font-size: 11px;
+  padding: 0 20px 0 8px;
+  appearance: none;
   outline: none;
+  box-shadow: none;
 }
 
-.halo-search-input .model-select:disabled {
+.halo-search-input .composer-model-select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.halo-search-input .input-wrapper {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: flex-end;
-  width: 100%;
+.halo-search-input .composer-model-chevron {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: rgba(226, 232, 240, 0.78);
+  pointer-events: none;
 }
 
 .halo-search-input .search-field {
   background-color: #010201;
   border: none;
   width: 100%;
-  min-height: 48px;
-  max-height: 148px;
+  min-height: 56px;
+  max-height: 152px;
   border-radius: 10px;
   color: white;
   padding-right: 54px;
   padding-left: 16px;
   padding-top: 13px;
-  padding-bottom: 13px;
+  padding-bottom: 38px;
   font-size: 14px;
   line-height: 1.55;
   resize: none;
@@ -1860,8 +2091,9 @@ function escapeHtml(text) {
 
 .halo-search-input .send-btn {
   position: absolute;
-  bottom: 4px;
+  top: 50%;
   right: 4px;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   border-radius: 8px;
@@ -2017,8 +2249,9 @@ function escapeHtml(text) {
   width: 42px;
   position: absolute;
   overflow: hidden;
-  bottom: 3px;
+  top: 50%;
   right: 3px;
+  transform: translateY(-50%);
   border-radius: 10px;
   pointer-events: none;
 }
@@ -2539,19 +2772,23 @@ function escapeHtml(text) {
   margin: 0 4px 6px;
 }
 
+.sider-item-wrap {
+  position: relative;
+  margin-bottom: 4px;
+}
+
 .sider-item {
   width: 100%;
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
-  padding: 8px;
+  padding: 8px 30px 8px 8px;
   color: inherit;
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
   text-align: left;
-  margin-bottom: 4px;
 }
 
 .sider-item:hover:not(:disabled) {
@@ -2568,6 +2805,79 @@ function escapeHtml(text) {
   cursor: not-allowed;
 }
 
+.sider-item-menu-trigger {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(226, 232, 240, 0.7);
+  background: rgba(15, 23, 42, 0.5);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.sider-item-wrap:hover .sider-item-menu-trigger,
+.sider-item-menu-trigger.open {
+  opacity: 1;
+}
+
+.sider-item-menu-trigger:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.35);
+  color: #fff;
+}
+
+.sider-item-menu-trigger:disabled {
+  cursor: not-allowed;
+}
+
+.sider-item-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 112px;
+  background: rgba(2, 6, 20, 0.96);
+  border: 1px solid rgba(139, 92, 246, 0.32);
+  border-radius: 10px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.38);
+  padding: 6px;
+  z-index: 8;
+}
+
+.sider-item-menu-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  border-radius: 8px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sider-item-menu-option:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.sider-item-menu-option.danger {
+  color: #fca5a5;
+}
+
+.sider-item-menu-option.danger:hover {
+  background: rgba(220, 38, 38, 0.24);
+}
+
 .sider-item-avatar {
   width: 20px;
   height: 20px;
@@ -2575,31 +2885,23 @@ function escapeHtml(text) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  color: #fff;
   flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.4);
 }
 
-.sider-item-avatar.gemini {
-  background: #10b981;
-}
-
-.sider-item-avatar.codex {
-  background: #3b82f6;
-}
-
-.sider-item-avatar.generic {
-  background: #6b7280;
+.provider-icon-session {
+  width: 13px;
+  height: 13px;
 }
 
 .sider-item-text {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   min-width: 0;
 }
 
-.sider-item-title,
-.sider-item-model {
+.sider-item-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2608,11 +2910,7 @@ function escapeHtml(text) {
 .sider-item-title {
   color: #e2e8f0;
   font-size: 12px;
-}
-
-.sider-item-model {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+  line-height: 1.2;
 }
 
 .sider-empty {
@@ -2672,6 +2970,18 @@ function escapeHtml(text) {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
+  .halo-search-input .composer-inline-toolbar {
+    left: 14px;
+    right: 56px;
+    bottom: 9px;
+  }
+
+  .halo-search-input .composer-model-select-wrap {
+    max-width: min(120px, 50%);
+  }
+
+  .sider-item-menu-trigger {
+    opacity: 1;
+  }
 }
 </style>
-

@@ -752,6 +752,33 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - [x] 阶段2核心验证脚本：
   - `bff/scripts/stage2-core-verify.mjs`
   - 报告：`doc/verification/stage2-core-verify-2026-02-26T16-04-41.json`
+  - 报告：`doc/verification/stage2-core-verify-2026-02-26T16-57-11.json`
+
+## 阶段 2 增量记录（2026-02-27，AI 面板布局与样式）
+
+### A. 变更范围
+
+- 仅涉及前端 `FloatingToolbar.vue` 的 AI 面板布局/样式细化。
+- 不涉及 BFF 协议、接口契约与会话治理逻辑变更。
+
+### B. 关键决策与现状
+
+- 供应商切换区：
+  - 保留中间分隔细线；
+  - 去除外层椭圆容器的白色描边，降低视觉噪声；
+  - 供应商图标尺寸上调，提升可辨识度。
+- 输入区模型选择：
+  - 具体模型选择控件移入输入框内部底部；
+  - 最终样式采用“白色细线边框”版本；
+  - 控件宽度按当前模型文本长度自适应，并设置最大宽度，避免过长条显眼。
+- 对齐目标：
+  - 保持“输入提示文本 / 发送按钮 / 模型选择”三者视觉平衡；
+  - 不改动后端语义（仍以 `backendKey + modelId` 驱动会话创建与路由）。
+
+### C. 验证结果
+
+- 前端构建验证通过：`npm run build`。
+- 本次仅为 UI 层增量，不影响阶段2核心验证脚本结论。
 
 ## 阶段 3（后续）
 
