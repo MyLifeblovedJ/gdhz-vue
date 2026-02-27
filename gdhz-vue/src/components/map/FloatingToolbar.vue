@@ -107,7 +107,6 @@
             <div class="welcome-shell" v-if="showWelcomeHero">
               <h2 class="welcome-title">您好，我是您的智能防灾助手</h2>
               <div class="model-switcher" :class="`active-${activeModelKey}`">
-                <div class="switcher-highlight" :class="{ codex: activeModelKey === 'codex' }"></div>
                 <button
                   type="button"
                   class="model-switch-btn"
@@ -116,8 +115,9 @@
                   @click="switchBackend('gemini')"
                 >
                   <span class="model-dot">G</span>
-                  <span class="model-label">Gemini</span>
+                  <span class="model-label">Gemini CLI</span>
                 </button>
+                <span class="switch-divider"></span>
                 <button
                   type="button"
                   class="model-switch-btn"
@@ -155,6 +155,20 @@
               <div class="outer-ring"></div>
               <div class="inner-glow"></div>
               <div class="main-border"></div>
+              <div class="model-select-row">
+                <span class="model-select-label">模型</span>
+                <select
+                  v-model="selectedModelId"
+                  class="model-select"
+                  :disabled="catalogLoading || isTyping || modelOptions.length === 0"
+                  @change="handleModelChange"
+                >
+                  <option v-if="modelOptions.length === 0" value="">默认模型</option>
+                  <option v-for="item in modelOptions" :key="item.id" :value="item.id">
+                    {{ item.label || item.id }}
+                  </option>
+                </select>
+              </div>
               <div class="input-wrapper">
                 <textarea
                   ref="inputRef"
@@ -542,6 +556,11 @@ function switchBackend(backendFamily) {
 
   const backendKey = provider.backendKey || provider.backend
   startNewSession({ backendKey, typedGreeting: true })
+}
+
+function handleModelChange() {
+  if (catalogLoading.value || isTyping.value) return
+  startNewSession({ typedGreeting: true })
 }
 
 function normalizeErrorText(error, fallback = 'AI 服务请求失败') {
@@ -1565,49 +1584,30 @@ function escapeHtml(text) {
 }
 
 .model-switcher {
-  position: relative;
   width: min(340px, 100%);
   background: rgba(2, 6, 20, 0.82);
   border: 1px solid rgba(139, 92, 246, 0.28);
   border-radius: 999px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  overflow: hidden;
-}
-
-.switcher-highlight {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: calc(50% - 4px);
-  bottom: 4px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
-  transition: transform 0.28s ease;
-  pointer-events: none;
-}
-
-.switcher-highlight.codex {
-  transform: translateX(100%);
 }
 
 .model-switch-btn {
-  position: relative;
-  z-index: 1;
   border: none;
   background: transparent;
   color: rgba(226, 232, 240, 0.78);
-  height: 38px;
+  height: 40px;
+  min-width: 40px;
   border-radius: 999px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: color 0.2s ease;
+  gap: 0;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, padding 0.2s ease;
   padding: 0 12px;
 }
 
@@ -1622,6 +1622,8 @@ function escapeHtml(text) {
 
 .model-switch-btn.active {
   color: #ffffff;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.9), rgba(59, 130, 246, 0.9));
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
 }
 
 .model-dot {
@@ -1637,17 +1639,33 @@ function escapeHtml(text) {
 }
 
 .model-label {
+  display: inline-block;
   max-width: 0;
+  margin-left: 0;
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
-  transition: max-width 0.24s ease, opacity 0.24s ease;
+  transition: max-width 0.24s ease, opacity 0.24s ease, margin-left 0.24s ease;
 }
 
-.model-switch-btn.active .model-label,
-.model-switch-btn:hover .model-label {
-  max-width: 70px;
+.model-switch-btn.active .model-label {
+  max-width: 108px;
+  margin-left: 6px;
   opacity: 1;
+}
+
+.model-switch-btn:not(.active):hover .model-label {
+  max-width: 108px;
+  margin-left: 6px;
+  opacity: 1;
+}
+
+.switch-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 0 6px;
+  flex: 0 0 auto;
 }
 
 /* Messages */
@@ -1771,6 +1789,38 @@ function escapeHtml(text) {
   justify-content: center;
   margin: 16px;
   margin-top: 0;
+}
+
+.halo-search-input .model-select-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.halo-search-input .model-select-label {
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.halo-search-input .model-select {
+  flex: 1;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(3, 6, 18, 0.88);
+  color: #e9dcff;
+  font-size: 12px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.halo-search-input .model-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .halo-search-input .input-wrapper {
