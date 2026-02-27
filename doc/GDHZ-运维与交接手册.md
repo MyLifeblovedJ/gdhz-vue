@@ -83,6 +83,38 @@
 1. `ufw` 负责公网入口收口。
 2. 目标策略：允许 `22/3000`，拒绝 `25808/9090`。
 
+### 3.5 GitHub Push SSH 凭据（固定）
+
+当前机器可用的 GitHub 私钥固定为：
+
+1. 私钥路径：`/root/clichat/.ssh_github`
+2. 公钥路径：`/root/clichat/.ssh_github.pub`
+
+连通性验证命令：
+
+```bash
+ssh -i /root/clichat/.ssh_github -o IdentitiesOnly=yes -T git@github.com
+```
+
+预期返回：
+
+`Hi MyLifeblovedJ! You've successfully authenticated, but GitHub does not provide shell access.`
+
+推送命令（显式指定私钥，避免再次查找）：
+
+```bash
+cd /usr/local/project/dzh/gdhz-vue
+GIT_SSH_COMMAND="ssh -i /root/clichat/.ssh_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git push origin master
+```
+
+已在本仓库设置：
+
+```bash
+git -C /usr/local/project/dzh/gdhz-vue config core.sshCommand "ssh -i /root/clichat/.ssh_github -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+```
+
+后续在该仓库可直接执行 `git push`。
+
 ---
 
 ## 4. 启动与重启流程
