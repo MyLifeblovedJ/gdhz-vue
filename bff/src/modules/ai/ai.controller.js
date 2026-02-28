@@ -87,7 +87,6 @@ export function createAiRouter(aiService) {
 
     try {
       const { tenantId, userId } = resolveUserContext(req)
-      let sentMeta = false
 
       const result = await aiService.chatStream({
         tenantId,
@@ -96,15 +95,33 @@ export function createAiRouter(aiService) {
         message: message.trim(),
         context,
         selection,
+        onMeta: (payload) => {
+          if (clientClosed) return
+          writeEvent('meta', payload || {})
+        },
         onChunk: (text) => {
           if (clientClosed) return
-          if (!sentMeta) {
-            sentMeta = true
-            writeEvent('meta', {
-              chatSessionId: chatSessionId || undefined,
-            })
-          }
           writeEvent('delta', { text })
+        },
+        onEvent: (eventPayload) => {
+          if (clientClosed) return
+          if (!eventPayload || typeof eventPayload !== 'object') return
+
+          if (eventPayload.kind === 'confirmation.add') {
+            writeEvent('confirm_add', eventPayload.payload || {})
+            return
+          }
+          if (eventPayload.kind === 'confirmation.update') {
+            writeEvent('confirm_update', eventPayload.payload || {})
+            return
+          }
+          if (eventPayload.kind === 'confirmation.remove') {
+            writeEvent('confirm_remove', eventPayload.payload || {})
+            return
+          }
+          if (eventPayload.kind === 'stream') {
+            writeEvent('stream_event', eventPayload.payload || {})
+          }
         },
       })
 
@@ -121,6 +138,87 @@ export function createAiRouter(aiService) {
       if (!res.writableEnded) {
         res.end()
       }
+    }
+  })
+
+  router.post('/confirm', async (req, res) => {
+    try {
+      const {
+        chatSessionId = '',
+        callId = '',
+        data = null,
+        msgId = '',
+      } = req.body || {}
+
+      const normalizedChatSessionId = String(chatSessionId || '').trim()
+      const normalizedCallId = String(callId || '').trim()
+      const normalizedMsgId = String(msgId || '').trim()
+
+      if (!normalizedChatSessionId || !normalizedCallId) {
+        res.status(400).json({
+          success: false,
+          error: 'chatSessionId 和 callId 不能为空',
+        })
+        return
+      }
+
+      const { tenantId, userId } = resolveUserContext(req)
+      const result = await aiService.confirm({
+        tenantId,
+        userId,
+        chatSessionId: normalizedChatSessionId,
+        callId: normalizedCallId,
+        data,
+        msgId: normalizedMsgId || undefined,
+      })
+
+      res.json({
+        success: true,
+        ...result,
+      })
+    } catch (error) {
+      const message = normalizeErrorMessage(error, '工具审批失败')
+      if (message.includes('会话不存在')) {
+        res.status(404).json({
+          success: false,
+          error: message,
+        })
+        return
+      }
+      res.status(502).json({
+        success: false,
+        error: message,
+      })
+    }
+  })
+
+  router.get('/confirmations', async (req, res) => {
+    try {
+      const chatSessionId = String(req.query.chatSessionId || '').trim()
+      if (!chatSessionId) {
+        res.json({
+          chatSessionId: '',
+          confirmations: [],
+        })
+        return
+      }
+
+      const { tenantId, userId } = resolveUserContext(req)
+      const confirmations = await aiService.listConfirmations({
+        tenantId,
+        userId,
+        chatSessionId,
+      })
+
+      res.json({
+        chatSessionId,
+        confirmations: Array.isArray(confirmations) ? confirmations : [],
+      })
+    } catch (error) {
+      res.status(502).json({
+        success: false,
+        error: normalizeErrorMessage(error, '读取待审批工具失败'),
+      })
     }
   })
 

@@ -122,7 +122,7 @@ export class AiService {
     }
   }
 
-  async chatStream({ tenantId, userId, chatSessionId, message, context, selection, onChunk }) {
+  async chatStream({ tenantId, userId, chatSessionId, message, context, selection, onChunk, onEvent, onMeta }) {
     const traceId = createTraceId()
     const catalog = await this.aionuiClient.getAiCatalog()
     const resolvedSelection = this.aionuiClient.resolveConversationConfig(selection, catalog)
@@ -142,37 +142,12 @@ export class AiService {
       providerId: resolvedSelection.providerId,
       customAgentId: resolvedSelection.customAgentId,
     })
+    if (typeof onMeta === 'function') {
+      onMeta({
+        chatSessionId: session.chatSessionId,
+      })
+    }
 
-    const reply = await this.runConversationTask(session.conversationId, async () => {
-      const firstTurn = !session.initialized
-      const input = this.buildChatInput({ message, context })
-      try {
-        await this.ensureConversationReady(session, resolvedSelection)
-        return await this.aionuiClient.askStream({
-          conversationId: session.conversationId,
-          input,
-          timeouts: config.ai,
-          onChunk,
-        })
-      } catch (error) {
-        if (this.shouldRetryAfterCreate(error, firstTurn)) {
-          session.initialized = false
-          await this.ensureConversationReady(session, resolvedSelection)
-          return await this.aionuiClient.askStream({
-            conversationId: session.conversationId,
-            input,
-            timeouts: config.ai,
-            onChunk,
-          })
-        }
-        throw error
-      }
-    }).catch((error) => {
-      this.sessionRepository.markError(session)
-      throw error
-    })
-
-    const normalizedReply = (reply || '').trim()
     this.messageRepository.append({
       tenantId,
       userId,
@@ -181,6 +156,51 @@ export class AiService {
       content: message,
       traceId,
     })
+
+    let reply = ''
+    try {
+      reply = await this.runConversationTask(session.conversationId, async () => {
+        const firstTurn = !session.initialized
+        const input = this.buildChatInput({ message, context })
+        try {
+          await this.ensureConversationReady(session, resolvedSelection)
+          return await this.aionuiClient.askStream({
+            conversationId: session.conversationId,
+            input,
+            timeouts: config.ai,
+            onChunk,
+            onEvent,
+          })
+        } catch (error) {
+          if (this.shouldRetryAfterCreate(error, firstTurn)) {
+            session.initialized = false
+            await this.ensureConversationReady(session, resolvedSelection)
+            return await this.aionuiClient.askStream({
+              conversationId: session.conversationId,
+              input,
+              timeouts: config.ai,
+              onChunk,
+              onEvent,
+            })
+          }
+          throw error
+        }
+      })
+    } catch (error) {
+      this.sessionRepository.markError(session)
+      const errorText = normalizeErrorMessage(error, 'AI 服务请求失败')
+      this.messageRepository.append({
+        tenantId,
+        userId,
+        chatSessionId: session.chatSessionId,
+        role: 'assistant',
+        content: `请求失败：${errorText}`,
+        traceId,
+      })
+      throw error
+    }
+
+    const normalizedReply = (reply || '').trim()
     this.messageRepository.append({
       tenantId,
       userId,
@@ -202,6 +222,35 @@ export class AiService {
         customAgentId: session.customAgentId,
       },
     }
+  }
+
+  getSessionById({ tenantId, userId, chatSessionId }) {
+    if (!chatSessionId) return null
+    return this.sessionRepository.get({ tenantId, userId, chatSessionId })
+  }
+
+  async listConfirmations({ tenantId, userId, chatSessionId }) {
+    const session = this.getSessionById({ tenantId, userId, chatSessionId })
+    if (!session) {
+      return []
+    }
+    return this.aionuiClient.listConfirmations({
+      conversationId: session.conversationId,
+    })
+  }
+
+  async confirm({ tenantId, userId, chatSessionId, callId, data, msgId }) {
+    const session = this.getSessionById({ tenantId, userId, chatSessionId })
+    if (!session) {
+      throw new Error('会话不存在')
+    }
+    this.sessionRepository.markActive(session)
+    return this.aionuiClient.confirmMessage({
+      conversationId: session.conversationId,
+      msgId: msgId || callId,
+      callId,
+      data,
+    })
   }
 
   async releaseIdleSessions() {

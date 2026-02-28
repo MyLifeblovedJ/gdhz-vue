@@ -59,7 +59,7 @@
     
     <!-- AI 聊天面板（保持原视觉，仅调整布局） -->
     <Transition name="ai-scale">
-      <div v-if="showAIPanel" class="halo-chat-dialog">
+      <div v-if="showAIPanel" class="halo-chat-dialog" :class="{ expanded: isAIPanelExpanded }">
         <div class="halo-glow-bg"></div>
         <div class="dialog-content ai-layout-shell">
           <aside class="ai-session-sider">
@@ -80,6 +80,7 @@
                     <button
                       class="sider-item"
                       :class="{ active: item.chatSessionId === selectedSessionId }"
+                      :title="item.title || '未命名会话'"
                       :disabled="isTyping"
                       @click="activateSession(item)"
                     >
@@ -91,7 +92,7 @@
                         />
                       </span>
                       <span class="sider-item-text">
-                        <span class="sider-item-title">{{ item.title || '未命名会话' }}</span>
+                        <span class="sider-item-title" :title="item.title || '未命名会话'">{{ item.title || '未命名会话' }}</span>
                       </span>
                     </button>
                     <button
@@ -133,12 +134,22 @@
           <section class="ai-chat-pane">
             <div class="dialog-header">
               <div class="header-title-wrap">
-                <div class="header-title">{{ currentSessionTitle }}</div>
+                <div class="header-title" :title="currentSessionTitle">{{ currentSessionTitle }}</div>
                 <div class="header-subtitle">{{ currentBackendName }} · {{ currentModelLabel }}</div>
               </div>
-              <button class="close-btn" @click="showAIPanel = false">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
+              <div class="dialog-header-actions">
+                <button
+                  class="expand-btn dialog-action-btn"
+                  type="button"
+                  :title="isAIPanelExpanded ? '还原' : '放大'"
+                  @click="toggleAIPanelExpand"
+                >
+                  <i :class="isAIPanelExpanded ? 'fa-solid fa-compress' : 'fa-solid fa-expand'"></i>
+                </button>
+                <button class="close-btn dialog-action-btn" type="button" title="关闭" @click="closeAIPanel">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
             </div>
 
             <div class="welcome-shell" v-if="showWelcomeHero">
@@ -173,8 +184,21 @@
             </div>
 
             <div class="dialog-messages" ref="messagesRef">
-              <div v-for="(msg, index) in messages" :key="index" class="halo-message" :class="msg.role">
-                <div v-if="msg.role === 'assistant'" class="msg-avatar-box">
+              <div
+                v-for="(msg, index) in messages"
+                :key="index"
+                class="halo-message"
+                :class="[
+                  msg.role,
+                  {
+                    'is-confirmation': msg.kind === 'confirmation',
+                    'is-plain-assistant': msg.role === 'assistant' && msg.kind !== 'confirmation',
+                    'is-thought-trace': msg.role === 'assistant' && msg.kind !== 'confirmation' && msg.tone === 'thought',
+                    'is-greeting': msg.role === 'assistant' && msg.tone === 'greeting',
+                  },
+                ]"
+              >
+                <div v-if="msg.role === 'assistant' && msg.kind === 'confirmation'" class="msg-avatar-box">
                   <div class="avatar-glow"></div>
                   <div class="avatar-inner">
                     <img
@@ -185,11 +209,72 @@
                   </div>
                 </div>
                 <div class="msg-content">
+                  <div
+                    v-if="index === latestAssistantMessageIndex && msg.role === 'assistant' && msg.kind !== 'confirmation' && streamSteps.length"
+                    class="stream-step-panel"
+                  >
+                    <button type="button" class="stream-step-toggle" @click="toggleStreamStepsCollapsed">
+                      <span>View Steps</span>
+                      <i :class="streamStepsCollapsed ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
+                    </button>
+                    <div v-if="!streamStepsCollapsed" class="stream-step-list">
+                      <div
+                        v-for="step in streamSteps"
+                        :key="step.id"
+                        class="stream-step-item"
+                        :class="`is-${step.status}`"
+                      >
+                        <div class="stream-step-head">
+                          <span class="stream-step-title-wrap">
+                            <span class="stream-step-dot" :class="`is-${step.status}`"></span>
+                            <span class="stream-step-title">{{ step.title }}</span>
+                          </span>
+                          <span class="stream-step-status">{{ step.statusLabel }}</span>
+                        </div>
+                        <div v-if="step.description" class="stream-step-desc">{{ step.description }}</div>
+                        <div
+                          v-for="(line, lineIndex) in step.details"
+                          :key="`${step.id}-detail-${lineIndex}`"
+                          class="stream-step-detail"
+                        >
+                          {{ line }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div v-if="msg.loading" class="typing-indicator">
                     <span></span><span></span><span></span>
                   </div>
-                  <span v-else v-html="msg.content"></span>
+                  <template v-else-if="msg.kind === 'confirmation'">
+                    <div class="confirm-card-title">{{ msg.title || '工具调用审批' }}</div>
+                    <div class="confirm-card-desc">{{ msg.description || '请确认是否继续执行工具调用。' }}</div>
+                    <div class="confirm-card-actions">
+                      <button
+                        v-for="(option, optionIndex) in msg.options || []"
+                        :key="`${msg.confirmationId}-${optionIndex}`"
+                        type="button"
+                        class="confirm-card-action-btn"
+                        :disabled="msg.submitting || msg.resolved"
+                        @click="confirmToolAction(msg, option)"
+                      >
+                        {{ option.label }}
+                      </button>
+                    </div>
+                    <div v-if="msg.resolvedLabel" class="confirm-card-result">已确认：{{ msg.resolvedLabel }}</div>
+                  </template>
+                  <div v-else class="message-markdown" v-html="msg.content"></div>
                 </div>
+              </div>
+            </div>
+
+            <div v-if="thinkingVisible && thinkingText" class="thinking-strip" :class="{ active: thinkingActive }">
+              <div class="thinking-strip-icon"></div>
+              <div class="thinking-strip-content">
+                <div class="thinking-strip-label">
+                  思考中
+                  <span v-if="thinkingActive" class="thinking-dots"><i></i><i></i><i></i></span>
+                </div>
+                <div class="thinking-strip-text">{{ thinkingText }}</div>
               </div>
             </div>
 
@@ -247,6 +332,8 @@ import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '../../stores/app'
 import {
   chatWithAIStream,
+  confirmAITool,
+  fetchAIConfirmations,
   fetchCurrentSummary,
   fetchAICatalog,
   fetchChatHistory,
@@ -295,6 +382,7 @@ function handleDeviceClick(device) {
 
 // ========== AI 助手相关 ==========
 const showAIPanel = ref(false)
+const isAIPanelExpanded = ref(false)
 const inputText = ref('')
 const isTyping = ref(false)
 const messagesRef = ref(null)
@@ -506,6 +594,8 @@ const WELCOME_MESSAGE_POOL = [
 ]
 let greetingTimer = null
 let lastGreetingIndex = -1
+let confirmationPollTimer = null
+const CONFIRMATION_POLL_INTERVAL_MS = 1600
 
 const selectedBackend = computed(() => {
   const current = catalogProviders.value.find(item => (item.backendKey || item.backend) === selectedBackendKey.value)
@@ -518,6 +608,504 @@ const modelOptions = computed(() => {
 })
 
 const messages = ref([])
+const streamSteps = ref([])
+const streamStepsCollapsed = ref(false)
+const thinkingText = ref('')
+const thinkingActive = ref(false)
+const thinkingVisible = ref(false)
+const SESSION_VISUAL_STORAGE_KEY = 'GDHZ_AI_SESSION_VISUAL_V1'
+const SESSION_VISUAL_MAX_SESSIONS = 120
+const sessionVisualStore = ref(readSessionVisualStore())
+const SESSION_VISUAL_DRAFT_KEY = '__draft__'
+const MAX_STREAM_STEP_COUNT = 18
+let thinkingHideTimer = null
+
+function cloneStreamSteps(list = []) {
+  return (Array.isArray(list) ? list : []).map((item) => ({ ...item }))
+}
+
+function normalizeSessionVisualStore(rawValue) {
+  if (!rawValue || typeof rawValue !== 'object') return {}
+  const entries = Object.entries(rawValue)
+  if (!entries.length) return {}
+
+  const normalizedEntries = entries
+    .map(([key, value]) => {
+      const sessionKey = String(key || '').trim()
+      if (!sessionKey) return null
+      const steps = cloneStreamSteps(Array.isArray(value?.steps) ? value.steps : []).slice(-MAX_STREAM_STEP_COUNT)
+      const stepsCollapsed = Boolean(value?.stepsCollapsed)
+      const updatedAt = Number(value?.updatedAt || 0) || Date.now()
+      return [sessionKey, { steps, stepsCollapsed, updatedAt }]
+    })
+    .filter(Boolean)
+    .sort((a, b) => Number(b[1]?.updatedAt || 0) - Number(a[1]?.updatedAt || 0))
+    .slice(0, SESSION_VISUAL_MAX_SESSIONS)
+
+  return Object.fromEntries(normalizedEntries)
+}
+
+function readSessionVisualStore() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(SESSION_VISUAL_STORAGE_KEY)
+    if (!raw) return {}
+    return normalizeSessionVisualStore(JSON.parse(raw))
+  } catch {
+    return {}
+  }
+}
+
+function persistSessionVisualStore(nextStore) {
+  if (typeof window === 'undefined') {
+    sessionVisualStore.value = normalizeSessionVisualStore(nextStore)
+    return
+  }
+  try {
+    const normalized = normalizeSessionVisualStore(nextStore)
+    sessionVisualStore.value = normalized
+    window.localStorage.setItem(SESSION_VISUAL_STORAGE_KEY, JSON.stringify(normalized))
+  } catch {
+    sessionVisualStore.value = normalizeSessionVisualStore(nextStore)
+  }
+}
+
+function getVisualSessionKey(targetChatSessionId = chatSessionId.value) {
+  const normalized = String(targetChatSessionId || '').trim()
+  return normalized || SESSION_VISUAL_DRAFT_KEY
+}
+
+function saveSessionVisual(targetChatSessionId = chatSessionId.value) {
+  const key = getVisualSessionKey(targetChatSessionId)
+  persistSessionVisualStore({
+    ...sessionVisualStore.value,
+    [key]: {
+      steps: cloneStreamSteps(streamSteps.value),
+      stepsCollapsed: Boolean(streamStepsCollapsed.value),
+      updatedAt: Date.now(),
+    },
+  })
+}
+
+function restoreSessionVisual(targetChatSessionId = chatSessionId.value) {
+  const key = getVisualSessionKey(targetChatSessionId)
+  const saved = sessionVisualStore.value[key]
+  streamSteps.value = saved?.steps ? cloneStreamSteps(saved.steps) : []
+  streamStepsCollapsed.value = Boolean(saved?.stepsCollapsed)
+}
+
+function migrateDraftSessionVisual(targetChatSessionId) {
+  const normalized = String(targetChatSessionId || '').trim()
+  if (!normalized) return
+  const draft = sessionVisualStore.value[SESSION_VISUAL_DRAFT_KEY]
+  if (!draft || sessionVisualStore.value[normalized]) return
+  persistSessionVisualStore({
+    ...sessionVisualStore.value,
+    [normalized]: {
+      steps: cloneStreamSteps(draft.steps),
+      stepsCollapsed: Boolean(draft.stepsCollapsed),
+      updatedAt: Date.now(),
+    },
+  })
+}
+
+function toggleStreamStepsCollapsed() {
+  streamStepsCollapsed.value = !streamStepsCollapsed.value
+  saveSessionVisual()
+}
+
+function clearThinkingHideTimer() {
+  if (!thinkingHideTimer) return
+  clearTimeout(thinkingHideTimer)
+  thinkingHideTimer = null
+}
+
+function setThinkingState(text) {
+  const normalized = String(text || '').trim()
+  clearThinkingHideTimer()
+  if (!normalized) return
+  thinkingText.value = normalized
+  thinkingActive.value = true
+  thinkingVisible.value = true
+}
+
+function collapseThinkingState({ delayMs = 460 } = {}) {
+  if (!thinkingVisible.value) return
+  thinkingActive.value = false
+  clearThinkingHideTimer()
+  thinkingHideTimer = setTimeout(() => {
+    thinkingVisible.value = false
+    thinkingText.value = ''
+    thinkingHideTimer = null
+  }, Math.max(0, Number(delayMs || 0)))
+}
+
+function resetThinkingState() {
+  clearThinkingHideTimer()
+  thinkingText.value = ''
+  thinkingActive.value = false
+  thinkingVisible.value = false
+}
+
+function buildConfirmationMessageId(payload = {}) {
+  return String(payload.id || payload.callId || '').trim()
+}
+
+function buildConfirmationCallId(payload = {}) {
+  return String(payload.callId || payload.id || '').trim()
+}
+
+const CONFIRMATION_LABEL_MAP = Object.freeze({
+  'messages.confirmation.yesAllowOnce': 'Yes, allow once',
+  'messages.confirmation.yesAllowAlways': 'Yes, allow always',
+  'messages.confirmation.no': 'No (esc)',
+})
+
+function normalizeConfirmationLabel(label, fallback) {
+  const raw = String(label || '').trim()
+  if (!raw) return fallback
+  return CONFIRMATION_LABEL_MAP[raw] || raw
+}
+
+function normalizeConfirmationOption(option, index) {
+  if (!option || typeof option !== 'object') {
+    return {
+      label: `确认选项 ${index + 1}`,
+      value: `option-${index + 1}`,
+    }
+  }
+  const fallbackLabel = `确认选项 ${index + 1}`
+  const label = normalizeConfirmationLabel(option.label, fallbackLabel)
+  return {
+    label,
+    value: option.value ?? label,
+  }
+}
+
+function normalizeConfirmationPayload(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  const confirmationId = buildConfirmationMessageId(payload)
+  const callId = buildConfirmationCallId(payload)
+  if (!callId) return null
+  const optionsRaw = Array.isArray(payload.options) ? payload.options : []
+  const options = optionsRaw.map((item, index) => normalizeConfirmationOption(item, index))
+  return {
+    confirmationId: confirmationId || callId,
+    callId,
+    title: String(payload.title || '').trim(),
+    description: String(payload.description || '').trim(),
+    options,
+  }
+}
+
+function upsertConfirmationMessage(payload) {
+  const normalized = normalizeConfirmationPayload(payload)
+  if (!normalized) return
+
+  const existingIndex = messages.value.findIndex((item) => {
+    if (item.kind !== 'confirmation') return false
+    return item.confirmationId === normalized.confirmationId || item.callId === normalized.callId
+  })
+
+  if (existingIndex >= 0) {
+    const current = messages.value[existingIndex]
+    messages.value[existingIndex] = {
+      ...current,
+      ...normalized,
+      submitting: false,
+      resolved: false,
+      resolvedLabel: '',
+    }
+    scrollToBottom()
+    return
+  }
+
+  messages.value.push({
+    role: 'assistant',
+    kind: 'confirmation',
+    ...normalized,
+    submitting: false,
+    resolved: false,
+    resolvedLabel: '',
+  })
+  scrollToBottom()
+}
+
+function removeConfirmationMessage(payload) {
+  const confirmationId = String(payload?.id || payload?.callId || '').trim()
+  if (!confirmationId) return
+  const before = messages.value.length
+  messages.value = messages.value.filter((item) => {
+    if (item.kind !== 'confirmation') return true
+    return item.confirmationId !== confirmationId && item.callId !== confirmationId
+  })
+  if (messages.value.length !== before) {
+    scrollToBottom()
+  }
+}
+
+function findConfirmationMessageIndex(confirmationId, callId) {
+  const normalizedId = String(confirmationId || '').trim()
+  const normalizedCallId = String(callId || '').trim()
+  return messages.value.findIndex((item) => {
+    if (item.kind !== 'confirmation') return false
+    if (normalizedId && item.confirmationId === normalizedId) return true
+    if (normalizedCallId && item.callId === normalizedCallId) return true
+    return false
+  })
+}
+
+function clearStreamSteps({ save = true } = {}) {
+  streamSteps.value = []
+  streamStepsCollapsed.value = false
+  if (save) {
+    saveSessionVisual()
+  }
+}
+
+function normalizeToolStatus(status) {
+  const normalized = String(status || '').toLowerCase()
+  if (!normalized) {
+    return { key: 'running', label: 'Working' }
+  }
+  if (normalized === 'confirming' || normalized === 'pending' || normalized === 'executing' || normalized === 'running') {
+    return { key: 'running', label: 'Working' }
+  }
+  if (normalized === 'success' || normalized === 'finished' || normalized === 'done') {
+    return { key: 'success', label: 'Success' }
+  }
+  if (normalized === 'error' || normalized === 'failed') {
+    return { key: 'error', label: 'Error' }
+  }
+  if (normalized === 'canceled' || normalized === 'cancelled') {
+    return { key: 'canceled', label: 'Canceled' }
+  }
+  return {
+    key: 'running',
+    label: String(status || 'Working'),
+  }
+}
+
+function upsertStreamStep({ id, title, description, status, details = [] }) {
+  const normalizedId = String(id || '').trim()
+  if (!normalizedId) return
+  const normalizedTitle = String(title || 'Tool Step').trim() || 'Tool Step'
+  const normalizedDescription = String(description || '').trim()
+  const normalizedDetails = (Array.isArray(details) ? details : [])
+    .map((line) => String(line || '').trim())
+    .filter(Boolean)
+    .slice(0, 4)
+  const normalizedStatus = normalizeToolStatus(status)
+
+  const index = streamSteps.value.findIndex((item) => item.id === normalizedId)
+  if (index >= 0) {
+    streamSteps.value[index] = {
+      ...streamSteps.value[index],
+      id: normalizedId,
+      title: normalizedTitle,
+      description: normalizedDescription,
+      details: normalizedDetails,
+      status: normalizedStatus.key,
+      statusLabel: normalizedStatus.label,
+    }
+  } else {
+    streamSteps.value.push({
+      id: normalizedId,
+      title: normalizedTitle,
+      description: normalizedDescription,
+      details: normalizedDetails,
+      status: normalizedStatus.key,
+      statusLabel: normalizedStatus.label,
+    })
+    if (streamSteps.value.length > MAX_STREAM_STEP_COUNT) {
+      streamSteps.value = streamSteps.value.slice(streamSteps.value.length - MAX_STREAM_STEP_COUNT)
+    }
+  }
+  saveSessionVisual()
+  scrollToBottom()
+}
+
+function getThoughtDescription(payload) {
+  if (!payload || typeof payload !== 'object') return ''
+  if (typeof payload.data === 'string') return payload.data
+  if (payload.data && typeof payload.data === 'object') {
+    return String(payload.data.description || payload.data.content || '')
+  }
+  return ''
+}
+
+function getCodexToolDetails(payloadData = {}, toolCallId = '') {
+  const details = []
+  const nestedData = payloadData.data && typeof payloadData.data === 'object' ? payloadData.data : null
+  const query = String(nestedData?.query || '').trim()
+  if (query) {
+    details.push(`Search Query: ${query}`)
+  }
+  if (toolCallId) {
+    details.push(`Tool Call ID: ${toolCallId}`)
+  }
+  return details
+}
+
+function handleStreamSideEvent(payload) {
+  if (!payload || typeof payload !== 'object') return
+
+  if (payload.type === 'thought') {
+    const thoughtText = getThoughtDescription(payload).trim()
+    if (!thoughtText) return
+    setThinkingState(thoughtText)
+    return
+  }
+
+  if (thinkingActive.value) {
+    collapseThinkingState({ delayMs: 420 })
+  }
+
+  if (payload.type === 'finish' || payload.type === 'finished') {
+    collapseThinkingState({ delayMs: 260 })
+    return
+  }
+
+  if (payload.type === 'codex_tool_call' && payload.data && typeof payload.data === 'object') {
+    const toolCallId = String(payload.data.toolCallId || payload.msg_id || '').trim()
+    const subtype = String(payload.data.subtype || '').trim().toLowerCase()
+    const defaultTitle = subtype.startsWith('web_search') ? 'Web Search' : 'Tool Call'
+    const title = String(payload.data.title || '').trim() || defaultTitle
+    const description = String(payload.data.description || '').trim() || (
+      subtype === 'web_search_begin'
+        ? 'Web search in progress'
+        : subtype === 'web_search_end'
+          ? 'Web search completed'
+          : ''
+    )
+    upsertStreamStep({
+      id: toolCallId || `codex-tool-${String(payload.msg_id || Date.now())}`,
+      title,
+      description,
+      status: String(payload.data.status || ''),
+      details: getCodexToolDetails(payload.data, toolCallId),
+    })
+    return
+  }
+
+  if (payload.type !== 'tool_group') {
+    return
+  }
+
+  const tools = Array.isArray(payload.data) ? payload.data : []
+  for (const tool of tools) {
+    const callId = String(tool?.callId || '').trim()
+    if (!callId) continue
+    const name = String(tool?.name || '').trim() || 'Tool Call'
+    const description = String(tool?.description || '').trim()
+    upsertStreamStep({
+      id: callId,
+      title: name,
+      description: description || 'Tool execution',
+      status: String(tool?.status || ''),
+      details: [callId ? `Tool Call ID: ${callId}` : ''].filter(Boolean),
+    })
+  }
+}
+
+async function confirmToolAction(message, option) {
+  const targetCallId = String(message?.callId || '').trim()
+  const targetConfirmationId = String(message?.confirmationId || '').trim()
+  const targetChatSessionId = String(chatSessionId.value || '').trim()
+  if (!targetCallId || !targetChatSessionId) return
+
+  let targetIndex = findConfirmationMessageIndex(targetConfirmationId, targetCallId)
+  if (targetIndex < 0) return
+
+  messages.value[targetIndex] = {
+    ...messages.value[targetIndex],
+    submitting: true,
+  }
+
+  try {
+    await confirmAITool({
+      chatSessionId: targetChatSessionId,
+      callId: targetCallId,
+      data: option?.value,
+      msgId: message?.confirmationId || targetCallId,
+    })
+    targetIndex = findConfirmationMessageIndex(targetConfirmationId, targetCallId)
+    if (targetIndex < 0) return
+    messages.value[targetIndex] = {
+      ...messages.value[targetIndex],
+      submitting: false,
+      resolved: true,
+      resolvedLabel: String(option?.label || '已确认'),
+    }
+    scrollToBottom()
+  } catch (error) {
+    targetIndex = findConfirmationMessageIndex(targetConfirmationId, targetCallId)
+    if (targetIndex >= 0) {
+      messages.value[targetIndex] = {
+        ...messages.value[targetIndex],
+        submitting: false,
+      }
+    }
+    const errorText = normalizeErrorText(error, '工具审批失败')
+    messages.value.push({
+      role: 'assistant',
+      content: formatAssistantContent(`请求失败：${errorText}`),
+      tone: 'answer',
+    })
+    scrollToBottom()
+  }
+}
+
+async function hydrateSessionConfirmations(targetChatSessionId) {
+  const normalizedChatSessionId = String(targetChatSessionId || '').trim()
+  if (!normalizedChatSessionId) return
+
+  try {
+    const result = await fetchAIConfirmations(normalizedChatSessionId)
+    const confirmations = Array.isArray(result?.confirmations) ? result.confirmations : []
+    for (const item of confirmations) {
+      upsertConfirmationMessage(item)
+    }
+  } catch {
+    // Ignore hydration errors to avoid blocking chat loading.
+  }
+}
+
+function stopConfirmationPolling() {
+  if (!confirmationPollTimer) return
+  clearInterval(confirmationPollTimer)
+  confirmationPollTimer = null
+}
+
+function triggerConfirmationHydration() {
+  const targetChatSessionId = String(chatSessionId.value || '').trim()
+  if (!targetChatSessionId) return
+  void hydrateSessionConfirmations(targetChatSessionId)
+}
+
+function startConfirmationPolling() {
+  stopConfirmationPolling()
+  triggerConfirmationHydration()
+  confirmationPollTimer = setInterval(() => {
+    if (!isTyping.value) {
+      stopConfirmationPolling()
+      return
+    }
+    triggerConfirmationHydration()
+  }, CONFIRMATION_POLL_INTERVAL_MS)
+}
+
+function hasConfirmingToolGroup(payload) {
+  if (!payload || payload.type !== 'tool_group' || !Array.isArray(payload.data)) {
+    return false
+  }
+  return payload.data.some((tool) => {
+    if (!tool || typeof tool !== 'object') return false
+    const status = String(tool.status || '').toLowerCase()
+    if (status === 'confirming') return true
+    return Boolean(tool.confirmationDetails)
+  })
+}
 
 const currentSession = computed(() =>
   sessionOptions.value.find((item) => item.chatSessionId === chatSessionId.value) || null
@@ -550,6 +1138,16 @@ const activeModelKey = computed(() => {
 })
 
 const showWelcomeHero = computed(() => !messages.value.some((item) => item.role === 'user'))
+
+const latestAssistantMessageIndex = computed(() => {
+  for (let index = messages.value.length - 1; index >= 0; index -= 1) {
+    const item = messages.value[index]
+    if (item?.role === 'assistant' && item?.kind !== 'confirmation') {
+      return index
+    }
+  }
+  return -1
+})
 
 const sessionGroups = computed(() => {
   const pinned = []
@@ -726,7 +1324,8 @@ async function renameSessionByItem(session) {
     const errorText = normalizeErrorText(error, '重命名会话失败')
     messages.value.push({
       role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`),
+      content: formatAssistantContent(`请求失败：${errorText}`),
+      tone: 'answer',
     })
     scrollToBottom()
   }
@@ -740,6 +1339,9 @@ async function deleteSessionByItem(session) {
 
   try {
     await deleteAISession(chatId)
+    const nextVisualStore = { ...sessionVisualStore.value }
+    delete nextVisualStore[String(chatId || '').trim()]
+    persistSessionVisualStore(nextVisualStore)
     pinnedSessionIds.value = pinnedSessionIds.value.filter((item) => item !== chatId)
     savePinnedSessionIds()
     if (chatSessionId.value === chatId) {
@@ -750,7 +1352,8 @@ async function deleteSessionByItem(session) {
     const errorText = normalizeErrorText(error, '删除会话失败')
     messages.value.push({
       role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`),
+      content: formatAssistantContent(`请求失败：${errorText}`),
+      tone: 'answer',
     })
     scrollToBottom()
   }
@@ -796,9 +1399,10 @@ function pickRandomGreetingText() {
 function setGreetingMessage({ typed = true } = {}) {
   stopGreetingTyping()
   const greetingText = pickRandomGreetingText()
-  messages.value = [{ role: 'assistant', content: '' }]
+  messages.value = [{ role: 'assistant', content: '', tone: 'greeting' }]
   if (!typed) {
-    messages.value[0].content = formatTextForBubble(greetingText)
+    messages.value[0].content = formatAssistantContent(greetingText)
+    messages.value[0].tone = 'greeting'
     scrollToBottom()
     return
   }
@@ -809,7 +1413,8 @@ function setGreetingMessage({ typed = true } = {}) {
     index += step
     const text = greetingText.slice(0, index)
     if (messages.value[0]) {
-      messages.value[0].content = formatTextForBubble(text)
+      messages.value[0].content = formatAssistantContent(text)
+      messages.value[0].tone = 'greeting'
     }
     scrollToBottom()
     if (index >= greetingText.length) {
@@ -827,7 +1432,10 @@ function applyHistoryMessages(historyMessages = [], { typedOnEmpty = false } = {
   stopGreetingTyping()
   messages.value = historyMessages.map((item) => ({
     role: item?.role === 'user' ? 'user' : 'assistant',
-    content: formatTextForBubble(item?.content || '')
+    content: item?.role === 'user'
+      ? formatUserContent(item?.content || '')
+      : formatAssistantContent(item?.content || ''),
+    tone: item?.role === 'user' ? undefined : resolveAssistantMessageTone(item?.content || ''),
   }))
 }
 
@@ -898,6 +1506,7 @@ async function fetchAllHistoryPages(targetChatSessionId) {
 }
 
 async function loadHistoryForSession(targetChatSessionId) {
+  resetThinkingState()
   const historyMessages = await fetchAllHistoryPages(targetChatSessionId)
   chatSessionId.value = targetChatSessionId || null
   selectedSessionId.value = targetChatSessionId || ''
@@ -909,6 +1518,8 @@ async function loadHistoryForSession(targetChatSessionId) {
   }
 
   applyHistoryMessages(historyMessages, { typedOnEmpty: false })
+  restoreSessionVisual(targetChatSessionId)
+  await hydrateSessionConfirmations(targetChatSessionId)
   scrollToBottom()
 }
 
@@ -942,6 +1553,7 @@ async function restoreChatSessionIfExists() {
   if (!stored?.chatSessionId) {
     await loadSessionOptions().catch(() => undefined)
     setGreetingMessage({ typed: true })
+    restoreSessionVisual(null)
     return
   }
 
@@ -994,6 +1606,7 @@ async function activateSession(session) {
     startNewSession()
     return
   }
+  saveSessionVisual()
   closeSessionMenu()
   syncSelectionFromSession(session)
   try {
@@ -1002,25 +1615,43 @@ async function activateSession(session) {
     const errorText = normalizeErrorText(error, '读取会话失败')
     messages.value.push({
       role: 'assistant',
-      content: formatTextForBubble(`请求失败：${errorText}`),
+      content: formatAssistantContent(`请求失败：${errorText}`),
+      tone: 'answer',
     })
     scrollToBottom()
   }
 }
 
 function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
+  saveSessionVisual()
   stopGreetingTyping()
+  stopConfirmationPolling()
+  resetThinkingState()
+  chatSessionId.value = null
+  selectedSessionId.value = ''
+  clearStreamSteps({ save: true })
   closeSessionMenu()
   if (backendKey) {
     selectedBackendKey.value = backendKey
     applyDefaultModelForBackend()
   }
-  chatSessionId.value = null
-  selectedSessionId.value = ''
   applyHistoryMessages([], { typedOnEmpty: typedGreeting })
   clearStoredChatSession()
   inputText.value = ''
   resizeInput()
+}
+
+function toggleAIPanelExpand() {
+  isAIPanelExpanded.value = !isAIPanelExpanded.value
+  resizeInput()
+  scrollToBottom()
+}
+
+function closeAIPanel() {
+  showAIPanel.value = false
+  isAIPanelExpanded.value = false
+  resetThinkingState()
+  closeSessionMenu()
 }
 
 // 切换AI面板
@@ -1040,7 +1671,7 @@ function toggleAIPanel() {
     }
     resizeInput()
   } else {
-    closeSessionMenu()
+    closeAIPanel()
   }
 }
 
@@ -1069,16 +1700,22 @@ async function handleSend() {
 
 async function sendMessage(text) {
   stopGreetingTyping()
+  resetThinkingState()
   const normalizedText = String(text || '').trim()
   if (!normalizedText) return
 
+  if (!messages.value.some((item) => item.role === 'user') && messages.value.some((item) => item.tone === 'greeting')) {
+    messages.value = []
+  }
+
   // 用户发送
-  messages.value.push({ role: 'user', content: formatTextForBubble(normalizedText) })
+  messages.value.push({ role: 'user', content: formatUserContent(normalizedText) })
   inputText.value = ''
   resizeInput()
   scrollToBottom()
 
   isTyping.value = true
+  startConfirmationPolling()
   const assistantIndex = messages.value.push({ role: 'assistant', content: '', loading: true }) - 1
   let streamReply = ''
   scrollToBottom()
@@ -1090,7 +1727,11 @@ async function sendMessage(text) {
       const bubble = messages.value[assistantIndex]
       if (!bubble) return
       bubble.loading = false
-      bubble.content = formatTextForBubble(streamReply)
+      bubble.content = formatAssistantContent(streamReply)
+      bubble.tone = resolveAssistantMessageTone(streamReply)
+      if (thinkingActive.value) {
+        collapseThinkingState({ delayMs: 260 })
+      }
       scrollToBottom()
     })
 
@@ -1098,27 +1739,36 @@ async function sendMessage(text) {
     if (messages.value[assistantIndex]) {
       messages.value[assistantIndex] = {
         role: 'assistant',
-        content: formatTextForBubble(finalReply),
+        content: formatAssistantContent(finalReply),
+        tone: resolveAssistantMessageTone(finalReply),
       }
     } else {
-      messages.value.push({ role: 'assistant', content: formatTextForBubble(finalReply) })
+      messages.value.push({
+        role: 'assistant',
+        content: formatAssistantContent(finalReply),
+        tone: resolveAssistantMessageTone(finalReply),
+      })
     }
-    await loadSessionOptions().catch(() => undefined)
   } catch (error) {
     const errorText = normalizeErrorText(error, 'AI 服务请求失败')
     if (messages.value[assistantIndex]) {
       messages.value[assistantIndex] = {
         role: 'assistant',
-        content: formatTextForBubble(`请求失败：${errorText}`)
+        content: formatAssistantContent(`请求失败：${errorText}`),
+        tone: 'answer',
       }
     } else {
       messages.value.push({
         role: 'assistant',
-        content: formatTextForBubble(`请求失败：${errorText}`)
+        content: formatAssistantContent(`请求失败：${errorText}`),
+        tone: 'answer',
       })
     }
   } finally {
+    collapseThinkingState({ delayMs: 180 })
     isTyping.value = false
+    stopConfirmationPolling()
+    await loadSessionOptions().catch(() => undefined)
     scrollToBottom()
   }
 }
@@ -1173,7 +1823,32 @@ async function queryAI(text, onStreamChunk) {
       backend: selectedBackend.value,
       modelId: selectedModelId.value
     },
+    onMeta: (payload) => {
+      const nextChatSessionId = String(payload?.chatSessionId || '').trim()
+      if (!nextChatSessionId) return
+      migrateDraftSessionVisual(nextChatSessionId)
+      chatSessionId.value = nextChatSessionId
+      selectedSessionId.value = nextChatSessionId
+      saveCurrentChatSession()
+      saveSessionVisual(nextChatSessionId)
+      triggerConfirmationHydration()
+    },
     onDelta: onStreamChunk,
+    onConfirmAdd: (payload) => {
+      upsertConfirmationMessage(payload)
+    },
+    onConfirmUpdate: (payload) => {
+      upsertConfirmationMessage(payload)
+    },
+    onConfirmRemove: (payload) => {
+      removeConfirmationMessage(payload)
+    },
+    onStreamEvent: (payload) => {
+      handleStreamSideEvent(payload)
+      if (hasConfirmingToolGroup(payload)) {
+        triggerConfirmationHydration()
+      }
+    },
   })
 
   if (response?.chatSessionId) {
@@ -1258,13 +1933,12 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  saveSessionVisual()
   stopGreetingTyping()
+  stopConfirmationPolling()
+  clearThinkingHideTimer()
   document.removeEventListener('click', handleDocumentClick)
 })
-
-function formatTextForBubble(text) {
-  return escapeHtml(text).replace(/\n/g, '<br>')
-}
 
 function escapeHtml(text) {
   return String(text)
@@ -1273,6 +1947,124 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function formatUserContent(text) {
+  return escapeHtml(text).replace(/\n/g, '<br>')
+}
+
+function resolveAssistantMessageTone(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return 'answer'
+  const compact = raw.replace(/\s+/g, ' ').trim()
+  const enPlanCount = (compact.match(/\bI will\b/gi) || []).length
+  const zhPlanCount = (compact.match(/(我将|我会|接下来我会|先为您)/g) || []).length
+  const hasToolVerb = /(search|verify|check|look up|google|查询|检索|搜索|核实)/i.test(compact)
+  const sentenceCount = (compact.match(/[.!?。！？]/g) || []).length
+  if ((enPlanCount >= 2 || zhPlanCount >= 2) && hasToolVerb && sentenceCount >= 2) {
+    return 'thought'
+  }
+  return 'answer'
+}
+
+function applyInlineMarkdown(escapedText) {
+  let html = String(escapedText || '')
+  html = html.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+    (_match, label, url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
+  )
+  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+  return html
+}
+
+function formatAssistantContent(text) {
+  const source = String(text || '').replace(/\r\n/g, '\n')
+  if (!source.trim()) return ''
+
+  const codeBlocks = []
+  const tokenToBlock = new Map()
+  const withCodeTokens = source.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_full, lang, code) => {
+    const token = `@@CODE_BLOCK_${codeBlocks.length}@@`
+    const normalizedLang = escapeHtml(String(lang || '').trim().toLowerCase())
+    const safeCode = escapeHtml(String(code || '').replace(/\n$/, ''))
+    const langClass = normalizedLang ? `language-${normalizedLang}` : ''
+    const html = `<pre class="md-code-block"><code class="${langClass}">${safeCode}</code></pre>`
+    const block = { token, html }
+    codeBlocks.push(block)
+    tokenToBlock.set(token, block)
+    return `\n${token}\n`
+  })
+
+  const output = []
+  let paragraph = []
+  let listItems = []
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return
+    const rendered = paragraph
+      .map((line) => applyInlineMarkdown(escapeHtml(line)))
+      .join('<br>')
+    output.push(`<p>${rendered}</p>`)
+    paragraph = []
+  }
+
+  const flushList = () => {
+    if (!listItems.length) return
+    output.push(`<ul>${listItems.map((item) => `<li>${item}</li>`).join('')}</ul>`)
+    listItems = []
+  }
+
+  for (const rawLine of withCodeTokens.split('\n')) {
+    const line = String(rawLine || '')
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      flushParagraph()
+      flushList()
+      continue
+    }
+
+    if (tokenToBlock.has(trimmed)) {
+      flushParagraph()
+      flushList()
+      output.push(trimmed)
+      continue
+    }
+
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/)
+    if (heading) {
+      flushParagraph()
+      flushList()
+      const level = heading[1].length
+      const content = applyInlineMarkdown(escapeHtml(heading[2]))
+      output.push(`<h${level}>${content}</h${level}>`)
+      continue
+    }
+
+    const listMatch = trimmed.match(/^[-*]\s+(.+)$/)
+    if (listMatch) {
+      flushParagraph()
+      listItems.push(applyInlineMarkdown(escapeHtml(listMatch[1])))
+      continue
+    }
+
+    paragraph.push(line)
+  }
+
+  flushParagraph()
+  flushList()
+
+  let html = output.join('')
+  for (const block of codeBlocks) {
+    html = html.replace(block.token, block.html)
+  }
+
+  if (!html) {
+    return escapeHtml(source).replace(/\n/g, '<br>')
+  }
+  return html
 }
 </script>
 
@@ -1689,6 +2481,7 @@ function escapeHtml(text) {
   position: absolute;
   left: 70px;
   top: 0;
+  transform: none;
   width: min(680px, calc(100vw - 96px));
   height: 600px;
   background: rgba(15, 23, 42, 0.95);
@@ -1702,6 +2495,17 @@ function escapeHtml(text) {
     0 20px 50px -12px rgba(0, 0, 0, 0.8),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   font-family: var(--font-body);
+}
+
+.halo-chat-dialog.expanded {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1180px, calc(100vw - 64px));
+  height: min(86vh, 920px);
+  max-height: calc(100vh - 56px);
+  z-index: 1400;
 }
 
 /* Background Glow */
@@ -1764,17 +2568,34 @@ function escapeHtml(text) {
   white-space: nowrap;
 }
 
-.close-btn {
-  background: transparent;
+.dialog-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog-action-btn {
+  width: 28px;
+  height: 28px;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.expand-btn:hover {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.22);
 }
 
 .close-btn:hover {
   color: #fff;
+  background: rgba(239, 68, 68, 0.2);
 }
 
 .welcome-shell {
@@ -1893,6 +2714,7 @@ function escapeHtml(text) {
 .dialog-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   margin: 0 16px 12px;
   padding: 16px;
   display: flex;
@@ -1915,10 +2737,141 @@ function escapeHtml(text) {
   border-radius: 2px;
 }
 
+.stream-step-panel {
+  margin: 4px 0 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.stream-step-toggle {
+  border: none;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 11px;
+  height: 22px;
+  padding: 0 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.stream-step-toggle:hover {
+  color: rgba(203, 213, 225, 0.95);
+}
+
+.stream-step-list {
+  margin-top: 4px;
+  padding-right: 2px;
+  max-height: 156px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stream-step-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.stream-step-list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.38);
+  border-radius: 2px;
+}
+
+.stream-step-item {
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(2, 6, 20, 0.25);
+  opacity: 0.9;
+}
+
+.stream-step-item.is-running {
+  border-color: rgba(125, 211, 252, 0.22);
+}
+
+.stream-step-item.is-success {
+  border-color: rgba(110, 231, 183, 0.24);
+}
+
+.stream-step-item.is-error,
+.stream-step-item.is-canceled {
+  border-color: rgba(248, 113, 113, 0.24);
+}
+
+.stream-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stream-step-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stream-step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.52);
+  flex: 0 0 auto;
+}
+
+.stream-step-dot.is-running {
+  background: rgba(125, 211, 252, 0.95);
+  animation: stepDotPulse 1.2s ease-in-out infinite;
+}
+
+.stream-step-dot.is-success {
+  background: #22c55e;
+}
+
+.stream-step-dot.is-error,
+.stream-step-dot.is-canceled {
+  background: rgba(248, 113, 113, 0.9);
+}
+
+.stream-step-title {
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-step-status {
+  color: rgba(148, 163, 184, 0.85);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.stream-step-desc {
+  margin-top: 4px;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.stream-step-detail {
+  margin-top: 2px;
+  color: rgba(148, 163, 184, 0.82);
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 .halo-message {
   display: flex;
   gap: 10px;
   max-width: 92%;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -1928,7 +2881,43 @@ function escapeHtml(text) {
   flex-direction: row-reverse;
 }
 
-.halo-message.assistant .msg-content {
+.halo-message.is-plain-assistant {
+  align-self: stretch;
+  max-width: 100%;
+  justify-content: center;
+}
+
+.halo-message.is-plain-assistant .msg-content {
+  width: min(90%, 760px);
+  padding: 0 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #e2e8f0;
+  text-align: left;
+  box-shadow: none;
+  font-size: 15px;
+  line-height: 1.72;
+}
+
+.halo-message.is-thought-trace .msg-content {
+  width: min(90%, 760px);
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  color: rgba(203, 213, 225, 0.9);
+  font-size: 13px;
+  line-height: 1.56;
+}
+
+.halo-message.is-greeting .msg-content {
+  width: min(92%, 820px);
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.86;
+}
+
+.halo-message.assistant.is-confirmation .msg-content {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.05);
   color: #e2e8f0;
@@ -1945,6 +2934,209 @@ function escapeHtml(text) {
 .msg-content {
   padding: 10px 14px;
   border-radius: 12px;
+  max-width: 100%;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.message-markdown {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.message-markdown p {
+  margin: 0;
+}
+
+.message-markdown p + p {
+  margin-top: 10px;
+}
+
+.message-markdown ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.message-markdown li + li {
+  margin-top: 6px;
+}
+
+.message-markdown h1,
+.message-markdown h2,
+.message-markdown h3,
+.message-markdown h4,
+.message-markdown h5,
+.message-markdown h6 {
+  margin: 0 0 10px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.message-markdown h1 { font-size: 1.22em; }
+.message-markdown h2 { font-size: 1.16em; }
+.message-markdown h3 { font-size: 1.1em; }
+
+.message-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.92em;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.message-markdown .md-code-block {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(2, 6, 20, 0.7);
+  overflow-x: hidden;
+}
+
+.message-markdown .md-code-block code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message-markdown a {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.halo-chat-dialog.expanded .halo-message.is-plain-assistant .msg-content {
+  width: min(92%, 900px);
+  font-size: 18px;
+  line-height: 1.82;
+}
+
+.halo-chat-dialog.expanded .halo-message.is-greeting .msg-content {
+  width: min(92%, 980px);
+  font-size: 24px;
+  line-height: 1.95;
+}
+
+.thinking-strip {
+  margin: 0 16px 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(2, 6, 20, 0.24);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  opacity: 0.88;
+}
+
+.thinking-strip.active {
+  opacity: 1;
+}
+
+.thinking-strip-icon {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: rgba(125, 211, 252, 0.95);
+  flex: 0 0 auto;
+  animation: stepDotPulse 1.2s ease-in-out infinite;
+}
+
+.thinking-strip-content {
+  min-width: 0;
+}
+
+.thinking-strip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(148, 163, 184, 0.9);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.thinking-strip-text {
+  margin-top: 3px;
+  color: rgba(203, 213, 225, 0.95);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.thinking-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.92);
+  animation: thinkingDotPulse 1.1s ease-in-out infinite;
+}
+
+.thinking-dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.confirm-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.confirm-card-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(226, 232, 240, 0.9);
+}
+
+.confirm-card-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.confirm-card-action-btn {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirm-card-action-btn:hover:not(:disabled) {
+  border-color: rgba(139, 92, 246, 0.72);
+  color: #ede9fe;
+  background: rgba(76, 29, 149, 0.3);
+}
+
+.confirm-card-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirm-card-result {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(125, 211, 252, 0.9);
 }
 
 /* AI 头像样式 - 固定尺寸，带光晕质感 */
@@ -2721,6 +3913,28 @@ function escapeHtml(text) {
   }
 }
 
+@keyframes stepDotPulse {
+  0%, 100% {
+    transform: scale(0.86);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes thinkingDotPulse {
+  0%, 80%, 100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .ai-layout-shell {
   display: flex;
   flex-direction: row;
@@ -2959,6 +4173,16 @@ function escapeHtml(text) {
     max-height: 620px;
   }
 
+  .halo-chat-dialog.expanded {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    transform: none;
+    width: auto;
+    height: calc(100vh - 16px);
+    max-height: none;
+  }
+
   .ai-layout-shell {
     flex-direction: column;
   }
@@ -2982,6 +4206,25 @@ function escapeHtml(text) {
 
   .sider-item-menu-trigger {
     opacity: 1;
+  }
+
+  .halo-message.is-plain-assistant .msg-content {
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .halo-message.is-greeting .msg-content {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  .halo-chat-dialog.expanded .halo-message.is-greeting .msg-content {
+    font-size: 19px;
+    line-height: 1.84;
+  }
+
+  .thinking-strip {
+    margin: 0 12px 8px;
   }
 }
 </style>

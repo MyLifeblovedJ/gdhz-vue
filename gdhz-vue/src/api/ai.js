@@ -110,6 +110,10 @@ export async function chatWithAIStream({
   selection = {},
   onMeta = () => {},
   onDelta = () => {},
+  onConfirmAdd = () => {},
+  onConfirmUpdate = () => {},
+  onConfirmRemove = () => {},
+  onStreamEvent = () => {},
 }) {
   const response = await fetch(`${API_BASE_URL}/ai/chat/stream`, {
     method: 'POST',
@@ -140,6 +144,40 @@ export async function chatWithAIStream({
   let buffer = ''
   let donePayload = null
 
+  const dispatchSseEvent = (event, payload) => {
+    if (event === 'meta') {
+      onMeta(payload)
+      return
+    }
+    if (event === 'delta') {
+      onDelta(String(payload?.text || ''))
+      return
+    }
+    if (event === 'confirm_add') {
+      onConfirmAdd(payload || {})
+      return
+    }
+    if (event === 'confirm_update') {
+      onConfirmUpdate(payload || {})
+      return
+    }
+    if (event === 'confirm_remove') {
+      onConfirmRemove(payload || {})
+      return
+    }
+    if (event === 'stream_event') {
+      onStreamEvent(payload || {})
+      return
+    }
+    if (event === 'done') {
+      donePayload = payload || {}
+      return
+    }
+    if (event === 'error') {
+      throw new Error(String(payload?.error || 'AI 服务请求失败'))
+    }
+  }
+
   const consumeBuffer = () => {
     const parts = buffer.split(/\r?\n\r?\n/)
     buffer = parts.pop() || ''
@@ -147,15 +185,7 @@ export async function chatWithAIStream({
       const trimmed = part.trim()
       if (!trimmed) continue
       const { event, payload } = parseSseEventBlock(trimmed)
-      if (event === 'meta') {
-        onMeta(payload)
-      } else if (event === 'delta') {
-        onDelta(String(payload?.text || ''))
-      } else if (event === 'done') {
-        donePayload = payload || {}
-      } else if (event === 'error') {
-        throw new Error(String(payload?.error || 'AI 服务请求失败'))
-      }
+      dispatchSseEvent(event, payload)
     }
   }
 
@@ -169,15 +199,7 @@ export async function chatWithAIStream({
   buffer += decoder.decode()
   if (buffer.trim()) {
     const { event, payload } = parseSseEventBlock(buffer.trim())
-    if (event === 'meta') {
-      onMeta(payload)
-    } else if (event === 'delta') {
-      onDelta(String(payload?.text || ''))
-    } else if (event === 'done') {
-      donePayload = payload || {}
-    } else if (event === 'error') {
-      throw new Error(String(payload?.error || 'AI 服务请求失败'))
-    }
+    dispatchSseEvent(event, payload)
   }
 
   return donePayload || {
@@ -262,4 +284,29 @@ export async function deleteAISession(chatSessionId) {
   return requestJsonWithMethod(`/ai/sessions/${encodeURIComponent(chatSessionId || '')}`, {
     method: 'DELETE',
   })
+}
+
+export async function confirmAITool({ chatSessionId, callId, data, msgId }) {
+  return requestJson('/ai/confirm', {
+    chatSessionId,
+    callId,
+    data,
+    msgId,
+  })
+}
+
+export async function fetchAIConfirmations(chatSessionId) {
+  const params = new URLSearchParams()
+  params.set('chatSessionId', String(chatSessionId || ''))
+  const response = await fetch(`${API_BASE_URL}/ai/confirmations?${params.toString()}`, {
+    headers: buildRequestHeaders(),
+  })
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    const message = data?.error || data?.message || '读取待审批工具失败'
+    throw new Error(message)
+  }
+
+  return data
 }

@@ -611,7 +611,7 @@ export class AionUiClient {
     return replyPromise
   }
 
-  async askStream({ conversationId, input, timeouts, onChunk }) {
+  async askStream({ conversationId, input, timeouts, onChunk, onEvent }) {
     const msgId = createId()
 
     const replyPromise = this.waitForReply({
@@ -619,6 +619,7 @@ export class AionUiClient {
       msgId,
       timeouts,
       onChunk,
+      onEvent,
     })
     void replyPromise.catch(() => undefined)
 
@@ -660,7 +661,53 @@ export class AionUiClient {
     return replyPromise
   }
 
-  waitForReply({ conversationId, msgId, timeouts, onChunk }) {
+  async confirmMessage({ conversationId, msgId, callId, data }) {
+    if (!conversationId) {
+      throw new Error('conversationId 不能为空')
+    }
+    if (!callId) {
+      throw new Error('callId 不能为空')
+    }
+
+    await this.ensureReady()
+    const response = await this.invokeBridgeProvider(
+      'confirmation.confirm',
+      {
+        conversation_id: conversationId,
+        msg_id: msgId || callId,
+        callId,
+        data,
+      },
+      {
+        timeoutMs: 20_000,
+        waitForCallback: true,
+      }
+    )
+
+    if (response && typeof response === 'object' && response.success === false) {
+      throw new Error(response.msg || '确认失败')
+    }
+
+    return {
+      success: true,
+    }
+  }
+
+  async listConfirmations({ conversationId }) {
+    if (!conversationId) return []
+    await this.ensureReady()
+    const result = await this.invokeBridgeProvider(
+      'confirmation.list',
+      { conversation_id: conversationId },
+      {
+        timeoutMs: 20_000,
+        waitForCallback: true,
+      }
+    )
+    return Array.isArray(result) ? result : []
+  }
+
+  waitForReply({ conversationId, msgId, timeouts, onChunk, onEvent }) {
     return new Promise((resolve, reject) => {
       const chunks = []
       let finished = false
@@ -670,6 +717,8 @@ export class AionUiClient {
       let idleTimer = null
       let totalTimer = null
       let finishTimer = null
+      const pendingConfirmations = new Map()
+      const activeToolCalls = new Map()
 
       const clearTimers = () => {
         if (firstChunkTimer) clearTimeout(firstChunkTimer)
@@ -682,12 +731,59 @@ export class AionUiClient {
         if (finished) return
         finished = true
         this.events.off('chat.response.stream', onStream)
+        this.events.off('confirmation.add', onConfirmationAdd)
+        this.events.off('confirmation.update', onConfirmationUpdate)
+        this.events.off('confirmation.remove', onConfirmationRemove)
         clearTimers()
         callback()
       }
 
+      const clearIdleTimer = () => {
+        if (!idleTimer) return
+        clearTimeout(idleTimer)
+        idleTimer = null
+      }
+
+      const clearFinishTimer = () => {
+        if (!finishTimer) return
+        clearTimeout(finishTimer)
+        finishTimer = null
+      }
+
+      const clearTotalTimer = () => {
+        if (!totalTimer) return
+        clearTimeout(totalTimer)
+        totalTimer = null
+      }
+
+      const hasBlockingState = () => {
+        return pendingConfirmations.size > 0 || activeToolCalls.size > 0
+      }
+
+      const resetTotalTimer = () => {
+        clearTotalTimer()
+        if (hasBlockingState()) {
+          return
+        }
+        totalTimer = setTimeout(() => {
+          finish(() => {
+            if (gotContent) {
+              resolve(chunks.join(''))
+              return
+            }
+            reject(new Error('AI 总超时'))
+          })
+        }, timeouts.totalTimeoutMs)
+      }
+
       const resetIdleTimer = () => {
-        if (idleTimer) clearTimeout(idleTimer)
+        clearIdleTimer()
+        if (!gotContent && !gotFinish) {
+          return
+        }
+        if (hasBlockingState()) {
+          return
+        }
         idleTimer = setTimeout(() => {
           finish(() => {
             if (chunks.length > 0) {
@@ -700,12 +796,162 @@ export class AionUiClient {
       }
 
       const scheduleFinish = () => {
-        if (finishTimer) {
-          clearTimeout(finishTimer)
+        if (!gotFinish || hasBlockingState()) {
+          return
         }
+        clearFinishTimer()
         finishTimer = setTimeout(() => {
           finish(() => resolve(chunks.join('')))
         }, timeouts.finishCooldownMs)
+      }
+
+      const markFirstActivity = () => {
+        if (!firstChunkTimer) return
+        clearTimeout(firstChunkTimer)
+        firstChunkTimer = null
+      }
+
+      const markActivity = () => {
+        markFirstActivity()
+        if (hasBlockingState()) {
+          clearTotalTimer()
+          return
+        }
+        resetTotalTimer()
+      }
+
+      const handleStreamSideEvent = (kind, payload) => {
+        if (typeof onEvent === 'function') {
+          onEvent({
+            kind,
+            payload,
+          })
+        }
+      }
+
+      const normalizeConfirmationKey = (payload) => {
+        if (!payload || typeof payload !== 'object') return ''
+        return String(payload.id || payload.callId || '')
+      }
+
+      const onConfirmationAdd = (payload) => {
+        if (!payload || typeof payload !== 'object') return
+        if (payload.conversation_id !== conversationId) return
+        markActivity()
+        if (gotFinish) {
+          gotFinish = false
+          clearFinishTimer()
+        }
+        const key = normalizeConfirmationKey(payload)
+        if (key) {
+          pendingConfirmations.set(key, payload)
+        }
+        clearTotalTimer()
+        clearFinishTimer()
+        clearIdleTimer()
+        handleStreamSideEvent('confirmation.add', payload)
+      }
+
+      const onConfirmationUpdate = (payload) => {
+        if (!payload || typeof payload !== 'object') return
+        if (payload.conversation_id !== conversationId) return
+        markActivity()
+        if (gotFinish) {
+          gotFinish = false
+          clearFinishTimer()
+        }
+        const key = normalizeConfirmationKey(payload)
+        if (key) {
+          pendingConfirmations.set(key, payload)
+        }
+        clearTotalTimer()
+        clearFinishTimer()
+        clearIdleTimer()
+        handleStreamSideEvent('confirmation.update', payload)
+      }
+
+      const onConfirmationRemove = (payload) => {
+        if (!payload || typeof payload !== 'object') return
+        if (payload.conversation_id !== conversationId) return
+        markActivity()
+        const key = normalizeConfirmationKey(payload)
+        if (key) {
+          pendingConfirmations.delete(key)
+        }
+        resetTotalTimer()
+        handleStreamSideEvent('confirmation.remove', payload)
+        if (gotFinish) {
+          scheduleFinish()
+          return
+        }
+        resetIdleTimer()
+      }
+
+      const isToolCallFinished = (status) => {
+        const normalized = String(status || '').toLowerCase()
+        return normalized === 'success' || normalized === 'error' || normalized === 'canceled' || normalized === 'cancelled'
+      }
+
+      const upsertToolCallState = (toolCallId, status, payload) => {
+        const id = String(toolCallId || '').trim()
+        if (!id) return
+        if (isToolCallFinished(status)) {
+          activeToolCalls.delete(id)
+          return
+        }
+        activeToolCalls.set(id, payload || { status })
+      }
+
+      const trackActiveToolCalls = (message) => {
+        if (!message || typeof message !== 'object') return
+
+        if (message.type === 'codex_tool_call' && message.data && typeof message.data === 'object') {
+          const toolCallId = String(message.data.toolCallId || message.msg_id || '').trim()
+          const status = String(message.data.status || '')
+          upsertToolCallState(toolCallId, status, message.data)
+          return
+        }
+
+        if (message.type === 'tool_group' && Array.isArray(message.data)) {
+          for (const tool of message.data) {
+            if (!tool || typeof tool !== 'object') continue
+            const toolCallId = String(tool.callId || '').trim()
+            const status = String(tool.status || '')
+            upsertToolCallState(toolCallId, status, tool)
+          }
+        }
+      }
+
+      const isToolProgressMessage = (message) => {
+        if (!message || typeof message !== 'object') return false
+        return message.type === 'tool_group' || message.type === 'codex_tool_call'
+      }
+
+      const resolveContentChunk = (message) => {
+        if (!message || typeof message !== 'object') {
+          return ''
+        }
+
+        if (message.type === 'content') {
+          if (typeof message.data === 'string') {
+            return message.data
+          }
+          if (message.data && typeof message.data === 'object' && typeof message.data.content === 'string') {
+            return message.data.content
+          }
+        }
+
+        // Some providers emit text chunks in transformed shape.
+        if (message.type === 'text') {
+          if (typeof message.data === 'string') {
+            return message.data
+          }
+          if (message.data && typeof message.data === 'object' && typeof message.data.content === 'string') {
+            return message.data.content
+          }
+        }
+
+        return ''
       }
 
       const onStream = (message) => {
@@ -716,18 +962,21 @@ export class AionUiClient {
         // We route by conversation_id and keep per-conversation queueing in service
         // to avoid cross-turn interference.
 
-        if (firstChunkTimer) {
-          clearTimeout(firstChunkTimer)
-          firstChunkTimer = null
+        trackActiveToolCalls(message)
+        markActivity()
+        if (gotFinish && isToolProgressMessage(message)) {
+          gotFinish = false
+          clearFinishTimer()
         }
 
-        if (message.type === 'content' && typeof message.data === 'string') {
-          resetIdleTimer()
-          chunks.push(message.data)
+        const contentChunk = resolveContentChunk(message)
+        if (contentChunk) {
+          chunks.push(contentChunk)
           if (typeof onChunk === 'function') {
-            onChunk(message.data)
+            onChunk(contentChunk)
           }
           gotContent = true
+          resetIdleTimer()
           if (gotFinish) {
             scheduleFinish()
           }
@@ -736,18 +985,85 @@ export class AionUiClient {
 
         if (message.type === 'finish' || message.type === 'finished') {
           gotFinish = true
+          handleStreamSideEvent('stream', message)
           scheduleFinish()
           return
         }
 
+        const normalizeStreamErrorData = (value) => {
+          if (!value) return ''
+          if (typeof value === 'string') return value
+          if (typeof value === 'object') {
+            return String(
+              value.message
+              || value.msg
+              || value.error
+              || value.reason
+              || ''
+            )
+          }
+          return String(value)
+        }
+
+        const isFatalStreamError = (errorText) => {
+          const normalized = String(errorText || '').toLowerCase()
+          if (!normalized) return false
+          // Treat provider/auth/session-level failures as fatal; keep tool-level errors non-fatal.
+          return (
+            normalized.includes('auth')
+            || normalized.includes('token')
+            || normalized.includes('permission')
+            || normalized.includes('forbidden')
+            || normalized.includes('unauthorized')
+            || normalized.includes('not found')
+            || normalized.includes('conversation')
+            || normalized.includes('session')
+            || normalized.includes('disconnected')
+            || normalized.includes('connection closed')
+          )
+        }
+
         if (message.type === 'error') {
-          finish(() => {
-            reject(new Error(normalizeErrorMessage(message.data, 'AionUi 返回错误')))
-          })
+          const errorText = normalizeStreamErrorData(message.data)
+          const callId = String(
+            message?.data?.callId
+            || message?.data?.toolCallId
+            || message?.callId
+            || ''
+          ).trim()
+          if (callId) {
+            activeToolCalls.delete(callId)
+          }
+          if (hasBlockingState()) {
+            clearTotalTimer()
+          } else {
+            resetTotalTimer()
+          }
+          handleStreamSideEvent('stream', message)
+          if (isFatalStreamError(errorText)) {
+            finish(() => {
+              reject(new Error(normalizeErrorMessage(message.data, 'AionUi 返回错误')))
+            })
+            return
+          }
+          resetIdleTimer()
+          if (gotFinish) {
+            scheduleFinish()
+          }
+          return
+        }
+
+        resetIdleTimer()
+        handleStreamSideEvent('stream', message)
+        if (gotFinish) {
+          scheduleFinish()
         }
       }
 
       this.events.on('chat.response.stream', onStream)
+      this.events.on('confirmation.add', onConfirmationAdd)
+      this.events.on('confirmation.update', onConfirmationUpdate)
+      this.events.on('confirmation.remove', onConfirmationRemove)
 
       firstChunkTimer = setTimeout(() => {
         finish(() => {
@@ -755,15 +1071,7 @@ export class AionUiClient {
         })
       }, timeouts.firstChunkTimeoutMs)
 
-      totalTimer = setTimeout(() => {
-        finish(() => {
-          if (gotContent) {
-            resolve(chunks.join(''))
-            return
-          }
-          reject(new Error('AI 总超时'))
-        })
-      }, timeouts.totalTimeoutMs)
+      resetTotalTimer()
     })
   }
 

@@ -727,7 +727,7 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
   - 依赖 `tenantId + userId + chatSessionId` 三元组定位
   - BFF 重启后仍可恢复（会话/消息已落盘）
 
-## 阶段 2（当前状态：核心能力已完成，审批项待定）
+## 阶段 2（当前状态：核心能力已完成）
 
 - [x] 改为 SSE 前端流式渲染（打字效果）：
   - BFF：`POST /api/ai/chat/stream`
@@ -738,7 +738,25 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
   - 会话头部显示当前会话标题与模型
   - 对话输入区保留供应商与模型选择
   - 欢迎语改为打字机式渐进展示
-- [ ] 增加 `/api/ai/confirm` 处理工具调用审批（待产品决策，当前默认不拦截）
+- [x] 增加工具调用审批链路（对齐 AionUi）：
+  - BFF：
+    - `POST /api/ai/confirm`
+    - `GET /api/ai/confirmations`
+    - `POST /api/ai/chat/stream` 已透传 `confirm_add` / `confirm_update` / `confirm_remove` 事件
+  - 前端：
+    - AI 面板在对话流内展示审批卡片
+    - 用户点击审批选项后回调 `/api/ai/confirm`
+    - 会话恢复时自动拉取 `/api/ai/confirmations`
+- [x] 对齐 AionUi 的流式过程可见性：
+  - 前端新增步骤面板，渲染 `thought` / `tool_group` / `codex_tool_call` 事件
+  - Web Search 步骤显示 `Search Query` 与 `Tool Call ID`
+  - 审批按钮文案兼容 `messages.confirmation.*` 键并映射为可读文本
+- [x] 修复“工具执行中误判总超时/提前 done”：
+  - BFF 对流式活动（思考、工具、审批）刷新总超时计时
+  - BFF 在存在待审批工具调用时暂停 `total timeout` 计时，避免“等待审批”被误判为超时
+  - `finish` 不再直接收尾；需等待“无待审批 + 无活跃工具”后再结束
+  - 前端增加审批卡片兜底拉取：发送中定时调用 `/api/ai/confirmations`，并在 `tool_group=Confirming` 时立即补拉
+  - 流式失败时仍写入本轮会话历史（用户问题与错误信息），保证会话可见
 - [x] 历史查询分页：
   - `GET /api/ai/history?chatSessionId=...&page=...&pageSize=...`
 - [x] 会话管理：
@@ -779,6 +797,33 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 
 - 前端构建验证通过：`npm run build`。
 - 本次仅为 UI 层增量，不影响阶段2核心验证脚本结论。
+
+## 阶段 2 增量记录（2026-02-28，流式稳定性与步骤持久化）
+
+### A. 问题背景
+
+- 在 Codex/Gemini 执行长耗时搜索时，`gdhz` 面板偶发提前报错 `AI 总超时` 或 `AI 响应空闲超时`，但 AionUi 实际仍在执行工具。
+- `View Steps` 在会话切换后可见，但页面刷新或部分切换路径下会丢失，导致用户无法回看中间步骤。
+
+### B. 本次决策与实现
+
+- BFF 流式超时策略修正（`aionui.client.js`）：
+  - `total timeout` 在“存在待审批工具调用”或“存在活跃工具调用”时暂停计时。
+  - `idle timeout` 仅在出现正文 chunk（或 `finish`）后才启用，避免“仅思考/仅工具阶段”被误判空闲超时。
+  - `onStream` 先更新工具状态再刷新计时器，避免状态判断与计时器更新顺序竞争。
+- 前端步骤展示逻辑固化（`FloatingToolbar.vue`）：
+  - `View Steps` 固定渲染在同条 AI 回答正文上方（先步骤、后正文）。
+  - 思考条（thinking strip）与中间步骤分层展示，思考结束后自动收纳。
+- 前端步骤持久化策略（`FloatingToolbar.vue`）：
+  - `streamSteps` 按 `chatSessionId` 写入 `localStorage`（键：`GDHZ_AI_SESSION_VISUAL_V1`），支持会话切换与刷新后恢复。
+  - 采用上限控制：最多缓存 120 个会话的视觉态，每会话保留最近 18 条步骤，避免浏览器端无限增长。
+  - 会话删除时同步清理本地步骤缓存，避免“幽灵步骤”。
+
+### C. 验证结论（2026-02-28）
+
+- BFF 修复后，针对“Codex 长搜索”实测不再提前报 `AI 总超时`，流可持续至 `done` 回包（实测约 87 秒完成）。
+- 前端构建验证通过：`npm --prefix gdhz-vue run build`。
+- 会话切换场景下可恢复 `View Steps`；刷新后仍可恢复本地缓存的步骤数据。
 
 ## 阶段 3（后续）
 

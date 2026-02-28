@@ -35,7 +35,7 @@
 3. `http://<IP>:3000/mihomo/` -> mihomo 仪表盘（zashboard）。
 4. `http://<IP>:3000/mihomo-api/*` -> mihomo API（nginx 注入鉴权头）。
 
-### 2.4 当前实施阶段（2026-02-27）
+### 2.4 当前实施阶段（2026-02-28）
 
 当前定位：`gdhz-ai-bff-aionui-implementation-plan.md` 所定义的“阶段2核心能力已完成，审批项待定”。
 
@@ -56,6 +56,13 @@
 1. AI 面板模型选择控件移入输入框内，并按模型文本自适应宽度。
 2. 模型选择样式采用白色细线边框版本，避免过长背景条。
 3. 供应商切换区去外层白边、保留分隔线并放大图标。
+
+近期稳定性修复（2026-02-28）：
+
+1. 修复长耗时工具执行期间的误判超时：
+`total timeout` 在活跃工具/待审批工具期间暂停，`idle timeout` 仅在正文开始后生效。
+2. `View Steps` 改为按 `chatSessionId` 写入本地缓存，切会话与刷新后可恢复。
+3. `View Steps` 展示顺序固定为“步骤在上，正文在下”（同一条 AI 回答内）。
 
 ---
 
@@ -221,7 +228,9 @@ curl -sS -H 'Content-Type: application/json' \
 
 ```bash
 cd /usr/local/project/dzh/gdhz-vue/bff
-AIONUI_PASSWORD='<AionUi密码>' npm run verify:stage1
+systemd-run --wait --collect --pipe \
+  -p EnvironmentFile=/etc/gdhz/gdhz-bff.env \
+  /usr/bin/npm --prefix /usr/local/project/dzh/gdhz-vue/bff run verify:stage1
 ```
 
 预期：
@@ -230,10 +239,19 @@ AIONUI_PASSWORD='<AionUi密码>' npm run verify:stage1
 2. 最终输出 `总结果: PASS`。
 3. 生成报告文件：`/usr/local/project/dzh/gdhz-vue/doc/verification/stage1-closeout-*.json`。
 
+注意：
+
+1. `AIONUI_PASSWORD` 的真实托管位置是 `/etc/gdhz/gdhz-bff.env`。
+2. 若密码包含 `&`、空格等特殊字符，不建议 `source /etc/gdhz/gdhz-bff.env` 后再跑脚本，可能导致 shell 解析失真。
+3. 验证脚本建议始终使用上面的 `systemd-run + EnvironmentFile` 方式，和线上服务加载逻辑完全一致。
+
 ### 6.5 阶段2核心验证（不含审批）
 
 ```bash
 cd /usr/local/project/dzh/gdhz-vue/bff
+AI_MAX_SESSIONS_PER_USER=2 \
+AI_MAX_MESSAGES_PER_SESSION=20 \
+AI_SESSION_TITLE_MAX_LENGTH=24 \
 npm run verify:stage2
 ```
 
@@ -242,6 +260,28 @@ npm run verify:stage2
 1. 最终输出 `\"result\": \"PASS\"`。
 2. 包含 `chatStream`、`historyPagination`、`sessionRename`、`sessionOverflowEviction`、`messageTrim`、`sessionDelete` 等检查项。
 3. 生成报告文件：`/usr/local/project/dzh/gdhz-vue/doc/verification/stage2-core-verify-*.json`。
+
+### 6.6 流式稳定性与步骤恢复验证（2026-02-28 新增）
+
+1. 长耗时流式不误超时（建议 Codex）：
+
+```bash
+curl -N -sS -H 'Content-Type: application/json' \
+  -H 'x-tenant-id: default' -H 'x-user-id: ops-check' \
+  --data '{"message":"请联网搜索2025年广东最强台风并给出来源，先列出你的检索步骤","selection":{"backendKey":"codex","backend":"codex","modelId":"gpt-5.2-codex"}}' \
+  http://127.0.0.1:3001/api/ai/chat/stream
+```
+
+预期：
+
+1. 不出现 `AI 总超时`、`AI 响应空闲超时`。
+2. 最终可收到 `event: done`。
+
+2. `View Steps` 恢复验证（浏览器人工）：
+
+1. 在 AI 面板发起一条会触发工具调用的问题（可看到 `View Steps`）。
+2. 切换到另一历史会话，再切回原会话，确认步骤仍在。
+3. 刷新页面后恢复到该会话，确认步骤仍在（来自本地缓存恢复）。
 
 ---
 
@@ -330,6 +370,33 @@ ufw status numbered
 2. `journalctl -u aionui-webui.service -n 200 --no-pager | grep -E 'pthread_create|Resource temporarily unavailable'`
 3. 确认 override 参数包含 `TasksMax=2048`、`LimitNPROC=8192`。
 4. 必要时重启：`systemctl restart aionui-webui gdhz-bff`。
+
+### 9.6 Codex/Gemini 长搜索时 `gdhz` 提前报超时
+
+症状：
+
+1. AI 面板提示 `AI 总超时` 或 `AI 响应空闲超时`。
+2. AionUi 页面中同一会话仍在继续执行工具搜索。
+
+排查顺序：
+
+1. 确认 BFF 已包含 2026-02-28 的超时策略修复（`aionui.client.js`）并已重启 `gdhz-bff`。
+2. 查看最近日志是否仍出现超时关键词：
+`journalctl -u gdhz-bff --since '10 minutes ago' --no-pager | grep -E 'AI 总超时|AI 响应空闲超时'`
+3. 直接跑 `6.6` 的流式验收命令，确认最终收到 `event: done`。
+
+### 9.7 `View Steps` 会话切换后丢失
+
+症状：
+
+1. 当前会话有步骤，切到其他会话再切回后步骤消失。
+2. 或刷新页面后步骤无法恢复。
+
+排查顺序：
+
+1. 确认前端已包含 `GDHZ_AI_SESSION_VISUAL_V1` 本地缓存逻辑（2026-02-28 修复）。
+2. 在浏览器开发者工具检查 `localStorage` 是否存在该键且有对应 `chatSessionId` 数据。
+3. 清缓存后重测仍异常时，先重启 `gdhz-frontend`，再按 `6.6` 第 2 组步骤复测。
 
 ---
 
@@ -498,6 +565,9 @@ systemctl restart nginx
    - `MemoryHigh=768M`
    - `MemoryMax=1024M`
    - `TasksMax=128`
+4. 验证脚本读取密码时，优先使用：
+   - `systemd-run --wait --collect --pipe -p EnvironmentFile=/etc/gdhz/gdhz-bff.env ...`
+   - 避免直接 `source /etc/gdhz/gdhz-bff.env`。
 
 ### 15.3 swap 与内核参数
 
@@ -531,6 +601,13 @@ systemctl show gdhz-bff.service -p EnvironmentFiles
 free -h
 swapon --show
 
-# 5) 跑阶段2核心验收（不依赖外部模型）
-cd /usr/local/project/dzh/gdhz-vue/bff && npm run verify:stage2
+# 5) 跑阶段1专项验收（读取 systemd 同源环境）
+systemd-run --wait --collect --pipe \
+  -p EnvironmentFile=/etc/gdhz/gdhz-bff.env \
+  /usr/bin/npm --prefix /usr/local/project/dzh/gdhz-vue/bff run verify:stage1
+
+# 6) 跑阶段2核心验收（使用脚本期望的阈值）
+cd /usr/local/project/dzh/gdhz-vue/bff && \
+AI_MAX_SESSIONS_PER_USER=2 AI_MAX_MESSAGES_PER_SESSION=20 AI_SESSION_TITLE_MAX_LENGTH=24 \
+npm run verify:stage2
 ```
