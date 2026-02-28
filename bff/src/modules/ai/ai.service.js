@@ -60,35 +60,38 @@ export class AiService {
       providerId: resolvedSelection.providerId,
       customAgentId: resolvedSelection.customAgentId,
     })
+    const shouldConsumeRestore = !!session.needsRestore
+    const input = this.buildChatInputWithHistoryContext({
+      tenantId,
+      userId,
+      chatSessionId: session.chatSessionId,
+      message,
+      context,
+      needsRestore: shouldConsumeRestore,
+    })
 
     const reply = await this.runConversationTask(session.conversationId, async () => {
       const firstTurn = !session.initialized
-      const input = this.buildChatInput({ message, context })
-
-      try {
-        await this.ensureConversationReady(session, resolvedSelection)
-        const content = await this.aionuiClient.ask({
-          conversationId: session.conversationId,
-          input,
-          timeouts: config.ai,
-        })
-        return content
-      } catch (error) {
-        if (this.shouldRetryAfterCreate(error, firstTurn)) {
-          session.initialized = false
-          await this.ensureConversationReady(session, resolvedSelection)
-          return this.aionuiClient.ask({
+      return this.executeChatWithRecovery({
+        session,
+        resolvedSelection,
+        input,
+        firstTurn,
+        requestFn: () =>
+          this.aionuiClient.ask({
             conversationId: session.conversationId,
             input,
             timeouts: config.ai,
-          })
-        }
-        throw error
-      }
+          }),
+      })
     }).catch((error) => {
       this.sessionRepository.markError(session)
       throw error
     })
+
+    if (shouldConsumeRestore) {
+      this.sessionRepository.markRestoreConsumed(session)
+    }
 
     const normalizedReply = (reply || '').trim()
     this.messageRepository.append({
@@ -142,6 +145,15 @@ export class AiService {
       providerId: resolvedSelection.providerId,
       customAgentId: resolvedSelection.customAgentId,
     })
+    const shouldConsumeRestore = !!session.needsRestore
+    const input = this.buildChatInputWithHistoryContext({
+      tenantId,
+      userId,
+      chatSessionId: session.chatSessionId,
+      message,
+      context,
+      needsRestore: shouldConsumeRestore,
+    })
     if (typeof onMeta === 'function') {
       onMeta({
         chatSessionId: session.chatSessionId,
@@ -161,30 +173,20 @@ export class AiService {
     try {
       reply = await this.runConversationTask(session.conversationId, async () => {
         const firstTurn = !session.initialized
-        const input = this.buildChatInput({ message, context })
-        try {
-          await this.ensureConversationReady(session, resolvedSelection)
-          return await this.aionuiClient.askStream({
-            conversationId: session.conversationId,
-            input,
-            timeouts: config.ai,
-            onChunk,
-            onEvent,
-          })
-        } catch (error) {
-          if (this.shouldRetryAfterCreate(error, firstTurn)) {
-            session.initialized = false
-            await this.ensureConversationReady(session, resolvedSelection)
-            return await this.aionuiClient.askStream({
+        return this.executeChatWithRecovery({
+          session,
+          resolvedSelection,
+          input,
+          firstTurn,
+          requestFn: () =>
+            this.aionuiClient.askStream({
               conversationId: session.conversationId,
               input,
               timeouts: config.ai,
               onChunk,
               onEvent,
-            })
-          }
-          throw error
-        }
+            }),
+        })
       })
     } catch (error) {
       this.sessionRepository.markError(session)
@@ -198,6 +200,10 @@ export class AiService {
         traceId,
       })
       throw error
+    }
+
+    if (shouldConsumeRestore) {
+      this.sessionRepository.markRestoreConsumed(session)
     }
 
     const normalizedReply = (reply || '').trim()
@@ -410,11 +416,7 @@ export class AiService {
       chatSessionId,
     })
 
-    try {
-      await this.aionuiClient.resetConversation({ conversationId: session.conversationId })
-    } catch {
-      // ignore reset errors during deletion
-    }
+    await this.removeConversationWithFallback({ conversationId: session.conversationId })
     return true
   }
 
@@ -465,6 +467,86 @@ export class AiService {
     ].join('\n')
   }
 
+  buildChatInputWithHistoryContext({ tenantId, userId, chatSessionId, message, context, needsRestore }) {
+    const baseInput = this.buildChatInput({ message, context })
+    if (!needsRestore) {
+      return baseInput
+    }
+
+    const historyPrefix = this.buildHistoryContext({
+      tenantId,
+      userId,
+      chatSessionId,
+      maxTurns: config.ai.historyRecallMaxTurns,
+      maxCharsPerMessage: config.ai.historyRecallMaxCharsPerMsg,
+      maxTotalChars: config.ai.historyRecallMaxTotalChars,
+    })
+
+    if (!historyPrefix) {
+      return baseInput
+    }
+
+    return `${historyPrefix}\n\n${baseInput}`
+  }
+
+  buildHistoryContext({
+    tenantId,
+    userId,
+    chatSessionId,
+    maxTurns = config.ai.historyRecallMaxTurns,
+    maxCharsPerMessage = config.ai.historyRecallMaxCharsPerMsg,
+    maxTotalChars = config.ai.historyRecallMaxTotalChars,
+  }) {
+    const turns = Math.max(0, Number(maxTurns || 0))
+    if (!turns) {
+      return ''
+    }
+
+    const perMessageLimit = Math.max(80, Number(maxCharsPerMessage || 500))
+    const totalLimit = Math.max(500, Number(maxTotalChars || 6000))
+    const history = this.messageRepository.listRecent({
+      tenantId,
+      userId,
+      chatSessionId,
+      limit: turns * 2,
+    })
+
+    if (!history.length) {
+      return ''
+    }
+
+    const lines = ['【以下是你与用户此前的对话片段，请结合上下文继续回答】']
+    let totalChars = 0
+
+    for (const item of history) {
+      if (!item || typeof item !== 'object') continue
+      const role = String(item.role || '')
+      if (role !== 'user' && role !== 'assistant') continue
+
+      let content = String(item.content || '').replace(/\s+/g, ' ').trim()
+      if (!content) continue
+      if (role === 'assistant' && content.startsWith('请求失败：')) continue
+
+      if (content.length > perMessageLimit) {
+        content = `${content.slice(0, perMessageLimit)}...`
+      }
+
+      const line = `[${role === 'assistant' ? 'AI' : '用户'}] ${content}`
+      if ((totalChars + line.length) > totalLimit) {
+        break
+      }
+      lines.push(line)
+      totalChars += line.length
+    }
+
+    if (lines.length === 1) {
+      return ''
+    }
+
+    lines.push('【以上是历史上下文，以下是用户当前问题】')
+    return lines.join('\n')
+  }
+
   buildSummaryPrompt({ region, timeRange, detailLevel, snapshot }) {
     return [
       '你是广东省海洋灾害综合决策系统的应急研判助手。',
@@ -483,6 +565,46 @@ export class AiService {
     ].join('\n')
   }
 
+  async executeChatWithRecovery({ session, resolvedSelection, input, firstTurn, requestFn }) {
+    let selfHealRetried = false
+
+    const requestWithReadyConversation = async () => {
+      await this.ensureConversationReady(session, resolvedSelection)
+      return requestFn()
+    }
+
+    try {
+      return await requestWithReadyConversation()
+    } catch (error) {
+      if (this.shouldRetryAfterCreate(error, firstTurn)) {
+        session.initialized = false
+        try {
+          await this.ensureConversationReady(session, resolvedSelection)
+          return await requestFn()
+        } catch (retryError) {
+          if (!selfHealRetried && this.shouldSelfHealRetry(retryError)) {
+            selfHealRetried = true
+            return this.retryWithSelfHeal({ session, resolvedSelection, requestFn })
+          }
+          throw retryError
+        }
+      }
+
+      if (!selfHealRetried && this.shouldSelfHealRetry(error)) {
+        selfHealRetried = true
+        return this.retryWithSelfHeal({ session, resolvedSelection, requestFn })
+      }
+      throw error
+    }
+  }
+
+  async retryWithSelfHeal({ session, resolvedSelection, requestFn }) {
+    session.conversationId = createId()
+    session.initialized = false
+    await this.ensureConversationReady(session, resolvedSelection)
+    return requestFn()
+  }
+
   shouldRetryAfterCreate(error, firstTurn) {
     if (!firstTurn) {
       return false
@@ -497,6 +619,28 @@ export class AiService {
       message.includes('首包超时') ||
       message.includes('请求失败')
     )
+  }
+
+  shouldSelfHealRetry(error) {
+    const message = normalizeErrorMessage(error, '')
+    return (
+      message.includes('conversation not found') ||
+      message.includes('Conversation not found') ||
+      message.includes('UNIQUE constraint failed: conversations.id')
+    )
+  }
+
+  async removeConversationWithFallback({ conversationId }) {
+    if (!conversationId) return
+    try {
+      await this.aionuiClient.removeConversation({ conversationId })
+    } catch {
+      try {
+        await this.aionuiClient.resetConversation({ conversationId })
+      } catch {
+        // ignore cleanup errors
+      }
+    }
   }
 
   async ensureConversationReady(session, resolvedSelection) {
@@ -565,7 +709,10 @@ export class AiService {
         userId,
         chatSessionId: session.chatSessionId,
       })
-      void this.aionuiClient.resetConversation({ conversationId: session.conversationId }).catch(() => undefined)
+      void this.aionuiClient
+        .removeConversation({ conversationId: session.conversationId })
+        .catch(() => this.aionuiClient.resetConversation({ conversationId: session.conversationId }))
+        .catch(() => undefined)
     }
   }
 

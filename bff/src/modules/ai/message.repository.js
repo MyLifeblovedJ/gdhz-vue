@@ -65,6 +65,19 @@ export class MessageRepository {
     return [...(this.messages.get(key) || [])]
   }
 
+  listRecent({ tenantId, userId, chatSessionId, limit = 20 }) {
+    const key = this.sessionKey(tenantId, userId, chatSessionId)
+    const list = this.messages.get(key) || []
+    const normalizedLimit = Math.max(0, Number(limit || 0))
+    if (normalizedLimit === 0) {
+      return []
+    }
+    if (list.length <= normalizedLimit) {
+      return [...list]
+    }
+    return list.slice(list.length - normalizedLimit)
+  }
+
   listPaginated({ tenantId, userId, chatSessionId, page = 1, pageSize = 50 }) {
     const key = this.sessionKey(tenantId, userId, chatSessionId)
     const normalizedPage = Math.max(1, Number(page || 1))

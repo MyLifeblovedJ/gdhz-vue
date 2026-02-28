@@ -1,0 +1,85 @@
+{
+  "startedAt": "2026-02-28T07:14:07.466Z",
+  "config": {
+    "AI_MAX_SESSIONS_PER_USER": 2,
+    "AI_MAX_MESSAGES_PER_SESSION": 20,
+    "AI_SESSION_TITLE_MAX_LENGTH": 24,
+    "AI_HISTORY_RECALL_MAX_TURNS": 8,
+    "AI_HISTORY_RECALL_MAX_CHARS_PER_MSG": 120,
+    "AI_HISTORY_RECALL_MAX_TOTAL_CHARS": 1500
+  },
+  "checks": [
+    {
+      "name": "chatStream",
+      "pass": true,
+      "chatSessionId": "2733d32a-797f-4980-815e-c27bb866ebeb",
+      "chunkCount": 2
+    },
+    {
+      "name": "historyPagination",
+      "pass": true,
+      "total": 2,
+      "page1HasMore": true
+    },
+    {
+      "name": "sessionRename",
+      "pass": true,
+      "title": "renamed-session-title"
+    },
+    {
+      "name": "releaseState",
+      "pass": true,
+      "conversationIdKept": true,
+      "needsRestore": true
+    },
+    {
+      "name": "historyRecallInjected",
+      "pass": true,
+      "consumed": true
+    },
+    {
+      "name": "historyRecallSingleShot",
+      "pass": true
+    },
+    {
+      "name": "historyRecallFilterAndTrim",
+      "pass": true
+    },
+    {
+      "name": "selfHealRetry",
+      "pass": true,
+      "recreatedConversation": true
+    },
+    {
+      "name": "sessionOverflowEviction",
+      "pass": true,
+      "keptSessionIds": [
+        "87348d2c-df9c-4391-9247-b4bf07a2c031",
+        "f6d618c3-3bfe-4944-9c91-68bb1debdfc4"
+      ],
+      "evictedSessionId": "2733d32a-797f-4980-815e-c27bb866ebeb"
+    },
+    {
+      "name": "messageTrim",
+      "pass": true,
+      "totalAfterTrim": 20
+    },
+    {
+      "name": "sessionDelete",
+      "pass": true,
+      "remaining": 1
+    },
+    {
+      "name": "removeConversationHook",
+      "pass": true,
+      "removeCallCount": 2
+    },
+    {
+      "name": "resetConversationHook",
+      "pass": true,
+      "resetCallCount": 1
+    }
+  ],
+  "result": "PASS",
+  "finishedAt": "2026-02-28T07:14:12.409Z"
+}

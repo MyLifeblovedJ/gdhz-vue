@@ -11,6 +11,9 @@ const projectRoot = path.resolve(__dirname, '..', '..')
 process.env.AI_MAX_SESSIONS_PER_USER = process.env.AI_MAX_SESSIONS_PER_USER || '2'
 process.env.AI_MAX_MESSAGES_PER_SESSION = process.env.AI_MAX_MESSAGES_PER_SESSION || '20'
 process.env.AI_SESSION_TITLE_MAX_LENGTH = process.env.AI_SESSION_TITLE_MAX_LENGTH || '24'
+process.env.AI_HISTORY_RECALL_MAX_TURNS = process.env.AI_HISTORY_RECALL_MAX_TURNS || '8'
+process.env.AI_HISTORY_RECALL_MAX_CHARS_PER_MSG = process.env.AI_HISTORY_RECALL_MAX_CHARS_PER_MSG || '120'
+process.env.AI_HISTORY_RECALL_MAX_TOTAL_CHARS = process.env.AI_HISTORY_RECALL_MAX_TOTAL_CHARS || '1500'
 
 const [{ AiService }, { SessionRepository }, { MessageRepository }, { createId }] = await Promise.all([
   import('../src/modules/ai/ai.service.js'),
@@ -28,10 +31,29 @@ function assert(condition, message, details = undefined) {
   throw error
 }
 
+function countOccurrences(haystack, needle) {
+  if (!needle) return 0
+  let count = 0
+  let cursor = 0
+  while (cursor <= haystack.length) {
+    const idx = haystack.indexOf(needle, cursor)
+    if (idx < 0) break
+    count += 1
+    cursor = idx + needle.length
+  }
+  return count
+}
+
 class MockAionUiClient {
   constructor() {
     this.created = []
+    this.removed = []
     this.resetCalls = []
+    this.askCalls = []
+    this.askStreamCalls = []
+    this.failAskConversationNotFoundTimes = 0
+    this.failAskStreamConversationNotFoundTimes = 0
+    this.failRemoveConversation = false
   }
 
   async ensureReady() {
@@ -79,15 +101,33 @@ class MockAionUiClient {
   }
 
   async ask({ conversationId, input }) {
+    this.askCalls.push({ conversationId, input: String(input || '') })
+    if (this.failAskConversationNotFoundTimes > 0) {
+      this.failAskConversationNotFoundTimes -= 1
+      throw new Error('conversation not found')
+    }
     return `sync:${conversationId.slice(0, 6)}:${String(input || '').slice(0, 18)}`
   }
 
   async askStream({ conversationId, input, onChunk }) {
+    this.askStreamCalls.push({ conversationId, input: String(input || '') })
+    if (this.failAskStreamConversationNotFoundTimes > 0) {
+      this.failAskStreamConversationNotFoundTimes -= 1
+      throw new Error('conversation not found')
+    }
     const chunks = [`stream:${conversationId.slice(0, 4)}:`, String(input || '').slice(0, 16)]
     for (const chunk of chunks) {
       if (typeof onChunk === 'function') onChunk(chunk)
     }
     return chunks.join('')
+  }
+
+  async removeConversation({ conversationId }) {
+    this.removed.push(conversationId)
+    if (this.failRemoveConversation) {
+      throw new Error('remove failed')
+    }
+    return true
   }
 
   async resetConversation({ conversationId }) {
@@ -106,6 +146,9 @@ async function run() {
       AI_MAX_SESSIONS_PER_USER: Number(process.env.AI_MAX_SESSIONS_PER_USER || 0),
       AI_MAX_MESSAGES_PER_SESSION: Number(process.env.AI_MAX_MESSAGES_PER_SESSION || 0),
       AI_SESSION_TITLE_MAX_LENGTH: Number(process.env.AI_SESSION_TITLE_MAX_LENGTH || 0),
+      AI_HISTORY_RECALL_MAX_TURNS: Number(process.env.AI_HISTORY_RECALL_MAX_TURNS || 0),
+      AI_HISTORY_RECALL_MAX_CHARS_PER_MSG: Number(process.env.AI_HISTORY_RECALL_MAX_CHARS_PER_MSG || 0),
+      AI_HISTORY_RECALL_MAX_TOTAL_CHARS: Number(process.env.AI_HISTORY_RECALL_MAX_TOTAL_CHARS || 0),
     },
     checks: [],
   }
@@ -125,6 +168,7 @@ async function run() {
     const tenantId = 'gdhz'
     const userA = `stage2-userA-${createId().slice(0, 6)}`
     const userB = `stage2-userB-${createId().slice(0, 6)}`
+    const userC = `stage2-userC-${createId().slice(0, 6)}`
     const selection = { backend: 'codex', backendKey: 'codex', modelId: 'gpt-5.2-codex' }
 
     const chunks = []
@@ -141,6 +185,11 @@ async function run() {
     assert(first.chatSessionId, 'chatStream should return chatSessionId')
     assert(String(first.reply || '').length > 0, 'chatStream should return reply')
     assert(chunks.length >= 1, 'chatStream should emit chunks')
+    const firstStreamInput = client.askStreamCalls[client.askStreamCalls.length - 1]?.input || ''
+    assert(
+      !firstStreamInput.includes('【以下是你与用户此前的对话片段，请结合上下文继续回答】'),
+      'new session first turn should not inject history prefix'
+    )
     report.checks.push({
       name: 'chatStream',
       pass: true,
@@ -185,6 +234,167 @@ async function run() {
       title: renamed.title,
     })
 
+    const restoreSeed = await aiService.chatStream({
+      tenantId,
+      userId: userC,
+      chatSessionId: null,
+      message: 'restore-seed-message-one',
+      context: {},
+      selection,
+    })
+    await aiService.chat({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      message: 'restore-seed-message-two',
+      context: {},
+      selection,
+    })
+
+    const restoreSessionBeforeRelease = sessionRepository.get({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+    })
+    assert(restoreSessionBeforeRelease, 'restore session should exist before release')
+    const beforeReleaseConversationId = restoreSessionBeforeRelease.conversationId
+    sessionRepository.markReleased(restoreSessionBeforeRelease)
+    const releasedSession = sessionRepository.get({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+    })
+    assert(releasedSession?.conversationId === beforeReleaseConversationId, 'markReleased should keep conversationId')
+    assert(releasedSession?.initialized === true, 'markReleased should keep initialized=true')
+    assert(releasedSession?.needsRestore === true, 'markReleased should mark needsRestore=true')
+    report.checks.push({
+      name: 'releaseState',
+      pass: true,
+      conversationIdKept: true,
+      needsRestore: releasedSession?.needsRestore || false,
+    })
+
+    const restorePrompt = 'restore-followup-current-question'
+    await aiService.chatStream({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      message: restorePrompt,
+      context: {},
+      selection,
+    })
+    const restoreInput = client.askStreamCalls[client.askStreamCalls.length - 1]?.input || ''
+    assert(
+      restoreInput.includes('【以下是你与用户此前的对话片段，请结合上下文继续回答】'),
+      'restored first turn should inject history prefix'
+    )
+    assert(restoreInput.includes('restore-seed-message-one'), 'history prefix should include previous history')
+    assert(
+      countOccurrences(restoreInput, restorePrompt) === 1,
+      'chatStream restore input should contain current prompt only once'
+    )
+    const restoredSession = sessionRepository.get({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+    })
+    assert(restoredSession?.needsRestore === false, 'needsRestore should be consumed after restored first answer')
+    report.checks.push({
+      name: 'historyRecallInjected',
+      pass: true,
+      consumed: restoredSession?.needsRestore === false,
+    })
+
+    await aiService.chatStream({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      message: 'restore-second-turn-no-prefix',
+      context: {},
+      selection,
+    })
+    const secondRestoreInput = client.askStreamCalls[client.askStreamCalls.length - 1]?.input || ''
+    assert(
+      !secondRestoreInput.includes('【以下是你与用户此前的对话片段，请结合上下文继续回答】'),
+      'history prefix should be injected only once after release'
+    )
+    report.checks.push({
+      name: 'historyRecallSingleShot',
+      pass: true,
+    })
+
+    const longAssistantMessage = `long-${'x'.repeat(220)}`
+    messageRepository.append({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      role: 'assistant',
+      content: '请求失败：tool call failed',
+      traceId: 'trace-ignore-failed',
+    })
+    messageRepository.append({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      role: 'assistant',
+      content: longAssistantMessage,
+      traceId: 'trace-long-message',
+    })
+    const contextPreview = aiService.buildHistoryContext({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      maxTurns: 4,
+      maxCharsPerMessage: 60,
+      maxTotalChars: 500,
+    })
+    assert(!contextPreview.includes('请求失败：tool call failed'), 'failed assistant messages should be filtered from recall')
+    assert(contextPreview.includes('...'), 'long history message should be truncated')
+    report.checks.push({
+      name: 'historyRecallFilterAndTrim',
+      pass: true,
+    })
+
+    const beforeSelfHealSession = sessionRepository.get({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+    })
+    const beforeSelfHealConversationId = beforeSelfHealSession?.conversationId || ''
+    const beforeSelfHealCreateCount = client.created.length
+    const beforeSelfHealAskCount = client.askCalls.length
+    client.failAskConversationNotFoundTimes = 1
+    await aiService.chat({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+      message: 'self-heal-check-message',
+      context: {},
+      selection,
+    })
+    const afterSelfHealSession = sessionRepository.get({
+      tenantId,
+      userId: userC,
+      chatSessionId: restoreSeed.chatSessionId,
+    })
+    assert(
+      afterSelfHealSession?.conversationId && afterSelfHealSession.conversationId !== beforeSelfHealConversationId,
+      'self-heal should replace conversationId when conversation not found'
+    )
+    assert(
+      client.created.length === beforeSelfHealCreateCount + 1,
+      'self-heal should create a fresh conversation exactly once'
+    )
+    assert(
+      client.askCalls.length === beforeSelfHealAskCount + 2,
+      'self-heal should retry request once after recoverable failure'
+    )
+    report.checks.push({
+      name: 'selfHealRetry',
+      pass: true,
+      recreatedConversation: true,
+    })
+
     const second = await aiService.chat({
       tenantId,
       userId: userA,
@@ -193,7 +403,7 @@ async function run() {
       context: {},
       selection,
     })
-    const third = await aiService.chat({
+    await aiService.chat({
       tenantId,
       userId: userA,
       chatSessionId: null,
@@ -275,7 +485,43 @@ async function run() {
       remaining: sessionsAfterDelete.total,
     })
 
-    assert(client.resetCalls.length >= 1, 'resetConversation should be called during eviction/delete')
+    // wait for fire-and-forget overflow cleanup
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert(client.removed.length >= 1, 'removeConversation should be used during overflow/delete cleanup')
+    report.checks.push({
+      name: 'removeConversationHook',
+      pass: true,
+      removeCallCount: client.removed.length,
+    })
+
+    const fallbackDelete = await aiService.chat({
+      tenantId,
+      userId: userA,
+      chatSessionId: null,
+      message: 'fallback-remove-session-message',
+      context: {},
+      selection,
+    })
+    const fallbackSession = sessionRepository.get({
+      tenantId,
+      userId: userA,
+      chatSessionId: fallbackDelete.chatSessionId,
+    })
+    assert(fallbackSession?.conversationId, 'fallback delete session should exist')
+    const resetBeforeFallback = client.resetCalls.length
+    client.failRemoveConversation = true
+    const fallbackRemoved = await aiService.removeSession({
+      tenantId,
+      userId: userA,
+      chatSessionId: fallbackDelete.chatSessionId,
+    })
+    client.failRemoveConversation = false
+    assert(fallbackRemoved, 'removeSession fallback path should still remove session')
+    assert(client.resetCalls.length === resetBeforeFallback + 1, 'resetConversation should be used as fallback when remove fails')
+    assert(
+      client.resetCalls.includes(fallbackSession.conversationId),
+      'fallback reset should target removed session conversationId'
+    )
     report.checks.push({
       name: 'resetConversationHook',
       pass: true,

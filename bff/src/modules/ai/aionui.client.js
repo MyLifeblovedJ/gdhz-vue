@@ -484,6 +484,16 @@ export class AionUiClient {
     )
   }
 
+  async removeConversation({ conversationId }) {
+    if (!conversationId) return
+    await this.ensureReady()
+    await this.invokeBridgeProvider(
+      'remove-conversation',
+      { id: conversationId },
+      { timeoutMs: 10_000, waitForCallback: false }
+    )
+  }
+
   async emitBridgeEvent(name, data) {
     await this.ensureWebSocket()
     this.sendRaw({ name, data })

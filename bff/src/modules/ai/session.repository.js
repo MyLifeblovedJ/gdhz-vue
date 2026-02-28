@@ -28,6 +28,8 @@ export class SessionRepository {
         customAgentId: String(item.customAgentId || ''),
         status: String(item.status || 'active'),
         initialized: !!item.initialized,
+        needsRestore: !!item.needsRestore,
+        releasedAt: Number(item.releasedAt || 0),
         createdAt: Number(item.createdAt || Date.now()),
         updatedAt: Number(item.updatedAt || Date.now()),
         lastActiveAt: Number(item.lastActiveAt || Date.now()),
@@ -77,6 +79,8 @@ export class SessionRepository {
       customAgentId: '',
       status: 'active',
       initialized: false,
+      needsRestore: false,
+      releasedAt: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       lastActiveAt: Date.now(),
@@ -104,6 +108,8 @@ export class SessionRepository {
     if (changed && session.initialized) {
       session.conversationId = createId()
       session.initialized = false
+      session.needsRestore = true
+      session.releasedAt = Date.now()
     }
 
     session.backendKey = backendKey
@@ -159,12 +165,22 @@ export class SessionRepository {
   }
 
   markReleased(session) {
-    // Idle recycled sessions should lazily rebuild a fresh upstream
-    // conversation on next user message.
-    session.conversationId = createId()
-    session.initialized = false
+    // Keep upstream conversation id so AionUi can rebuild runtime task
+    // from persistent storage on next message.
+    session.needsRestore = true
+    session.releasedAt = Date.now()
     session.status = 'released'
     session.updatedAt = Date.now()
+    this.persist()
+  }
+
+  markRestoreConsumed(session) {
+    session.needsRestore = false
+    session.updatedAt = Date.now()
+    session.lastActiveAt = Date.now()
+    if (session.status === 'released') {
+      session.status = 'active'
+    }
     this.persist()
   }
 
