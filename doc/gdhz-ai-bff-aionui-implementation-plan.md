@@ -825,6 +825,163 @@ conversation_id -> { userId, sessionId, type('chat'|'summary'), responseBuffer, 
 - 前端构建验证通过：`npm --prefix gdhz-vue run build`。
 - 会话切换场景下可恢复 `View Steps`；刷新后仍可恢复本地缓存的步骤数据。
 
+## 阶段 2.5（待实施）：会话记忆恢复与回收治理专项
+
+### A. 背景与问题定义
+
+当前实现中，`released` 会话恢复依赖“重建新的上游 `conversation_id`”，对应行为如下：
+
+- `session.repository.js#markReleased` 会重新生成 `conversationId` 并置 `initialized=false`。
+- `ai.service.js#releaseIdleSessions` 仅调用 `reset-conversation`（释放运行态），不删除 AionUi 数据库会话。
+- `ai.service.js#buildChatInput` 默认只发送“当前问题 + 业务上下文”，不注入历史消息。
+
+这会导致用户侧“看得到历史（BFF 持久化）”，但模型侧“恢复后不知道历史语义”的失配。
+
+### B. 目标与非目标
+
+目标（必须）：
+
+1. 空闲回收后续聊，AI 可恢复最近对话语义（先做到“最近 N 轮工作记忆”）。
+2. 避免 `createConversation` 重复 ID 冲突与 `conversation not found` 造成不可恢复失败。
+3. 避免 AionUi 数据库积累被淘汰会话的僵尸数据。
+
+非目标（本阶段不做）：
+
+1. 不改 AionUi 核心协议与会话模型。
+2. 不在本阶段引入“每轮 AI 自动摘要”额外调用（后续阶段再做）。
+3. 不改变前端交互协议（仍用现有 `/api/ai/chat*`、`/api/ai/history`、`/api/ai/sessions`）。
+
+### C. 两层记忆策略（本专项基线）
+
+- 归档历史层（Archive Memory）：BFF 全量历史持久化（`ai-messages.json`），用于审计和回放。
+- 工作记忆层（Working Memory）：恢复场景只注入“最近 N 轮（6-10）”到首条 input，控制 token 成本。
+
+说明：
+
+- 阶段 1（本专项）仅启用“最近 N 轮注入”，不做 AI 摘要。
+- 阶段 2（后续）增加“滚动摘要 + 最近 N 轮”组合。
+
+### D. 实施项（与代码位置一一对应）
+
+#### D1. 会话回收改造（必须）
+
+文件：`bff/src/modules/ai/session.repository.js`
+
+- [ ] 扩展会话字段：
+  - `needsRestore: boolean`（默认 `false`）
+  - `releasedAt: number`（默认 `0`）
+- [ ] 调整 `markReleased(session)`：
+  - 不再更换 `conversationId`
+  - 保持 `initialized=true`
+  - 设置 `status='released'`
+  - 设置 `needsRestore=true`
+  - 设置 `releasedAt=Date.now()`
+- [ ] 新增 `markRestoreConsumed(session)`：
+  - 在恢复首答成功后清除 `needsRestore`。
+
+#### D2. 续聊恢复（必须）
+
+文件：`bff/src/modules/ai/ai.service.js`
+
+- [ ] 新增 `buildHistoryContext(...)`：
+  - 输入：`tenantId/userId/chatSessionId/maxTurns/maxCharsPerMessage`
+  - 输出：可拼接到 prompt 前缀的历史文本
+  - 规则：
+    - 仅保留 `user/assistant`
+    - 跳过 `assistant` 且内容前缀为 `请求失败：`
+    - 最近 `maxTurns` 轮（即最近 `maxTurns*2` 条）
+    - 单条超长截断并追加 `...`
+- [ ] 注入时机：
+  - 仅在 `session.needsRestore === true` 时注入
+  - 注入一次后调用 `markRestoreConsumed`
+- [ ] `chatStream` 细节：
+  - 在“写入本轮 user 消息前”构建历史前缀，避免把当前提问重复注入历史。
+- [ ] `chat`（非流式）保持同语义触发逻辑。
+
+#### D3. 冲突兜底（必须）
+
+文件：`bff/src/modules/ai/ai.service.js`
+
+- [ ] 对以下错误增加“一次性重建重试”：
+  - `conversation not found`
+  - `UNIQUE constraint failed: conversations.id`（如出现）
+- [ ] 兜底流程：
+  1. 临时将 `session.initialized=false`
+  2. `ensureConversationReady(...)`
+  3. 重试原请求一次
+- [ ] 重试仅一次，防止循环重试。
+
+#### D4. 会话淘汰清理（必须）
+
+文件：`bff/src/modules/ai/aionui.client.js`、`bff/src/modules/ai/ai.service.js`
+
+- [ ] `aionui.client.js` 新增 `removeConversation({ conversationId })`，桥接 `remove-conversation`。
+- [ ] `ai.service.js#evictOverflowSessions`：
+  - 优先调用 `removeConversation`
+  - 失败时降级为 `resetConversation`
+- [ ] `ai.service.js#removeSession`（主动删除）同步改为上述优先级策略。
+
+#### D5. 摘要策略（分阶段）
+
+- [ ] 本阶段：不开启 AI 摘要，仅“最近 N 轮”。
+- [ ] 下一阶段：会话滚动摘要（每 M 轮异步更新），恢复时“摘要 + 最近 N 轮”。
+
+### E. 配置项（新增）
+
+文件：`bff/src/shared/config.js`
+
+- [ ] `AI_HISTORY_RECALL_MAX_TURNS`（默认 `8` 或 `10`）
+- [ ] `AI_HISTORY_RECALL_MAX_CHARS_PER_MSG`（默认 `500`）
+- [ ] `AI_HISTORY_RECALL_MAX_TOTAL_CHARS`（默认 `6000`，建议新增）
+
+### F. 状态机定义（专项新增）
+
+会话状态：
+
+1. `active`：正常活跃。
+2. `error`：最近一次失败。
+3. `released`：运行态释放，等待“单次恢复注入”。
+
+恢复门槛：
+
+- `status==='released' && needsRestore===true` 时触发工作记忆注入。
+
+恢复完成：
+
+- 首答成功后 `needsRestore=false`，会话转 `active`。
+
+### G. 验收与验证计划
+
+自动化（`bff/scripts/stage2-core-verify.mjs` 增量）：
+
+1. [ ] 回收后首问注入历史：
+   - 构造 2-3 轮历史 -> 标记 `released+needsRestore` -> 发送下一问
+   - 断言上游 `input` 含历史前缀与历史关键词。
+2. [ ] 连续会话不重复注入：
+   - 同会话连续两次请求，断言仅第一次含历史前缀。
+3. [ ] 无历史时不注入：
+   - 新会话首次请求不应出现历史前缀。
+4. [ ] 截断与过滤：
+   - 超长消息应被截断，`请求失败：`消息不应被注入。
+5. [ ] 上游会话缺失自愈：
+   - 模拟 `conversation not found`，断言仅重试一次且成功返回。
+6. [ ] 会话淘汰清理：
+   - 超上限触发淘汰后，断言优先触发 `remove-conversation` 调用。
+
+手工验收：
+
+1. [ ] 将 `AI_SESSION_IDLE_RELEASE_MS` 临时设短（如 10-30 秒）触发回收。
+2. [ ] 在同 `chatSessionId` 续聊“我们刚刚讨论了什么”，验证模型可回忆最近话题。
+3. [ ] 删除会话后在 AionUi 侧确认 conversation 不再可见（优先 remove 成功路径）。
+
+### H. 回滚策略
+
+若上线后出现异常（提示词过长、恢复失败率升高）：
+
+1. 先将 `AI_HISTORY_RECALL_MAX_TURNS=0`（关闭注入，保留其它改造）。
+2. 必要时回退 `markReleased` 与 `evictOverflowSessions` 相关提交。
+3. 保留新增日志字段，继续采样恢复失败原因后再灰度重启。
+
 ## 阶段 3（后续）
 
 - 安全加固（HTTPS、鉴权细化、最小暴露、审计）。
