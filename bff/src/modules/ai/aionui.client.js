@@ -844,9 +844,32 @@ export class AionUiClient {
         return String(payload.id || payload.callId || '')
       }
 
+      const resolvePayloadConversationId = (payload) => {
+        if (!payload || typeof payload !== 'object') return ''
+        return String(payload.conversation_id || payload.conversationId || '').trim()
+      }
+
+      const removeToolCallByPayload = (payload) => {
+        if (!payload || typeof payload !== 'object') return
+        const ids = new Set(
+          [
+            payload.callId,
+            payload.id,
+            payload.toolCallId,
+            payload.msg_id,
+          ]
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+        )
+        for (const id of ids) {
+          activeToolCalls.delete(id)
+        }
+      }
+
       const onConfirmationAdd = (payload) => {
         if (!payload || typeof payload !== 'object') return
-        if (payload.conversation_id !== conversationId) return
+        const payloadConversationId = resolvePayloadConversationId(payload)
+        if (payloadConversationId && payloadConversationId !== conversationId) return
         markActivity()
         if (gotFinish) {
           gotFinish = false
@@ -864,7 +887,8 @@ export class AionUiClient {
 
       const onConfirmationUpdate = (payload) => {
         if (!payload || typeof payload !== 'object') return
-        if (payload.conversation_id !== conversationId) return
+        const payloadConversationId = resolvePayloadConversationId(payload)
+        if (payloadConversationId && payloadConversationId !== conversationId) return
         markActivity()
         if (gotFinish) {
           gotFinish = false
@@ -882,12 +906,14 @@ export class AionUiClient {
 
       const onConfirmationRemove = (payload) => {
         if (!payload || typeof payload !== 'object') return
-        if (payload.conversation_id !== conversationId) return
+        const payloadConversationId = resolvePayloadConversationId(payload)
+        if (payloadConversationId && payloadConversationId !== conversationId) return
         markActivity()
         const key = normalizeConfirmationKey(payload)
         if (key) {
           pendingConfirmations.delete(key)
         }
+        removeToolCallByPayload(payload)
         resetTotalTimer()
         handleStreamSideEvent('confirmation.remove', payload)
         if (gotFinish) {
@@ -1007,7 +1033,8 @@ export class AionUiClient {
 
       const onStream = (message) => {
         if (!message || typeof message !== 'object') return
-        if (message.conversation_id !== conversationId) return
+        const payloadConversationId = resolvePayloadConversationId(message)
+        if (payloadConversationId && payloadConversationId !== conversationId) return
 
         // Some providers emit status/error chunks with synthetic msg_id values.
         // We route by conversation_id and keep per-conversation queueing in service
@@ -1082,6 +1109,12 @@ export class AionUiClient {
             || message?.callId
             || ''
           ).trim()
+          const hasToolScopedContext = Boolean(
+            callId
+            || message?.data?.toolName
+            || message?.data?.name
+            || message?.data?.subtype
+          )
           if (callId) {
             activeToolCalls.delete(callId)
           }
@@ -1091,7 +1124,7 @@ export class AionUiClient {
             resetTotalTimer()
           }
           handleStreamSideEvent('stream', message)
-          if (isFatalStreamError(errorText)) {
+          if (!hasToolScopedContext && isFatalStreamError(errorText)) {
             finish(() => {
               reject(new Error(normalizeErrorMessage(message.data, 'AionUi 返回错误')))
             })

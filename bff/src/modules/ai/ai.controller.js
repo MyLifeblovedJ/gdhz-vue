@@ -106,21 +106,25 @@ export function createAiRouter(aiService) {
         onEvent: (eventPayload) => {
           if (clientClosed) return
           if (!eventPayload || typeof eventPayload !== 'object') return
+          const payloadWithSessionId = {
+            ...(eventPayload.payload && typeof eventPayload.payload === 'object' ? eventPayload.payload : {}),
+            chatSessionId: String(eventPayload.chatSessionId || ''),
+          }
 
           if (eventPayload.kind === 'confirmation.add') {
-            writeEvent('confirm_add', eventPayload.payload || {})
+            writeEvent('confirm_add', payloadWithSessionId)
             return
           }
           if (eventPayload.kind === 'confirmation.update') {
-            writeEvent('confirm_update', eventPayload.payload || {})
+            writeEvent('confirm_update', payloadWithSessionId)
             return
           }
           if (eventPayload.kind === 'confirmation.remove') {
-            writeEvent('confirm_remove', eventPayload.payload || {})
+            writeEvent('confirm_remove', payloadWithSessionId)
             return
           }
           if (eventPayload.kind === 'stream') {
-            writeEvent('stream_event', eventPayload.payload || {})
+            writeEvent('stream_event', payloadWithSessionId)
           }
         },
       })

@@ -185,7 +185,7 @@
             <div class="dialog-messages" ref="messagesRef">
               <div
                 v-for="(msg, index) in messages"
-                :key="index"
+                :key="getMessageRenderKey(msg, index)"
                 class="halo-message"
                 :class="[
                   msg.role,
@@ -209,16 +209,16 @@
                 </div>
                 <div class="msg-content">
                   <div
-                    v-if="index === latestAssistantMessageIndex && msg.role === 'assistant' && msg.kind !== 'confirmation' && streamSteps.length"
+                    v-if="msg.role === 'assistant' && msg.kind !== 'confirmation' && getMessageStreamSteps(msg, index).length"
                     class="stream-step-panel"
                   >
-                    <button type="button" class="stream-step-toggle" @click="toggleStreamStepsCollapsed">
+                    <button type="button" class="stream-step-toggle" @click="toggleStreamStepsCollapsed(index)">
                       <span>View Steps</span>
-                      <i :class="streamStepsCollapsed ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
+                      <i :class="isMessageStreamStepsCollapsed(msg, index) ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
                     </button>
-                    <div v-if="!streamStepsCollapsed" class="stream-step-list">
+                    <div v-if="!isMessageStreamStepsCollapsed(msg, index)" class="stream-step-list">
                       <div
-                        v-for="step in streamSteps"
+                        v-for="step in getMessageStreamSteps(msg, index)"
                         :key="step.id"
                         class="stream-step-item"
                         :class="`is-${step.status}`"
@@ -619,6 +619,35 @@ const sessionVisualStore = ref(readSessionVisualStore())
 const SESSION_VISUAL_DRAFT_KEY = '__draft__'
 const MAX_STREAM_STEP_COUNT = 18
 let thinkingHideTimer = null
+let messageRenderKeySeq = 0
+
+function createMessageRenderKey(prefix = 'msg') {
+  messageRenderKeySeq += 1
+  return `${prefix}-${Date.now()}-${messageRenderKeySeq}`
+}
+
+function getMessageRenderKey(message, index = -1) {
+  if (!message || typeof message !== 'object') {
+    return `fallback-${index}`
+  }
+  if (!message.__renderKey) {
+    const prefix = message.kind === 'confirmation' ? 'confirm' : (message.role || 'msg')
+    message.__renderKey = createMessageRenderKey(prefix)
+  }
+  return message.__renderKey
+}
+
+function createChatMessage(payload = {}) {
+  const message = { ...(payload || {}) }
+  message.__renderKey = createMessageRenderKey(message.kind === 'confirmation' ? 'confirm' : (message.role || 'msg'))
+  return message
+}
+
+function findMessageIndexByRenderKey(renderKey = '') {
+  const normalized = String(renderKey || '').trim()
+  if (!normalized) return -1
+  return messages.value.findIndex((item) => String(item?.__renderKey || '') === normalized)
+}
 
 function cloneStreamSteps(list = []) {
   return (Array.isArray(list) ? list : []).map((item) => ({ ...item }))
@@ -753,7 +782,77 @@ function migrateDraftSessionVisual(targetChatSessionId) {
   })
 }
 
-function toggleStreamStepsCollapsed() {
+function getMessageStreamSteps(message, index) {
+  if (Array.isArray(message?.streamSteps) && message.streamSteps.length) {
+    return message.streamSteps
+  }
+  if (index === latestAssistantMessageIndex.value) {
+    return streamSteps.value
+  }
+  return []
+}
+
+function isMessageStreamStepsCollapsed(message, index) {
+  if (Array.isArray(message?.streamSteps) && message.streamSteps.length) {
+    return Boolean(message.streamStepsCollapsed)
+  }
+  if (index === latestAssistantMessageIndex.value) {
+    return Boolean(streamStepsCollapsed.value)
+  }
+  return true
+}
+
+function syncAssistantMessageSteps(targetIndex, { collapsed = false } = {}) {
+  let index = -1
+  if (typeof targetIndex === 'string') {
+    index = findMessageIndexByRenderKey(targetIndex)
+  } else {
+    const parsed = Number(targetIndex)
+    index = Number.isInteger(parsed) ? parsed : -1
+  }
+  if (index < 0) return
+  const current = messages.value[index]
+  if (!current || current.role !== 'assistant' || current.kind === 'confirmation') return
+  if (!Array.isArray(streamSteps.value) || streamSteps.value.length === 0) return
+  messages.value[index] = {
+    ...current,
+    streamSteps: cloneStreamSteps(streamSteps.value),
+    streamStepsCollapsed: Boolean(collapsed),
+  }
+}
+
+function archiveLatestAssistantStepsForNextTurn() {
+  const targetIndex = latestAssistantMessageIndex.value
+  if (targetIndex < 0) return
+  const current = messages.value[targetIndex]
+  if (!current || current.role !== 'assistant' || current.kind === 'confirmation') return
+
+  const steps = Array.isArray(streamSteps.value) && streamSteps.value.length
+    ? cloneStreamSteps(streamSteps.value)
+    : Array.isArray(current.streamSteps)
+      ? cloneStreamSteps(current.streamSteps)
+      : []
+
+  if (!steps.length) return
+  messages.value[targetIndex] = {
+    ...current,
+    streamSteps: steps,
+    streamStepsCollapsed: true,
+  }
+}
+
+function toggleStreamStepsCollapsed(targetIndex = -1) {
+  const index = Number(targetIndex)
+  if (Number.isInteger(index) && index >= 0) {
+    const current = messages.value[index]
+    if (current?.role === 'assistant' && Array.isArray(current.streamSteps) && current.streamSteps.length) {
+      messages.value[index] = {
+        ...current,
+        streamStepsCollapsed: !Boolean(current.streamStepsCollapsed),
+      }
+      return
+    }
+  }
   streamStepsCollapsed.value = !streamStepsCollapsed.value
   saveSessionVisual()
 }
@@ -853,24 +952,27 @@ function upsertConfirmationMessage(payload) {
 
   if (existingIndex >= 0) {
     const current = messages.value[existingIndex]
+    const keepResolved = Boolean(current?.resolved)
     messages.value[existingIndex] = {
       ...current,
       ...normalized,
-      submitting: false,
-      resolved: false,
-      resolvedLabel: '',
+      submitting: keepResolved ? false : Boolean(current?.submitting),
+      resolved: keepResolved,
+      resolvedLabel: keepResolved ? String(current?.resolvedLabel || '已确认') : '',
     }
     scrollToBottom()
     return
   }
 
   messages.value.push({
-    role: 'assistant',
-    kind: 'confirmation',
-    ...normalized,
-    submitting: false,
-    resolved: false,
-    resolvedLabel: '',
+    ...createChatMessage({
+      role: 'assistant',
+      kind: 'confirmation',
+      ...normalized,
+      submitting: false,
+      resolved: false,
+      resolvedLabel: '',
+    }),
   })
   scrollToBottom()
 }
@@ -967,6 +1069,26 @@ function upsertStreamStep({ id, title, description, status, details = [] }) {
   }
   saveSessionVisual()
   scrollToBottom()
+}
+
+function finalizeRunningStreamSteps(nextStatus = 'success') {
+  const normalized = normalizeToolStatus(nextStatus)
+  let changed = false
+  streamSteps.value = streamSteps.value.map((item) => {
+    if (!item || item.status !== 'running') {
+      return item
+    }
+    changed = true
+    return {
+      ...item,
+      status: normalized.key,
+      statusLabel: normalized.label,
+    }
+  })
+  if (changed) {
+    saveSessionVisual()
+    scrollToBottom()
+  }
 }
 
 function getThoughtDescription(payload) {
@@ -1102,7 +1224,7 @@ async function confirmToolAction(message, option) {
 
 async function hydrateSessionConfirmations(targetChatSessionId) {
   const normalizedChatSessionId = String(targetChatSessionId || '').trim()
-  if (!normalizedChatSessionId) return
+  if (!normalizedChatSessionId) return 0
 
   try {
     const result = await fetchAIConfirmations(normalizedChatSessionId)
@@ -1110,8 +1232,10 @@ async function hydrateSessionConfirmations(targetChatSessionId) {
     for (const item of confirmations) {
       upsertConfirmationMessage(item)
     }
+    return confirmations.length
   } catch {
     // Ignore hydration errors to avoid blocking chat loading.
+    return 0
   }
 }
 
@@ -1137,6 +1261,41 @@ function startConfirmationPolling() {
     }
     triggerConfirmationHydration()
   }, CONFIRMATION_POLL_INTERVAL_MS)
+}
+
+function syncStreamSessionIdentity({ nextChatSessionId = '', requestState = null, persistVisual = true } = {}) {
+  const normalizedNextId = String(nextChatSessionId || '').trim()
+  if (!normalizedNextId || !requestState || typeof requestState !== 'object') return false
+
+  const state = requestState
+  const previousChatSessionId = String(state.requestChatSessionId || '').trim()
+  const previousSessionKey = String(state.requestSessionKey || '').trim() || getVisualSessionKey(previousChatSessionId)
+  const wasRequestSessionActive = getVisualSessionKey(chatSessionId.value) === previousSessionKey
+  const nextSessionKey = getVisualSessionKey(normalizedNextId)
+
+  if (!previousChatSessionId) {
+    migrateDraftSessionVisual(normalizedNextId)
+  }
+
+  if (nextSessionKey !== previousSessionKey) {
+    moveTypingSessionKey(previousSessionKey, nextSessionKey)
+    state.requestSessionKey = nextSessionKey
+  }
+  state.requestChatSessionId = normalizedNextId
+
+  if (!wasRequestSessionActive) {
+    return false
+  }
+
+  chatSessionId.value = normalizedNextId
+  selectedSessionId.value = normalizedNextId
+  saveCurrentChatSession()
+  if (persistVisual) {
+    saveSessionVisual(normalizedNextId)
+  }
+  triggerConfirmationHydration()
+  syncConfirmationPollingForCurrentSession()
+  return true
 }
 
 function hasConfirmingToolGroup(payload) {
@@ -1444,7 +1603,7 @@ function pickRandomGreetingText() {
 function setGreetingMessage({ typed = true } = {}) {
   stopGreetingTyping()
   const greetingText = pickRandomGreetingText()
-  messages.value = [{ role: 'assistant', content: '', tone: 'greeting' }]
+  messages.value = [createChatMessage({ role: 'assistant', content: '', tone: 'greeting' })]
   if (!typed) {
     messages.value[0].content = formatAssistantContent(greetingText)
     messages.value[0].tone = 'greeting'
@@ -1475,7 +1634,7 @@ function applyHistoryMessages(historyMessages = [], { typedOnEmpty = false } = {
   }
 
   stopGreetingTyping()
-  messages.value = historyMessages.map((item) => ({
+  messages.value = historyMessages.map((item) => createChatMessage({
     role: item?.role === 'user' ? 'user' : 'assistant',
     content: item?.role === 'user'
       ? formatUserContent(item?.content || '')
@@ -1680,8 +1839,8 @@ function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
   closeSessionMenu()
   if (backendKey) {
     selectedBackendKey.value = backendKey
-    applyDefaultModelForBackend()
   }
+  applyDefaultModelForBackend({ forcePreferred: true })
   applyHistoryMessages([], { typedOnEmpty: typedGreeting })
   clearStoredChatSession()
   inputText.value = ''
@@ -1752,59 +1911,57 @@ async function sendMessage(text) {
   const normalizedText = String(text || '').trim()
   if (!normalizedText) return
 
-  let requestChatSessionId = String(chatSessionId.value || '').trim()
-  let requestSessionKey = getVisualSessionKey(requestChatSessionId)
+  // Preserve previous round steps on its assistant message, then start a fresh step timeline.
+  archiveLatestAssistantStepsForNextTurn()
+  clearStreamSteps({ save: true })
+
+  const requestState = {
+    requestChatSessionId: String(chatSessionId.value || '').trim(),
+    requestSessionKey: '',
+    isRequestSessionActive: () => false,
+  }
+  requestState.requestSessionKey = getVisualSessionKey(requestState.requestChatSessionId)
   const requestSelection = {
     backendKey: selectedBackendKey.value,
     backend: selectedBackend.value,
     modelId: selectedModelId.value,
   }
-  const isRequestSessionActive = () => getVisualSessionKey(chatSessionId.value) === requestSessionKey
+  requestState.isRequestSessionActive = () => getVisualSessionKey(chatSessionId.value) === requestState.requestSessionKey
+  const isRequestSessionActive = () => requestState.isRequestSessionActive()
 
   if (!messages.value.some((item) => item.role === 'user') && messages.value.some((item) => item.tone === 'greeting')) {
     messages.value = []
   }
 
   // 用户发送
-  messages.value.push({ role: 'user', content: formatUserContent(normalizedText) })
+  const userMessage = createChatMessage({ role: 'user', content: formatUserContent(normalizedText) })
+  messages.value.push(userMessage)
   inputText.value = ''
   resizeInput()
   scrollToBottom()
 
-  patchTypingCountBySessionKey(requestSessionKey, +1)
+  patchTypingCountBySessionKey(requestState.requestSessionKey, +1)
   syncConfirmationPollingForCurrentSession()
-  const assistantIndex = messages.value.push({ role: 'assistant', content: '', loading: true }) - 1
+  const assistantMessage = createChatMessage({ role: 'assistant', content: '', loading: true })
+  messages.value.push(assistantMessage)
+  const assistantMessageKey = assistantMessage.__renderKey
+  const getAssistantMessageIndex = () => findMessageIndexByRenderKey(assistantMessageKey)
   let streamReply = ''
   scrollToBottom()
 
   try {
     const result = await queryAI({
       text: normalizedText,
-      requestChatSessionId,
+      requestChatSessionId: requestState.requestChatSessionId,
       requestSelection,
       onMeta: (payload) => {
         const nextChatSessionId = String(payload?.chatSessionId || '').trim()
         if (!nextChatSessionId) return
-
-        if (!requestChatSessionId) {
-          migrateDraftSessionVisual(nextChatSessionId)
-        }
-        const nextSessionKey = getVisualSessionKey(nextChatSessionId)
-        if (nextSessionKey !== requestSessionKey) {
-          moveTypingSessionKey(requestSessionKey, nextSessionKey)
-          requestSessionKey = nextSessionKey
-        }
-        requestChatSessionId = nextChatSessionId
-
-        if (!isRequestSessionActive()) {
-          return
-        }
-        chatSessionId.value = nextChatSessionId
-        selectedSessionId.value = nextChatSessionId
-        saveCurrentChatSession()
-        saveSessionVisual(nextChatSessionId)
-        triggerConfirmationHydration()
-        syncConfirmationPollingForCurrentSession()
+        syncStreamSessionIdentity({
+          nextChatSessionId,
+          requestState,
+          persistVisual: true,
+        })
       },
       onDelta: (chunk) => {
         if (!chunk) return
@@ -1812,7 +1969,9 @@ async function sendMessage(text) {
         if (!isRequestSessionActive()) {
           return
         }
-        const bubble = messages.value[assistantIndex]
+        const bubbleIndex = getAssistantMessageIndex()
+        if (bubbleIndex < 0) return
+        const bubble = messages.value[bubbleIndex]
         if (!bubble) return
         bubble.loading = false
         bubble.content = formatAssistantContent(streamReply)
@@ -1823,32 +1982,72 @@ async function sendMessage(text) {
         scrollToBottom()
       },
       onConfirmAdd: (payload) => {
+        const eventChatSessionId = String(payload?.chatSessionId || '').trim()
+        if (eventChatSessionId) {
+          syncStreamSessionIdentity({
+            nextChatSessionId: eventChatSessionId,
+            requestState,
+            persistVisual: false,
+          })
+        }
         if (!isRequestSessionActive()) return
         upsertConfirmationMessage(payload)
       },
       onConfirmUpdate: (payload) => {
+        const eventChatSessionId = String(payload?.chatSessionId || '').trim()
+        if (eventChatSessionId) {
+          syncStreamSessionIdentity({
+            nextChatSessionId: eventChatSessionId,
+            requestState,
+            persistVisual: false,
+          })
+        }
         if (!isRequestSessionActive()) return
         upsertConfirmationMessage(payload)
       },
       onConfirmRemove: (payload) => {
+        const eventChatSessionId = String(payload?.chatSessionId || '').trim()
+        if (eventChatSessionId) {
+          syncStreamSessionIdentity({
+            nextChatSessionId: eventChatSessionId,
+            requestState,
+            persistVisual: false,
+          })
+        }
         if (!isRequestSessionActive()) return
         removeConfirmationMessage(payload)
       },
       onStreamEvent: (payload) => {
+        const eventChatSessionId = String(payload?.chatSessionId || '').trim()
+        if (eventChatSessionId) {
+          syncStreamSessionIdentity({
+            nextChatSessionId: eventChatSessionId,
+            requestState,
+            persistVisual: false,
+          })
+        }
         if (!isRequestSessionActive()) return
         handleStreamSideEvent(payload)
+        syncAssistantMessageSteps(assistantMessageKey, { collapsed: false })
         if (hasConfirmingToolGroup(payload)) {
-          triggerConfirmationHydration()
+          const targetId = String(requestState.requestChatSessionId || chatSessionId.value || '').trim()
+          if (targetId) {
+            void hydrateSessionConfirmations(targetId)
+          } else {
+            triggerConfirmationHydration()
+          }
         }
       },
     })
 
-    if (isRequestSessionActive() && result?.chatSessionId) {
+    if (result?.chatSessionId) {
       const nextChatSessionId = String(result.chatSessionId || '').trim()
       if (nextChatSessionId) {
-        chatSessionId.value = nextChatSessionId
-        selectedSessionId.value = nextChatSessionId
-        saveCurrentChatSession()
+        syncStreamSessionIdentity({
+          nextChatSessionId,
+          requestState,
+          persistVisual: true,
+        })
       }
     }
     if (isRequestSessionActive() && result?.selection?.backendKey) {
@@ -1863,37 +2062,80 @@ async function sendMessage(text) {
     }
 
     const finalReply = String(result?.reply || streamReply || '暂无可用回复，请稍后重试。')
-    if (isRequestSessionActive() && messages.value[assistantIndex]) {
-      messages.value[assistantIndex] = {
+    if (isRequestSessionActive()) {
+      finalizeRunningStreamSteps('success')
+      syncAssistantMessageSteps(assistantMessageKey, { collapsed: false })
+    }
+    const finalAssistantIndex = getAssistantMessageIndex()
+    if (isRequestSessionActive() && finalAssistantIndex >= 0 && messages.value[finalAssistantIndex]) {
+      const current = messages.value[finalAssistantIndex] || {}
+      messages.value[finalAssistantIndex] = {
+        ...current,
         role: 'assistant',
+        loading: false,
         content: formatAssistantContent(finalReply),
         tone: resolveAssistantMessageTone(finalReply),
       }
     } else if (isRequestSessionActive()) {
-      messages.value.push({
+      messages.value.push(createChatMessage({
         role: 'assistant',
         content: formatAssistantContent(finalReply),
         tone: resolveAssistantMessageTone(finalReply),
-      })
+      }))
     }
   } catch (error) {
     const errorText = normalizeErrorText(error, 'AI 服务请求失败')
-    if (isRequestSessionActive() && messages.value[assistantIndex]) {
-      messages.value[assistantIndex] = {
+    if (isRequestSessionActive()) {
+      finalizeRunningStreamSteps('error')
+      syncAssistantMessageSteps(assistantMessageKey, { collapsed: false })
+    }
+    let pendingConfirmations = 0
+    if (isRequestSessionActive()) {
+      const activeChatSessionId = String(requestState.requestChatSessionId || '').trim()
+      if (activeChatSessionId) {
+        pendingConfirmations = await hydrateSessionConfirmations(activeChatSessionId)
+      }
+    }
+    const fallbackAssistantIndex = getAssistantMessageIndex()
+    if (isRequestSessionActive() && fallbackAssistantIndex >= 0 && messages.value[fallbackAssistantIndex]) {
+      if (pendingConfirmations > 0) {
+        const current = messages.value[fallbackAssistantIndex] || {}
+        messages.value[fallbackAssistantIndex] = {
+          ...current,
+          role: 'assistant',
+          loading: false,
+          content: formatAssistantContent('工具调用等待审批，请确认后继续执行。'),
+          tone: 'answer',
+        }
+        return
+      }
+      const current = messages.value[fallbackAssistantIndex] || {}
+      messages.value[fallbackAssistantIndex] = {
+        ...current,
         role: 'assistant',
+        loading: false,
         content: formatAssistantContent(`请求失败：${errorText}`),
         tone: 'answer',
       }
     } else if (isRequestSessionActive()) {
-      messages.value.push({
+      messages.value.push(createChatMessage({
         role: 'assistant',
         content: formatAssistantContent(`请求失败：${errorText}`),
         tone: 'answer',
-      })
+      }))
     }
   } finally {
     collapseThinkingState({ delayMs: 180 })
-    patchTypingCountBySessionKey(requestSessionKey, -1)
+    if (isRequestSessionActive()) {
+      const activeChatSessionId = String(requestState.requestChatSessionId || '').trim()
+      if (activeChatSessionId) {
+        await hydrateSessionConfirmations(activeChatSessionId)
+      }
+    }
+    patchTypingCountBySessionKey(requestState.requestSessionKey, -1)
+    if (!messages.value.some((item) => item?.role === 'assistant' && item?.loading)) {
+      patchTypingCountBySessionKey(requestState.requestSessionKey, -999)
+    }
     syncConfirmationPollingForCurrentSession()
     await loadSessionOptions().catch(() => undefined)
     scrollToBottom()
@@ -1989,27 +2231,54 @@ function parseModelVersionScore(text = '') {
   return parsed
 }
 
-function scorePreferredFastModel(option, backendFamily = '') {
+function buildModelText(option) {
   const id = String(option?.id || '').toLowerCase()
   const label = String(option?.label || '').toLowerCase()
-  const text = `${id} ${label}`.trim()
+  return `${id} ${label}`.trim()
+}
+
+function pickModelByPriority(options = [], predicates = []) {
+  for (const predicate of predicates) {
+    if (typeof predicate !== 'function') continue
+    const matched = options.filter((option) => option?.id && predicate(buildModelText(option)))
+    if (!matched.length) {
+      continue
+    }
+    matched.sort((a, b) => {
+      const textA = buildModelText(a)
+      const textB = buildModelText(b)
+      const scoreA = parseModelVersionScore(textA)
+      const scoreB = parseModelVersionScore(textB)
+      return scoreB - scoreA
+    })
+    return matched[0]?.id || ''
+  }
+  return ''
+}
+
+function scorePreferredFastModel(text = '', backendFamily = '') {
   const backend = String(backendFamily || '').toLowerCase()
   let score = 0
 
   if (backend.includes('gemini')) {
-    if (text.includes('flash')) score += 200
+    if (text.includes('gemini') && text.includes('flash') && /\b3(\.0)?\b/.test(text)) score += 700
+    if (text.includes('flash')) score += 360
     if (text.includes('lite')) score += 120
-    if (text.includes('pro')) score -= 60
-    score += Math.round(parseModelVersionScore(text) * 10)
+    if (text.includes('pro')) score -= 80
+    if (text.includes('thinking')) score -= 30
+    score += Math.round(parseModelVersionScore(text) * 12)
   } else if (backend.includes('codex') || backend.includes('gpt')) {
-    if (text.includes('5.2')) score += 260
-    if (text.includes('gpt-5') || text.includes('gpt 5')) score += 210
-    if (text.includes('mini')) score += 40
-    if (text.includes('o1') || text.includes('o3')) score -= 40
+    if (text.includes('gpt-5.3-codex-spark')) score += 900
+    if (text.includes('spark')) score += 520
+    if (text.includes('codex-mini') || text.includes('codex mini')) score += 260
+    if (text.includes('gpt-5.2-codex')) score += 220
+    if (text.includes('gpt-5.3-codex')) score += 180
+    if (text.includes('codex-max') || text.includes('codex max')) score -= 80
+    if (text.includes('o1') || text.includes('o3')) score -= 80
     score += Math.round(parseModelVersionScore(text) * 10)
   } else {
     if (text.includes('flash')) score += 140
-    if (text.includes('5.2')) score += 160
+    if (text.includes('spark')) score += 260
     score += Math.round(parseModelVersionScore(text) * 8)
   }
 
@@ -2018,10 +2287,35 @@ function scorePreferredFastModel(option, backendFamily = '') {
 
 function pickPreferredFastModelId(options = [], backendFamily = '') {
   if (!Array.isArray(options) || options.length === 0) return ''
+  const backend = String(backendFamily || '').toLowerCase()
+
+  if (backend.includes('gemini')) {
+    const byPriority = pickModelByPriority(options, [
+      (text) => text.includes('gemini') && text.includes('flash') && /\b3(\.0)?\b/.test(text) && !text.includes('thinking'),
+      (text) => text.includes('gemini') && text.includes('flash') && /\b3(\.0)?\b/.test(text),
+      (text) => text.includes('gemini') && text.includes('flash') && !text.includes('thinking'),
+      (text) => text.includes('flash') && !text.includes('thinking'),
+      (text) => text.includes('flash'),
+    ])
+    if (byPriority) return byPriority
+  }
+
+  if (backend.includes('codex') || backend.includes('gpt')) {
+    const byPriority = pickModelByPriority(options, [
+      (text) => text.includes('gpt-5.3-codex-spark'),
+      (text) => text.includes('codex') && text.includes('spark'),
+      (text) => text.includes('gpt-5.2-codex'),
+      (text) => text.includes('codex-mini') || text.includes('codex mini'),
+      (text) => text.includes('gpt-5.3-codex'),
+      (text) => text.includes('codex'),
+    ])
+    if (byPriority) return byPriority
+  }
+
   let best = null
   for (const option of options) {
     if (!option || !option.id) continue
-    const score = scorePreferredFastModel(option, backendFamily)
+    const score = scorePreferredFastModel(buildModelText(option), backendFamily)
     if (!best || score > best.score) {
       best = { id: option.id, score }
     }
@@ -2136,13 +2430,45 @@ function resolveAssistantMessageTone(text) {
 
 function applyInlineMarkdown(escapedText) {
   let html = String(escapedText || '')
-  html = html.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    (_match, label, url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
-  )
-  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+  const inlineCodeTokens = []
+  html = html.replace(/`([^`\n]+)`/g, (_match, code) => {
+    const token = `@@INLINE_CODE_${inlineCodeTokens.length}@@`
+    inlineCodeTokens.push({
+      token,
+      html: `<code>${code}</code>`,
+    })
+    return token
+  })
+
+  const markdownLinkTokens = []
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_match, label, url) => {
+    const token = `@@MARKDOWN_LINK_${markdownLinkTokens.length}@@`
+    markdownLinkTokens.push({
+      token,
+      html: `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`,
+    })
+    return token
+  })
+
+  html = html.replace(/https?:\/\/[^\s<>"']+/g, (rawUrl) => {
+    const trailingMatch = rawUrl.match(/[),.;!?]+$/)
+    const trailing = trailingMatch ? trailingMatch[0] : ''
+    const url = trailing ? rawUrl.slice(0, -trailing.length) : rawUrl
+    if (!url) return rawUrl
+    return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>${trailing}`
+  })
+
+  for (const item of markdownLinkTokens) {
+    html = html.replace(item.token, item.html)
+  }
+
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+
+  for (const item of inlineCodeTokens) {
+    html = html.replace(item.token, item.html)
+  }
+
   return html
 }
 

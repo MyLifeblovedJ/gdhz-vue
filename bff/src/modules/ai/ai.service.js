@@ -184,7 +184,13 @@ export class AiService {
               input,
               timeouts: config.ai,
               onChunk,
-              onEvent,
+              onEvent: (eventPayload) => {
+                if (typeof onEvent !== 'function') return
+                onEvent({
+                  ...(eventPayload && typeof eventPayload === 'object' ? eventPayload : {}),
+                  chatSessionId: session.chatSessionId,
+                })
+              },
             }),
         })
       })

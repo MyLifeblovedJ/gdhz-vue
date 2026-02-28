@@ -32,6 +32,8 @@ const GEMINI_FALLBACK_MODELS = [
 ]
 
 const CODEX_FALLBACK_MODELS = [
+  { id: 'gpt-5.3-codex', label: 'GPT-5.3 Codex' },
+  { id: 'gpt-5.3-codex-spark', label: 'GPT-5.3 Codex Spark' },
   { id: 'gpt-5.2-codex', label: 'GPT-5.2 Codex' },
   { id: 'gpt-5.1-codex-max', label: 'GPT-5.1 Codex Max' },
   { id: 'gpt-5.2', label: 'GPT-5.2' },
@@ -108,8 +110,26 @@ function resolveDefaultModelId(rawValue) {
 function withFallbackModelInfo(modelInfo, fallbackModels, preferredModelId = '') {
   const fallback = Array.isArray(fallbackModels) ? fallbackModels.filter((item) => item?.id) : []
   const normalized = modelInfo && typeof modelInfo === 'object' ? modelInfo : { currentModelId: '', availableModels: [] }
-  const availableModels =
-    Array.isArray(normalized.availableModels) && normalized.availableModels.length > 0 ? normalized.availableModels : fallback
+  const availableModelsFromSource = Array.isArray(normalized.availableModels) ? normalized.availableModels : []
+  const mergedModels = []
+  const seen = new Set()
+
+  const pushUnique = (list) => {
+    for (const item of list) {
+      const id = String(item?.id || '').trim()
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      mergedModels.push({
+        id,
+        label: String(item?.label || item?.name || id),
+      })
+    }
+  }
+
+  pushUnique(availableModelsFromSource)
+  pushUnique(fallback)
+
+  const availableModels = mergedModels.length > 0 ? mergedModels : fallback
 
   const availableModelIds = new Set(availableModels.map((item) => item.id))
   let currentModelId = normalized.currentModelId || preferredModelId || availableModels[0]?.id || ''
