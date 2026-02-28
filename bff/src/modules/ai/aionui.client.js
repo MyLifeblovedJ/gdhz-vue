@@ -897,16 +897,57 @@ export class AionUiClient {
         resetIdleTimer()
       }
 
-      const isToolCallFinished = (status) => {
-        const normalized = String(status || '').toLowerCase()
-        return normalized === 'success' || normalized === 'error' || normalized === 'canceled' || normalized === 'cancelled'
+      const isToolCallFinished = (status, payload = null) => {
+        const normalized = String(status || '').toLowerCase().trim()
+        if (
+          normalized === 'success' ||
+          normalized === 'succeeded' ||
+          normalized === 'done' ||
+          normalized === 'finished' ||
+          normalized === 'complete' ||
+          normalized === 'completed' ||
+          normalized === 'ok' ||
+          normalized === 'error' ||
+          normalized === 'failed' ||
+          normalized === 'failure' ||
+          normalized === 'canceled' ||
+          normalized === 'cancelled' ||
+          normalized === 'rejected' ||
+          normalized === 'skipped' ||
+          normalized === 'terminated'
+        ) {
+          return true
+        }
+
+        if (!payload || typeof payload !== 'object') {
+          return false
+        }
+
+        if (payload.finished === true || payload.done === true || payload.complete === true || payload.completed === true) {
+          return true
+        }
+
+        if (payload.success === true || payload.ok === true) {
+          return true
+        }
+
+        if (payload.error && !normalized) {
+          return true
+        }
+
+        return false
       }
 
       const upsertToolCallState = (toolCallId, status, payload) => {
         const id = String(toolCallId || '').trim()
         if (!id) return
-        if (isToolCallFinished(status)) {
+        const normalizedStatus = String(status || '').trim()
+        if (isToolCallFinished(normalizedStatus, payload)) {
           activeToolCalls.delete(id)
+          return
+        }
+        // Ignore status-less snapshots to avoid stale blocking states.
+        if (!normalizedStatus) {
           return
         }
         activeToolCalls.set(id, payload || { status })

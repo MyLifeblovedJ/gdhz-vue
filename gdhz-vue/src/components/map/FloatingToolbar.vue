@@ -63,7 +63,7 @@
         <div class="halo-glow-bg"></div>
         <div class="dialog-content ai-layout-shell">
           <aside class="ai-session-sider">
-            <button class="session-btn new-session" :disabled="catalogLoading || isTyping" @click="startNewSession({ typedGreeting: true })">
+            <button class="session-btn new-session" :disabled="catalogLoading" @click="startNewSession({ typedGreeting: true })">
               <i class="fa-solid fa-plus"></i>
               新建会话
             </button>
@@ -81,7 +81,6 @@
                       class="sider-item"
                       :class="{ active: item.chatSessionId === selectedSessionId }"
                       :title="item.title || '未命名会话'"
-                      :disabled="isTyping"
                       @click="activateSession(item)"
                     >
                       <span class="sider-item-avatar" :class="getBackendClass(item.backend || item.backendKey)">
@@ -99,7 +98,7 @@
                       type="button"
                       class="sider-item-menu-trigger"
                       :class="{ open: sessionMenuId === item.chatSessionId }"
-                      :disabled="isTyping"
+                      :disabled="isSessionTyping(item.chatSessionId)"
                       @pointerdown.stop
                       @click.stop="toggleSessionMenu(item.chatSessionId)"
                     >
@@ -159,7 +158,7 @@
                   type="button"
                   class="model-switch-btn"
                   :class="{ active: activeModelKey === 'gemini' }"
-                  :disabled="catalogLoading || isTyping"
+                  :disabled="catalogLoading || isCurrentSessionTyping"
                   @click="switchBackend('gemini')"
                 >
                   <span class="model-dot">
@@ -172,7 +171,7 @@
                   type="button"
                   class="model-switch-btn"
                   :class="{ active: activeModelKey === 'codex' }"
-                  :disabled="catalogLoading || isTyping"
+                  :disabled="catalogLoading || isCurrentSessionTyping"
                   @click="switchBackend('codex')"
                 >
                   <span class="model-dot">
@@ -294,7 +293,7 @@
                   @focus="inputFocused = true"
                   @blur="inputFocused = false"
                   placeholder="请输入您的问题..."
-                  :disabled="isTyping"
+                  :disabled="isCurrentSessionTyping"
                   class="search-field"
                   rows="1"
                 ></textarea>
@@ -303,7 +302,7 @@
                     <select
                       v-model="selectedModelId"
                       class="composer-model-select"
-                      :disabled="catalogLoading || isTyping || modelOptions.length === 0"
+                      :disabled="catalogLoading || isCurrentSessionTyping || modelOptions.length === 0"
                       @change="handleModelChange"
                     >
                       <option v-if="modelOptions.length === 0" value="">默认模型</option>
@@ -315,7 +314,7 @@
                   </div>
                 </div>
                 <div class="search-btn-border"></div>
-                <button class="send-btn" @click="handleSend" :disabled="!inputText || isTyping">
+                <button class="send-btn" @click="handleSend" :disabled="!inputText || isCurrentSessionTyping">
                   <i class="fa-solid fa-arrow-up"></i>
                 </button>
               </div>
@@ -384,11 +383,11 @@ function handleDeviceClick(device) {
 const showAIPanel = ref(false)
 const isAIPanelExpanded = ref(false)
 const inputText = ref('')
-const isTyping = ref(false)
 const messagesRef = ref(null)
 const inputRef = ref(null)
 const inputFocused = ref(false)
 const chatSessionId = ref(null)
+const typingSessionCounts = ref({})
 const catalogLoading = ref(false)
 const catalogProviders = ref([])
 const selectedBackendKey = ref('')
@@ -405,6 +404,7 @@ const PINNED_SESSION_STORAGE_KEY = 'gdhz.ai.pinnedSessions.v1'
 const DEFAULT_COMPOSER_PLACEHOLDER = '请输入您的问题...'
 const HISTORY_PAGE_SIZE = 100
 const SESSION_PAGE_SIZE = 50
+const isCurrentSessionTyping = computed(() => isSessionTyping(chatSessionId.value))
 const BACKEND_ICON_MAP = Object.freeze({
   gemini: '/icons/gemini-color.svg',
   codex: '/icons/openai-light.svg',
@@ -673,6 +673,50 @@ function persistSessionVisualStore(nextStore) {
 function getVisualSessionKey(targetChatSessionId = chatSessionId.value) {
   const normalized = String(targetChatSessionId || '').trim()
   return normalized || SESSION_VISUAL_DRAFT_KEY
+}
+
+function getTypingCountBySessionKey(targetSessionKey = '') {
+  const key = String(targetSessionKey || '').trim()
+  if (!key) return 0
+  return Number(typingSessionCounts.value[key] || 0)
+}
+
+function patchTypingCountBySessionKey(targetSessionKey = '', delta = 0) {
+  const key = String(targetSessionKey || '').trim()
+  if (!key) return
+  const next = { ...typingSessionCounts.value }
+  const current = Number(next[key] || 0)
+  const updated = Math.max(0, current + Number(delta || 0))
+  if (updated > 0) {
+    next[key] = updated
+  } else {
+    delete next[key]
+  }
+  typingSessionCounts.value = next
+}
+
+function moveTypingSessionKey(fromSessionKey = '', toSessionKey = '') {
+  const fromKey = String(fromSessionKey || '').trim()
+  const toKey = String(toSessionKey || '').trim()
+  if (!fromKey || !toKey || fromKey === toKey) return
+  const fromCount = getTypingCountBySessionKey(fromKey)
+  if (fromCount <= 0) return
+  const next = { ...typingSessionCounts.value }
+  delete next[fromKey]
+  next[toKey] = Number(next[toKey] || 0) + fromCount
+  typingSessionCounts.value = next
+}
+
+function isSessionTyping(targetChatSessionId = chatSessionId.value) {
+  return getTypingCountBySessionKey(getVisualSessionKey(targetChatSessionId)) > 0
+}
+
+function syncConfirmationPollingForCurrentSession() {
+  if (isSessionTyping(chatSessionId.value)) {
+    startConfirmationPolling()
+    return
+  }
+  stopConfirmationPolling()
 }
 
 function saveSessionVisual(targetChatSessionId = chatSessionId.value) {
@@ -1087,7 +1131,7 @@ function startConfirmationPolling() {
   stopConfirmationPolling()
   triggerConfirmationHydration()
   confirmationPollTimer = setInterval(() => {
-    if (!isTyping.value) {
+    if (!isSessionTyping(chatSessionId.value)) {
       stopConfirmationPolling()
       return
     }
@@ -1219,25 +1263,23 @@ function matchProviderByBackend(provider, backendFamily) {
 }
 
 function switchBackend(backendFamily) {
-  if (catalogLoading.value || isTyping.value) return
+  if (catalogLoading.value || isCurrentSessionTyping.value) return
   const normalized = String(backendFamily || '').toLowerCase()
   if (!normalized || normalized === activeModelKey.value) return
 
-  if (!catalogProviders.value.length) {
-    startNewSession({ backendKey: normalized, typedGreeting: true })
-    return
-  }
+  if (!catalogProviders.value.length) return
 
   const provider = catalogProviders.value.find((item) => matchProviderByBackend(item, normalized))
   if (!provider) return
 
   const backendKey = provider.backendKey || provider.backend
-  startNewSession({ backendKey, typedGreeting: true })
+  if (!backendKey) return
+  selectedBackendKey.value = backendKey
+  applyDefaultModelForBackend({ forcePreferred: true })
 }
 
 function handleModelChange() {
-  if (catalogLoading.value || isTyping.value) return
-  startNewSession({ typedGreeting: true })
+  if (catalogLoading.value || isCurrentSessionTyping.value) return
 }
 
 function normalizeErrorText(error, fallback = 'AI 服务请求失败') {
@@ -1360,7 +1402,10 @@ async function deleteSessionByItem(session) {
 }
 
 async function handleSessionMenuAction(action, session) {
-  if (!session || isTyping.value) return
+  if (!session) return
+  if ((action === 'rename' || action === 'delete') && isSessionTyping(session.chatSessionId)) {
+    return
+  }
   if (action === 'pin') {
     togglePinSession(session.chatSessionId)
     closeSessionMenu()
@@ -1520,6 +1565,7 @@ async function loadHistoryForSession(targetChatSessionId) {
   applyHistoryMessages(historyMessages, { typedOnEmpty: false })
   restoreSessionVisual(targetChatSessionId)
   await hydrateSessionConfirmations(targetChatSessionId)
+  syncConfirmationPollingForCurrentSession()
   scrollToBottom()
 }
 
@@ -1611,6 +1657,7 @@ async function activateSession(session) {
   syncSelectionFromSession(session)
   try {
     await loadHistoryForSession(session.chatSessionId)
+    syncConfirmationPollingForCurrentSession()
   } catch (error) {
     const errorText = normalizeErrorText(error, '读取会话失败')
     messages.value.push({
@@ -1638,6 +1685,7 @@ function startNewSession({ backendKey = '', typedGreeting = true } = {}) {
   applyHistoryMessages([], { typedOnEmpty: typedGreeting })
   clearStoredChatSession()
   inputText.value = ''
+  syncConfirmationPollingForCurrentSession()
   resizeInput()
 }
 
@@ -1694,7 +1742,7 @@ function resizeInput() {
 
 // 发送消息
 async function handleSend() {
-  if (!inputText.value.trim() || isTyping.value) return
+  if (!inputText.value.trim() || isCurrentSessionTyping.value) return
   sendMessage(inputText.value)
 }
 
@@ -1703,6 +1751,15 @@ async function sendMessage(text) {
   resetThinkingState()
   const normalizedText = String(text || '').trim()
   if (!normalizedText) return
+
+  let requestChatSessionId = String(chatSessionId.value || '').trim()
+  let requestSessionKey = getVisualSessionKey(requestChatSessionId)
+  const requestSelection = {
+    backendKey: selectedBackendKey.value,
+    backend: selectedBackend.value,
+    modelId: selectedModelId.value,
+  }
+  const isRequestSessionActive = () => getVisualSessionKey(chatSessionId.value) === requestSessionKey
 
   if (!messages.value.some((item) => item.role === 'user') && messages.value.some((item) => item.tone === 'greeting')) {
     messages.value = []
@@ -1714,35 +1771,105 @@ async function sendMessage(text) {
   resizeInput()
   scrollToBottom()
 
-  isTyping.value = true
-  startConfirmationPolling()
+  patchTypingCountBySessionKey(requestSessionKey, +1)
+  syncConfirmationPollingForCurrentSession()
   const assistantIndex = messages.value.push({ role: 'assistant', content: '', loading: true }) - 1
   let streamReply = ''
   scrollToBottom()
 
   try {
-    const result = await queryAI(normalizedText, (chunk) => {
-      if (!chunk) return
-      streamReply += chunk
-      const bubble = messages.value[assistantIndex]
-      if (!bubble) return
-      bubble.loading = false
-      bubble.content = formatAssistantContent(streamReply)
-      bubble.tone = resolveAssistantMessageTone(streamReply)
-      if (thinkingActive.value) {
-        collapseThinkingState({ delayMs: 260 })
-      }
-      scrollToBottom()
+    const result = await queryAI({
+      text: normalizedText,
+      requestChatSessionId,
+      requestSelection,
+      onMeta: (payload) => {
+        const nextChatSessionId = String(payload?.chatSessionId || '').trim()
+        if (!nextChatSessionId) return
+
+        if (!requestChatSessionId) {
+          migrateDraftSessionVisual(nextChatSessionId)
+        }
+        const nextSessionKey = getVisualSessionKey(nextChatSessionId)
+        if (nextSessionKey !== requestSessionKey) {
+          moveTypingSessionKey(requestSessionKey, nextSessionKey)
+          requestSessionKey = nextSessionKey
+        }
+        requestChatSessionId = nextChatSessionId
+
+        if (!isRequestSessionActive()) {
+          return
+        }
+        chatSessionId.value = nextChatSessionId
+        selectedSessionId.value = nextChatSessionId
+        saveCurrentChatSession()
+        saveSessionVisual(nextChatSessionId)
+        triggerConfirmationHydration()
+        syncConfirmationPollingForCurrentSession()
+      },
+      onDelta: (chunk) => {
+        if (!chunk) return
+        streamReply += chunk
+        if (!isRequestSessionActive()) {
+          return
+        }
+        const bubble = messages.value[assistantIndex]
+        if (!bubble) return
+        bubble.loading = false
+        bubble.content = formatAssistantContent(streamReply)
+        bubble.tone = resolveAssistantMessageTone(streamReply)
+        if (thinkingActive.value) {
+          collapseThinkingState({ delayMs: 260 })
+        }
+        scrollToBottom()
+      },
+      onConfirmAdd: (payload) => {
+        if (!isRequestSessionActive()) return
+        upsertConfirmationMessage(payload)
+      },
+      onConfirmUpdate: (payload) => {
+        if (!isRequestSessionActive()) return
+        upsertConfirmationMessage(payload)
+      },
+      onConfirmRemove: (payload) => {
+        if (!isRequestSessionActive()) return
+        removeConfirmationMessage(payload)
+      },
+      onStreamEvent: (payload) => {
+        if (!isRequestSessionActive()) return
+        handleStreamSideEvent(payload)
+        if (hasConfirmingToolGroup(payload)) {
+          triggerConfirmationHydration()
+        }
+      },
     })
 
+    if (isRequestSessionActive() && result?.chatSessionId) {
+      const nextChatSessionId = String(result.chatSessionId || '').trim()
+      if (nextChatSessionId) {
+        chatSessionId.value = nextChatSessionId
+        selectedSessionId.value = nextChatSessionId
+        saveCurrentChatSession()
+      }
+    }
+    if (isRequestSessionActive() && result?.selection?.backendKey) {
+      const nextBackendKey = String(result.selection.backendKey || '').trim()
+      if (nextBackendKey) {
+        selectedBackendKey.value = nextBackendKey
+      }
+      const nextModelId = String(result?.selection?.modelId || '').trim()
+      if (nextModelId && modelOptions.value.some((item) => item.id === nextModelId)) {
+        selectedModelId.value = nextModelId
+      }
+    }
+
     const finalReply = String(result?.reply || streamReply || '暂无可用回复，请稍后重试。')
-    if (messages.value[assistantIndex]) {
+    if (isRequestSessionActive() && messages.value[assistantIndex]) {
       messages.value[assistantIndex] = {
         role: 'assistant',
         content: formatAssistantContent(finalReply),
         tone: resolveAssistantMessageTone(finalReply),
       }
-    } else {
+    } else if (isRequestSessionActive()) {
       messages.value.push({
         role: 'assistant',
         content: formatAssistantContent(finalReply),
@@ -1751,13 +1878,13 @@ async function sendMessage(text) {
     }
   } catch (error) {
     const errorText = normalizeErrorText(error, 'AI 服务请求失败')
-    if (messages.value[assistantIndex]) {
+    if (isRequestSessionActive() && messages.value[assistantIndex]) {
       messages.value[assistantIndex] = {
         role: 'assistant',
         content: formatAssistantContent(`请求失败：${errorText}`),
         tone: 'answer',
       }
-    } else {
+    } else if (isRequestSessionActive()) {
       messages.value.push({
         role: 'assistant',
         content: formatAssistantContent(`请求失败：${errorText}`),
@@ -1766,8 +1893,8 @@ async function sendMessage(text) {
     }
   } finally {
     collapseThinkingState({ delayMs: 180 })
-    isTyping.value = false
-    stopConfirmationPolling()
+    patchTypingCountBySessionKey(requestSessionKey, -1)
+    syncConfirmationPollingForCurrentSession()
     await loadSessionOptions().catch(() => undefined)
     scrollToBottom()
   }
@@ -1791,7 +1918,17 @@ function buildSummarySnapshot() {
   }
 }
 
-async function queryAI(text, onStreamChunk) {
+async function queryAI({
+  text,
+  requestChatSessionId = '',
+  requestSelection = {},
+  onMeta = () => {},
+  onDelta = () => {},
+  onConfirmAdd = () => {},
+  onConfirmUpdate = () => {},
+  onConfirmRemove = () => {},
+  onStreamEvent = () => {},
+}) {
   if (shouldUseSummaryApi(text)) {
     const response = await fetchCurrentSummary({
       region: 'gd',
@@ -1799,77 +1936,100 @@ async function queryAI(text, onStreamChunk) {
       detailLevel: 'standard',
       snapshot: buildSummarySnapshot(),
       selection: {
-        backendKey: selectedBackendKey.value,
-        backend: selectedBackend.value,
-        modelId: selectedModelId.value
+        backendKey: requestSelection.backendKey || '',
+        backend: requestSelection.backend || '',
+        modelId: requestSelection.modelId || '',
       }
     })
 
     return {
-      chatSessionId: chatSessionId.value,
+      chatSessionId: requestChatSessionId || '',
+      selection: {
+        backendKey: requestSelection.backendKey || '',
+        backend: requestSelection.backend || '',
+        modelId: requestSelection.modelId || '',
+      },
       reply: response?.summaryText || '暂无可用摘要，请稍后重试。',
     }
   }
 
   const response = await chatWithAIStream({
-    chatSessionId: chatSessionId.value,
+    chatSessionId: requestChatSessionId || null,
     message: text,
     context: {
       page: store.currentPage,
       region: 'gd'
     },
     selection: {
-      backendKey: selectedBackendKey.value,
-      backend: selectedBackend.value,
-      modelId: selectedModelId.value
+      backendKey: requestSelection.backendKey || '',
+      backend: requestSelection.backend || '',
+      modelId: requestSelection.modelId || '',
     },
-    onMeta: (payload) => {
-      const nextChatSessionId = String(payload?.chatSessionId || '').trim()
-      if (!nextChatSessionId) return
-      migrateDraftSessionVisual(nextChatSessionId)
-      chatSessionId.value = nextChatSessionId
-      selectedSessionId.value = nextChatSessionId
-      saveCurrentChatSession()
-      saveSessionVisual(nextChatSessionId)
-      triggerConfirmationHydration()
-    },
-    onDelta: onStreamChunk,
-    onConfirmAdd: (payload) => {
-      upsertConfirmationMessage(payload)
-    },
-    onConfirmUpdate: (payload) => {
-      upsertConfirmationMessage(payload)
-    },
-    onConfirmRemove: (payload) => {
-      removeConfirmationMessage(payload)
-    },
-    onStreamEvent: (payload) => {
-      handleStreamSideEvent(payload)
-      if (hasConfirmingToolGroup(payload)) {
-        triggerConfirmationHydration()
-      }
-    },
+    onMeta,
+    onDelta,
+    onConfirmAdd,
+    onConfirmUpdate,
+    onConfirmRemove,
+    onStreamEvent,
   })
 
-  if (response?.chatSessionId) {
-    chatSessionId.value = response.chatSessionId
-    selectedSessionId.value = response.chatSessionId
-    if (response?.selection?.backendKey) {
-      selectedBackendKey.value = response.selection.backendKey
-    }
-    if (response?.selection?.modelId && modelOptions.value.some((item) => item.id === response.selection.modelId)) {
-      selectedModelId.value = response.selection.modelId
-    }
-    saveCurrentChatSession()
-  }
-
   return {
-    chatSessionId: response?.chatSessionId || chatSessionId.value,
+    chatSessionId: response?.chatSessionId || requestChatSessionId || '',
+    selection: response?.selection || null,
     reply: response?.reply || '暂无可用回复，请稍后重试。'
   }
 }
 
-function applyDefaultModelForBackend() {
+function parseModelVersionScore(text = '') {
+  const normalized = String(text || '').toLowerCase()
+  const matches = normalized.match(/\d+(?:\.\d+)?/g)
+  if (!Array.isArray(matches) || matches.length === 0) return 0
+  const parsed = Number.parseFloat(matches[0])
+  if (!Number.isFinite(parsed)) return 0
+  return parsed
+}
+
+function scorePreferredFastModel(option, backendFamily = '') {
+  const id = String(option?.id || '').toLowerCase()
+  const label = String(option?.label || '').toLowerCase()
+  const text = `${id} ${label}`.trim()
+  const backend = String(backendFamily || '').toLowerCase()
+  let score = 0
+
+  if (backend.includes('gemini')) {
+    if (text.includes('flash')) score += 200
+    if (text.includes('lite')) score += 120
+    if (text.includes('pro')) score -= 60
+    score += Math.round(parseModelVersionScore(text) * 10)
+  } else if (backend.includes('codex') || backend.includes('gpt')) {
+    if (text.includes('5.2')) score += 260
+    if (text.includes('gpt-5') || text.includes('gpt 5')) score += 210
+    if (text.includes('mini')) score += 40
+    if (text.includes('o1') || text.includes('o3')) score -= 40
+    score += Math.round(parseModelVersionScore(text) * 10)
+  } else {
+    if (text.includes('flash')) score += 140
+    if (text.includes('5.2')) score += 160
+    score += Math.round(parseModelVersionScore(text) * 8)
+  }
+
+  return score
+}
+
+function pickPreferredFastModelId(options = [], backendFamily = '') {
+  if (!Array.isArray(options) || options.length === 0) return ''
+  let best = null
+  for (const option of options) {
+    if (!option || !option.id) continue
+    const score = scorePreferredFastModel(option, backendFamily)
+    if (!best || score > best.score) {
+      best = { id: option.id, score }
+    }
+  }
+  return best?.id || ''
+}
+
+function applyDefaultModelForBackend({ forcePreferred = false } = {}) {
   const options = modelOptions.value
   if (!options.length) {
     selectedModelId.value = ''
@@ -1877,7 +2037,16 @@ function applyDefaultModelForBackend() {
   }
 
   const stillExists = options.some(item => item.id === selectedModelId.value)
+  const preferredModelId = pickPreferredFastModelId(options, selectedBackend.value || selectedBackendKey.value)
+  if (forcePreferred && preferredModelId) {
+    selectedModelId.value = preferredModelId
+    return
+  }
   if (stillExists) {
+    return
+  }
+  if (preferredModelId) {
+    selectedModelId.value = preferredModelId
     return
   }
   selectedModelId.value = options[0].id
@@ -1904,11 +2073,8 @@ async function loadAICatalog() {
       : (providers[0].backendKey || providers[0].backend)
 
     selectedBackendKey.value = preferredBackend
-    const backendInfo = providers.find(item => (item.backendKey || item.backend) === preferredBackend)
-    const preferredModelId = backendInfo?.currentModelId || ''
-    const hasPreferred = Array.isArray(backendInfo?.models) && backendInfo.models.some(item => item.id === preferredModelId)
-    selectedModelId.value = hasPreferred ? preferredModelId : ''
-    applyDefaultModelForBackend()
+    selectedModelId.value = ''
+    applyDefaultModelForBackend({ forcePreferred: true })
   } catch (_error) {
     if (!catalogProviders.value.length) {
       catalogProviders.value = [
@@ -1957,11 +2123,12 @@ function resolveAssistantMessageTone(text) {
   const raw = String(text || '').trim()
   if (!raw) return 'answer'
   const compact = raw.replace(/\s+/g, ' ').trim()
+  const hasChinese = /[\u4e00-\u9fff]/.test(compact)
   const enPlanCount = (compact.match(/\bI will\b/gi) || []).length
   const zhPlanCount = (compact.match(/(我将|我会|接下来我会|先为您)/g) || []).length
   const hasToolVerb = /(search|verify|check|look up|google|查询|检索|搜索|核实)/i.test(compact)
   const sentenceCount = (compact.match(/[.!?。！？]/g) || []).length
-  if ((enPlanCount >= 2 || zhPlanCount >= 2) && hasToolVerb && sentenceCount >= 2) {
+  if (!hasChinese && (enPlanCount >= 2 || zhPlanCount >= 2) && hasToolVerb && sentenceCount >= 2) {
     return 'thought'
   }
   return 'answer'
@@ -2906,8 +3073,8 @@ function formatAssistantContent(text) {
   background: transparent;
   border: none;
   color: rgba(203, 213, 225, 0.9);
-  font-size: 13px;
-  line-height: 1.56;
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 .halo-message.is-greeting .msg-content {
