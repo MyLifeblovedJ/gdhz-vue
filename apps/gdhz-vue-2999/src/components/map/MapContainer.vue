@@ -1,5 +1,5 @@
 ﻿<template>
-  <div ref="mapAreaRef" class="map-area" :class="{ fullscreen: props.fullscreen }">
+  <div class="map-area" :class="{ fullscreen: props.fullscreen }">
     <div ref="mapRef" class="map-container leaflet-stage" :class="{ active: is2DMode }"></div>
     <div ref="cesiumRef" class="map-container cesium-stage" :class="{ active: is3DMode }"></div>
 
@@ -28,7 +28,6 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   Cartesian3,
-  Cartesian2,
   Color,
   Math as CesiumMath,
   OpenStreetMapImageryProvider,
@@ -75,7 +74,6 @@ const props = defineProps({
 const emit = defineEmits(['map-ready', 'device-click'])
 
 const store = useAppStore()
-const mapAreaRef = ref(null)
 const mapRef = ref(null)
 const cesiumRef = ref(null)
 const windCanvas = ref(null)
@@ -90,38 +88,13 @@ let typhoonLayer = null
 let vesselLayer = null
 let windAnimationFrame = null
 let waveAnimationFrame = null
-let mapWheelCaptureHandler = null
-let lastWheelZoomTime = 0
-let pendingWheelDelta = 0
-let wheelZoomRaf = 0
 let isSwitchingBasemap = false
 let provinceBoundaryLayer2D = null
 let provinceBoundaryEntities3D = []
 let cityWarningBoundaryLayer2D = null
 let cityWarningBoundaryEntities3D = []
-let coastalCityLabelLayer2D = null
-let coastalCityLabelEntities3D = []
-let countyBoundaryLayer2D = null
-let countyLabelLayer2D = null
-let mapZoomLevelHandler = null
-let countyBoundaryEntities3D = []
-let countyLabelEntities3D = []
-let viewerCameraMoveEndHandler = null
-let gdCountyBoundaryData = null
-let countyBoundaryLoadingPromise = null
-let countyRenderItems = []
-let countyBoundariesRendered2D = false
-let countyLabelsRendered2D = false
-let countyBoundariesRendered3D = false
-let countyLabelsRendered3D = false
 const CITY_WARNING_PANE = 'city-warning-pane'
 const PROVINCE_BOUNDARY_PANE = 'province-boundary-pane'
-const COUNTY_BOUNDARY_PANE = 'county-boundary-pane'
-const COUNTY_LABEL_PANE = 'county-label-pane'
-const COUNTY_BOUNDARY_MIN_ZOOM = 9
-const COUNTY_LABEL_MIN_ZOOM = 10
-const COUNTY_BOUNDARY_MAX_HEIGHT_3D = 800000
-const COUNTY_LABEL_MAX_HEIGHT_3D = 500000
 
 const THREE_D_VIEW_PRESETS = {
   decision: {
@@ -229,24 +202,6 @@ const WARNING_LEVEL_WEIGHT = {
   blue: 1
 }
 
-const COASTAL_CITY_NAMES = new Set([
-  '潮州市',
-  '汕头市',
-  '揭阳市',
-  '汕尾市',
-  '惠州市',
-  '深圳市',
-  '东莞市',
-  '广州市',
-  '中山市',
-  '珠海市',
-  '江门市',
-  '阳江市',
-  '茂名市',
-  '湛江市'
-])
-const COASTAL_CITY_DISPLAY_NAMES = new Set(Array.from(COASTAL_CITY_NAMES).map(name => name.replace(/市$/, '')))
-
 function extractStormSurgeCityLevels() {
   const cityLevelMap = new Map()
   const alerts = Array.isArray(store.alerts) ? store.alerts : []
@@ -267,361 +222,6 @@ function extractStormSurgeCityLevels() {
   return cityLevelMap
 }
 
-function ringSignedArea(ring) {
-  if (!Array.isArray(ring) || ring.length < 3) return 0
-  let sum = 0
-  for (let i = 0; i < ring.length; i++) {
-    const [x1, y1] = ring[i]
-    const [x2, y2] = ring[(i + 1) % ring.length]
-    sum += (x1 * y2 - x2 * y1)
-  }
-  return sum / 2
-}
-
-function ringCentroid(ring) {
-  const area = ringSignedArea(ring)
-  if (Math.abs(area) < 1e-10) {
-    const sum = ring.reduce((acc, [x, y]) => {
-      acc.x += x
-      acc.y += y
-      return acc
-    }, { x: 0, y: 0 })
-    return [sum.x / ring.length, sum.y / ring.length]
-  }
-  let cx = 0
-  let cy = 0
-  for (let i = 0; i < ring.length; i++) {
-    const [x1, y1] = ring[i]
-    const [x2, y2] = ring[(i + 1) % ring.length]
-    const f = (x1 * y2 - x2 * y1)
-    cx += (x1 + x2) * f
-    cy += (y1 + y2) * f
-  }
-  const k = 1 / (6 * area)
-  return [cx * k, cy * k]
-}
-
-function getPrimaryOuterRing(feature) {
-  const polygons = getGeometryPolygons(feature?.geometry)
-  let bestRing = null
-  let maxAbsArea = 0
-  polygons.forEach((polygonCoords) => {
-    const outerRing = polygonCoords?.[0]
-    if (!outerRing || outerRing.length < 3) return
-    const absArea = Math.abs(ringSignedArea(outerRing))
-    if (absArea > maxAbsArea) {
-      maxAbsArea = absArea
-      bestRing = outerRing
-    }
-  })
-  return bestRing
-}
-
-function pointInRing(lng, lat, ring) {
-  if (!Array.isArray(ring) || ring.length < 3) return false
-  let inside = false
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0]
-    const yi = ring[i][1]
-    const xj = ring[j][0]
-    const yj = ring[j][1]
-    const intersect = ((yi > lat) !== (yj > lat))
-      && (lng < (xj - xi) * (lat - yi) / ((yj - yi) || Number.EPSILON) + xi)
-    if (intersect) inside = !inside
-  }
-  return inside
-}
-
-function pointInPolygonWithHoles(lng, lat, polygonCoords) {
-  const outerRing = polygonCoords?.[0]
-  if (!outerRing || !pointInRing(lng, lat, outerRing)) return false
-  for (let i = 1; i < polygonCoords.length; i++) {
-    if (pointInRing(lng, lat, polygonCoords[i])) return false
-  }
-  return true
-}
-
-function isPointInFeature(lng, lat, feature) {
-  const polygons = getGeometryPolygons(feature?.geometry)
-  return polygons.some((polygonCoords) => pointInPolygonWithHoles(lng, lat, polygonCoords))
-}
-
-function getCoastalCityLabelData() {
-  const labels = []
-  gdCityBoundaryGeo?.features?.forEach((feature) => {
-    const cityName = feature?.properties?.Name || feature?.properties?.name
-    if (!COASTAL_CITY_NAMES.has(cityName)) return
-    const ring = getPrimaryOuterRing(feature)
-    if (!ring) return
-    const [lng, lat] = ringCentroid(ring)
-    labels.push({
-      cityName,
-      displayName: cityName.replace(/市$/, ''),
-      lng,
-      lat
-    })
-  })
-  return labels
-}
-
-function renderCoastalCityLabels2D() {
-  if (!map || !coastalCityLabelLayer2D) return
-  coastalCityLabelLayer2D.clearLayers()
-  const labels = getCoastalCityLabelData()
-  labels.forEach((item) => {
-    const marker = L.marker([item.lat, item.lng], {
-      interactive: false,
-      icon: L.divIcon({
-        className: 'coastal-city-label',
-        html: `<span>${item.displayName}</span>`,
-        iconSize: [0, 0]
-      })
-    })
-    marker.addTo(coastalCityLabelLayer2D)
-  })
-}
-
-function renderCoastalCityLabels3D() {
-  if (!viewer) return
-  coastalCityLabelEntities3D.forEach(entity => viewer.entities.remove(entity))
-  coastalCityLabelEntities3D = []
-  const labels = getCoastalCityLabelData()
-  labels.forEach((item) => {
-    const entity = viewer.entities.add({
-      position: Cartesian3.fromDegrees(item.lng, item.lat, 300),
-      label: {
-        text: item.displayName,
-        font: 'bold 15px "Microsoft YaHei"',
-        fillColor: Color.fromCssColorString('#ffffff'),
-        outlineColor: Color.fromCssColorString('#111827'),
-        outlineWidth: 3,
-        style: 2,
-        showBackground: true,
-        backgroundColor: Color.fromCssColorString('rgba(11, 16, 32, 0.45)'),
-        pixelOffset: new Cartesian2(0, -8),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      }
-    })
-    coastalCityLabelEntities3D.push(entity)
-  })
-}
-
-function getCountyDisplayName(feature) {
-  const props = feature?.properties || {}
-  return (
-    props.Name ||
-    props.name ||
-    props.NAME ||
-    props.qxmc ||
-    props.QXMC ||
-    props.county ||
-    props.COUNTY ||
-    ''
-  )
-}
-
-function normalizeCountyLabel(name) {
-  return String(name || '').replace(/市$/, '').trim()
-}
-
-function isCoastalCountyByCentroid(lng, lat) {
-  return gdCityBoundaryGeo?.features?.some((cityFeature) => {
-    const cityName = cityFeature?.properties?.Name || cityFeature?.properties?.name
-    if (!COASTAL_CITY_NAMES.has(cityName)) return false
-    return isPointInFeature(lng, lat, cityFeature)
-  }) || false
-}
-
-function buildCountyRenderItems() {
-  const features = gdCountyBoundaryData?.features || []
-  countyRenderItems = features.map((feature) => {
-    const ring = getPrimaryOuterRing(feature)
-    if (!ring) return null
-    const [lng, lat] = ringCentroid(ring)
-    const rawName = getCountyDisplayName(feature)
-    const labelName = normalizeCountyLabel(rawName)
-    const isDuplicateCityLabel = COASTAL_CITY_DISPLAY_NAMES.has(labelName)
-    return {
-      feature,
-      lng,
-      lat,
-      labelName,
-      showLabel: Boolean(labelName) && !isDuplicateCityLabel,
-      coastal: isCoastalCountyByCentroid(lng, lat)
-    }
-  }).filter(Boolean)
-}
-
-async function ensureCountyBoundaryDataLoaded() {
-  if (gdCountyBoundaryData) return true
-  if (!countyBoundaryLoadingPromise) {
-    countyBoundaryLoadingPromise = import('../../data/GDQXXZQH.json')
-      .then((mod) => {
-        gdCountyBoundaryData = mod.default || mod
-        buildCountyRenderItems()
-        return true
-      })
-      .catch((error) => {
-        console.error('Failed to load GDQXXZQH.json:', error)
-        return false
-      })
-      .finally(() => {
-        countyBoundaryLoadingPromise = null
-      })
-  }
-  return countyBoundaryLoadingPromise
-}
-
-function renderCountyBoundaries2D() {
-  if (!map || !countyBoundaryLayer2D) return
-  countyBoundaryLayer2D.clearLayers()
-
-  countyRenderItems.filter(item => item.coastal).forEach((item) => {
-    const feature = item.feature
-    const polygons = getGeometryPolygons(feature.geometry)
-    polygons.forEach((polygonCoords) => {
-      const rings = polygonCoords.map(ring => ring.map(([lng, lat]) => [lat, lng]))
-      L.polygon(rings, {
-        color: '#98a2b3',
-        weight: 0.7,
-        opacity: 0.9,
-        fill: false,
-        interactive: false,
-        bubblingMouseEvents: false,
-        pane: COUNTY_BOUNDARY_PANE
-      }).addTo(countyBoundaryLayer2D)
-    })
-  })
-  countyBoundariesRendered2D = true
-}
-
-function renderCountyLabels2D() {
-  if (!map || !countyLabelLayer2D) return
-  countyLabelLayer2D.clearLayers()
-
-  countyRenderItems.filter(item => item.coastal && item.showLabel).forEach((item) => {
-    L.marker([item.lat, item.lng], {
-      interactive: false,
-      pane: COUNTY_LABEL_PANE,
-      icon: L.divIcon({
-        className: 'county-label',
-        html: `<span>${item.labelName}</span>`,
-        iconSize: [0, 0]
-      })
-    }).addTo(countyLabelLayer2D)
-  })
-  countyLabelsRendered2D = true
-}
-
-async function applyCountyBoundaryVisibility2D() {
-  if (!map || !countyBoundaryLayer2D || !countyLabelLayer2D) return
-  if (!is2DMode.value) {
-    countyBoundaryLayer2D.clearLayers()
-    countyLabelLayer2D.clearLayers()
-    countyBoundariesRendered2D = false
-    countyLabelsRendered2D = false
-    return
-  }
-
-  const zoom = map.getZoom()
-  if (zoom < COUNTY_BOUNDARY_MIN_ZOOM) {
-    countyBoundaryLayer2D.clearLayers()
-    countyBoundariesRendered2D = false
-  } else {
-    const ok = await ensureCountyBoundaryDataLoaded()
-    if (ok && !countyBoundariesRendered2D) renderCountyBoundaries2D()
-  }
-
-  if (zoom < COUNTY_LABEL_MIN_ZOOM) {
-    countyLabelLayer2D.clearLayers()
-    countyLabelsRendered2D = false
-  } else {
-    const ok = await ensureCountyBoundaryDataLoaded()
-    if (ok && !countyLabelsRendered2D) renderCountyLabels2D()
-  }
-}
-
-function renderCountyBoundaries3D() {
-  if (!viewer) return
-  if (countyBoundariesRendered3D) return
-  if (!countyRenderItems.length) return
-  countyBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
-  countyBoundaryEntities3D = []
-
-  countyRenderItems.filter(item => item.coastal).forEach((item) => {
-    const feature = item.feature
-    const polygons = getGeometryPolygons(feature.geometry)
-    polygons.forEach((polygonCoords) => {
-      const outerRing = polygonCoords?.[0]
-      if (!outerRing || outerRing.length < 3) return
-      const degArray = []
-      outerRing.forEach(([lng, lat]) => degArray.push(lng, lat))
-      if (degArray.length < 6) return
-      const entity = viewer.entities.add({
-        polyline: {
-          positions: Cartesian3.fromDegreesArray(degArray),
-          width: 1.0,
-          material: Color.fromCssColorString('#98a2b3').withAlpha(0.9)
-        },
-        show: false
-      })
-      countyBoundaryEntities3D.push(entity)
-    })
-  })
-  countyBoundariesRendered3D = countyBoundaryEntities3D.length > 0
-}
-
-function renderCountyLabels3D() {
-  if (!viewer) return
-  if (countyLabelsRendered3D) return
-  if (!countyRenderItems.length) return
-  countyLabelEntities3D.forEach(entity => viewer.entities.remove(entity))
-  countyLabelEntities3D = []
-
-  countyRenderItems.filter(item => item.coastal && item.showLabel).forEach((item) => {
-    const entity = viewer.entities.add({
-      position: Cartesian3.fromDegrees(item.lng, item.lat, 120),
-      label: {
-        text: item.labelName,
-        font: '600 12px "Microsoft YaHei"',
-        fillColor: Color.fromCssColorString('#e5e7eb'),
-        outlineColor: Color.fromCssColorString('#111827'),
-        outlineWidth: 2,
-        style: 2,
-        showBackground: true,
-        backgroundColor: Color.fromCssColorString('rgba(17, 24, 39, 0.32)'),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY
-      },
-      show: false
-    })
-    countyLabelEntities3D.push(entity)
-  })
-  countyLabelsRendered3D = countyLabelEntities3D.length > 0
-}
-
-async function applyCountyBoundaryVisibility3D() {
-  if (!viewer) return
-  if (!is3DMode.value) {
-    countyBoundaryEntities3D.forEach(entity => { entity.show = false })
-    countyLabelEntities3D.forEach(entity => { entity.show = false })
-    return
-  }
-
-  const cameraHeight = viewer.camera?.positionCartographic?.height ?? Number.POSITIVE_INFINITY
-  const showBoundary = cameraHeight <= COUNTY_BOUNDARY_MAX_HEIGHT_3D
-  const showLabel = cameraHeight <= COUNTY_LABEL_MAX_HEIGHT_3D
-
-  if ((showBoundary || showLabel) && !gdCountyBoundaryData) {
-    const ok = await ensureCountyBoundaryDataLoaded()
-    if (!ok) return
-  }
-  if (showBoundary) renderCountyBoundaries3D()
-  if (showLabel) renderCountyLabels3D()
-
-  countyBoundaryEntities3D.forEach(entity => { entity.show = showBoundary })
-  countyLabelEntities3D.forEach(entity => { entity.show = showLabel })
-}
-
 function renderProvinceBoundary2D() {
   if (!map || !provinceBoundaryLayer2D) return
   provinceBoundaryLayer2D.clearLayers()
@@ -632,8 +232,6 @@ function renderProvinceBoundary2D() {
       color: '#ffea00',
       weight: 2.5,
       opacity: 1,
-      interactive: false,
-      bubblingMouseEvents: false,
       pane: PROVINCE_BOUNDARY_PANE
     }).addTo(provinceBoundaryLayer2D)
   })
@@ -685,8 +283,6 @@ function renderCityWarningBoundaries2D() {
         opacity: 0,
         fillColor: style.fill,
         fillOpacity: style.fillOpacity,
-        interactive: false,
-        bubblingMouseEvents: false,
         pane: CITY_WARNING_PANE
       }).addTo(cityWarningBoundaryLayer2D)
 
@@ -697,8 +293,6 @@ function renderCityWarningBoundaries2D() {
           color: WARNING_CITY_BORDER_COLOR,
           weight: 0.8,
           opacity: 1,
-          interactive: false,
-          bubblingMouseEvents: false,
           pane: CITY_WARNING_PANE
         }).addTo(cityWarningBoundaryLayer2D)
       }
@@ -909,10 +503,6 @@ async function initCesium() {
     apply3DCameraConstraints()
     renderCityWarningBoundaries3D()
     renderProvinceBoundary3D()
-    renderCoastalCityLabels3D()
-    applyCountyBoundaryVisibility3D()
-    viewerCameraMoveEndHandler = () => applyCountyBoundaryVisibility3D()
-    viewer.camera.moveEnd.addEventListener(viewerCameraMoveEndHandler)
     applyCesiumMapMode(currentMapMode.value)
     flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
   } catch (error) {
@@ -926,8 +516,6 @@ function initMap() {
   map = L.map(mapRef.value, {
     center: props.center,
     zoom: props.zoom,
-    preferCanvas: true,
-    scrollWheelZoom: false,
     zoomControl: false,
     attributionControl: false
   })
@@ -947,14 +535,6 @@ function initMap() {
   const provinceBoundaryPane = map.createPane(PROVINCE_BOUNDARY_PANE)
   provinceBoundaryPane.style.zIndex = 820
   provinceBoundaryPane.style.pointerEvents = 'none'
-
-  const countyBoundaryPane = map.createPane(COUNTY_BOUNDARY_PANE)
-  countyBoundaryPane.style.zIndex = 812
-  countyBoundaryPane.style.pointerEvents = 'none'
-
-  const countyLabelPane = map.createPane(COUNTY_LABEL_PANE)
-  countyLabelPane.style.zIndex = 813
-  countyLabelPane.style.pointerEvents = 'none'
 
   // 鍒涘缓搴曞浘鍥惧眰
   basemapConfig.forEach(config => {
@@ -991,16 +571,8 @@ function initMap() {
   highlightLayer = L.layerGroup().addTo(map)
   cityWarningBoundaryLayer2D = L.layerGroup().addTo(map)
   provinceBoundaryLayer2D = L.layerGroup().addTo(map)
-  coastalCityLabelLayer2D = L.layerGroup().addTo(map)
-  countyBoundaryLayer2D = L.layerGroup().addTo(map)
-  countyLabelLayer2D = L.layerGroup().addTo(map)
   renderCityWarningBoundaries2D()
   renderProvinceBoundary2D()
-  renderCoastalCityLabels2D()
-  applyCountyBoundaryVisibility2D()
-
-  mapZoomLevelHandler = () => applyCountyBoundaryVisibility2D()
-  map.on('zoomend', mapZoomLevelHandler)
   
   // 鍒涘缓鍙伴鍥惧眰
   typhoonLayer = L.layerGroup().addTo(map)
@@ -1487,59 +1059,6 @@ function resizeCanvas() {
   }
 }
 
-function bindLeafletWheelCapture() {
-  if (!mapAreaRef.value || !map) return
-  if (mapWheelCaptureHandler) return
-
-  mapWheelCaptureHandler = (event) => {
-    if (!is2DMode.value || !map) return
-    if (!mapRef.value) return
-
-    const rect = mapRef.value.getBoundingClientRect()
-    const insideMap =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom
-    if (!insideMap) return
-
-    // 保持可点击图层交互，但滚轮始终优先用于地图缩放，避免 hover 后“卡住”
-    event.preventDefault()
-    pendingWheelDelta += Number(event.deltaY || 0)
-    if (wheelZoomRaf) return
-
-    wheelZoomRaf = requestAnimationFrame(() => {
-      wheelZoomRaf = 0
-      const now = performance.now()
-      if (now - lastWheelZoomTime < 16) return
-      lastWheelZoomTime = now
-
-      const deltaY = pendingWheelDelta
-      pendingWheelDelta = 0
-      if (!Number.isFinite(deltaY) || deltaY === 0 || !mapRef.value || !map) return
-
-      const currentZoom = map.getZoom()
-      const nextZoom = deltaY < 0 ? currentZoom + 1 : currentZoom - 1
-      const limitedZoom = map._limitZoom ? map._limitZoom(nextZoom) : nextZoom
-      if (limitedZoom === currentZoom) return
-
-      const containerPoint = L.point(event.clientX - rect.left, event.clientY - rect.top)
-      map.setZoomAround(containerPoint, limitedZoom, { animate: false })
-    })
-  }
-
-  mapAreaRef.value.addEventListener('wheel', mapWheelCaptureHandler, { passive: false, capture: true })
-}
-
-function unbindLeafletWheelCapture() {
-  if (!mapAreaRef.value || !mapWheelCaptureHandler) return
-  mapAreaRef.value.removeEventListener('wheel', mapWheelCaptureHandler, { capture: true })
-  mapWheelCaptureHandler = null
-  pendingWheelDelta = 0
-  if (wheelZoomRaf) cancelAnimationFrame(wheelZoomRaf)
-  wheelZoomRaf = 0
-}
-
 function switchBasemap(basemapId) {
   if (isSwitchingBasemap) return
   isSwitchingBasemap = true
@@ -1597,16 +1116,13 @@ watch(() => layerVisibility.value.wind_particle, (nv) => {
 watch(() => layerVisibility.value.wave_heatmap, () => renderWaveHeatmap())
 
 watch(currentMapMode, (nm) => {
-  if (nm === '2D') { nextTick(() => { resizeCanvas(); if (layerVisibility.value.wind_particle) startWindAnimation(); renderWaveHeatmap(); applyCountyBoundaryVisibility2D(); applyCountyBoundaryVisibility3D(); }) }
+  if (nm === '2D') { nextTick(() => { resizeCanvas(); if (layerVisibility.value.wind_particle) startWindAnimation(); renderWaveHeatmap(); }) }
   else {
     if (windAnimationFrame) {
       cancelAnimationFrame(windAnimationFrame); windAnimationFrame = null
       if (windCanvas.value) windCanvas.value.getContext('2d').clearRect(0, 0, windCanvas.value.width, windCanvas.value.height)
     }
     if (waveHeatmapLayer && map) { map.removeLayer(waveHeatmapLayer); waveHeatmapLayer = null; }
-    if (countyBoundaryLayer2D) countyBoundaryLayer2D.clearLayers()
-    if (countyLabelLayer2D) countyLabelLayer2D.clearLayers()
-    nextTick(() => applyCountyBoundaryVisibility3D())
   }
 })
 
@@ -1623,7 +1139,6 @@ defineExpose({
 
 onMounted(() => {
   initMap(); initCesium()
-  bindLeafletWheelCapture()
   if (store.devices.length > 0) renderDevices()
   renderTyphoon(); renderVessels()
   nextTick(() => { resizeCanvas(); if (is2DMode.value) { startWindAnimation(); renderWaveHeatmap(); } })
@@ -1631,39 +1146,19 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  unbindLeafletWheelCapture()
   if (windAnimationFrame) cancelAnimationFrame(windAnimationFrame)
   window.removeEventListener('resize', resizeCanvas)
-  if (map && mapZoomLevelHandler) map.off('zoomend', mapZoomLevelHandler)
-  mapZoomLevelHandler = null
-  if (viewer?.camera && viewerCameraMoveEndHandler) viewer.camera.moveEnd.removeEventListener(viewerCameraMoveEndHandler)
-  viewerCameraMoveEndHandler = null
   if (waveHeatmapLayer && map) map.removeLayer(waveHeatmapLayer)
   if (provinceBoundaryLayer2D && map) map.removeLayer(provinceBoundaryLayer2D)
   if (cityWarningBoundaryLayer2D && map) map.removeLayer(cityWarningBoundaryLayer2D)
-  if (coastalCityLabelLayer2D && map) map.removeLayer(coastalCityLabelLayer2D)
-  if (countyBoundaryLayer2D && map) map.removeLayer(countyBoundaryLayer2D)
-  if (countyLabelLayer2D && map) map.removeLayer(countyLabelLayer2D)
   if (viewer && provinceBoundaryEntities3D.length) {
     provinceBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
   }
   if (viewer && cityWarningBoundaryEntities3D.length) {
     cityWarningBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
   }
-  if (viewer && coastalCityLabelEntities3D.length) {
-    coastalCityLabelEntities3D.forEach(entity => viewer.entities.remove(entity))
-  }
-  if (viewer && countyBoundaryEntities3D.length) {
-    countyBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
-  }
-  if (viewer && countyLabelEntities3D.length) {
-    countyLabelEntities3D.forEach(entity => viewer.entities.remove(entity))
-  }
   provinceBoundaryEntities3D = []
   cityWarningBoundaryEntities3D = []
-  coastalCityLabelEntities3D = []
-  countyBoundaryEntities3D = []
-  countyLabelEntities3D = []
   Object.values(markerLayers).forEach(l => l.clearLayers())
   if (map) map.remove(); if (viewer) viewer.destroy()
 })
@@ -1694,30 +1189,4 @@ onUnmounted(() => {
 :global(.typhoon-svg-wrapper) { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; animation: typhoon-spin 4s linear infinite; filter: drop-shadow(0 0 8px rgba(216, 30, 6, 0.6)); }
 @keyframes typhoon-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
 :global(.custom-div-icon) { background: transparent !important; border: none !important; }
-:global(.coastal-city-label) { background: transparent !important; border: none !important; }
-:global(.coastal-city-label span) {
-  display: inline-block;
-  padding: 1px 5px;
-  border-radius: 6px;
-  color: #fff;
-  background: rgba(11, 16, 32, 0.42);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.75);
-}
-:global(.county-label) { background: transparent !important; border: none !important; }
-:global(.county-label span) {
-  display: inline-block;
-  padding: 1px 3px;
-  border-radius: 4px;
-  color: #e5e7eb;
-  background: rgba(17, 24, 39, 0.28);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.15;
-  white-space: nowrap;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.65);
-}
 </style>
