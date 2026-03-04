@@ -1,7 +1,7 @@
 <template>
   <div class="historical-match">
     <!-- 当前台风信息 -->
-    <div class="current-typhoon">
+    <div v-if="!hideCurrent" class="current-typhoon">
       <div class="typhoon-header">
         <div class="typhoon-name">
           <i class="fa-solid fa-hurricane"></i>
@@ -30,7 +30,7 @@
     </div>
 
     <!-- 历史台风列表 -->
-    <div class="historical-list">
+    <div class="historical-list" :class="{ compact: hideCurrent }">
       <div
         v-for="(match, idx) in historicalMatches"
         :key="match.id"
@@ -144,6 +144,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { mockHistoricalMatches } from '../../data/mockData'
+
+const props = defineProps({
+  hideCurrent: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const expandedCards = ref([0]) // 默认展开第一个
 
@@ -277,6 +284,12 @@ function formatNumber(num) {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.historical-list.compact {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .match-card {

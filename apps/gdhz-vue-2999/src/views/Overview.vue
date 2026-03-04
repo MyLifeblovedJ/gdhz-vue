@@ -15,7 +15,10 @@
       </div>
 
       <div class="overlay-panel overlay-panel-right">
-        <RealtimeDataPanel @station-click="handleStationClick" />
+        <RealtimeDataPanel
+          :hide-tide-stations="true"
+          @station-click="handleStationClick"
+        />
       </div>
 
       <FloatingToolbar
@@ -27,6 +30,12 @@
       <TyphoonInfo />
 
       <MapLegend />
+      <BottomWarningDock
+        title="潮位预警站点"
+        element-keyword="潮位"
+        @station-click="handleWarningStationClick"
+      />
+      <StationDetailDock :station="selectedWarningStation" />
       <BottomControls
         :map-mode="store.mapMode"
         :active3-d-view="active3DView"
@@ -59,11 +68,14 @@ import RealtimeDataPanel from '../components/layout/RealtimeDataPanel.vue'
 import BottomControls from '../components/layout/BottomControls.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
+import BottomWarningDock from '../components/layout/BottomWarningDock.vue'
+import StationDetailDock from '../components/layout/StationDetailDock.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
 const currentBasemap = ref('satellite')
 const selectedDevice = ref(null)
+const selectedWarningStation = ref(null)
 const active3DView = ref('decision')
 
 function handleDeviceClick(device) {
@@ -87,6 +99,13 @@ function handleModelClick(model) {
 function handleStationClick(station) {
   console.log('Station clicked:', station)
   mapRef.value?.flyToStation(station.id)
+}
+
+function handleWarningStationClick(station) {
+  selectedWarningStation.value = station
+  if (station?.stationId) {
+    mapRef.value?.flyToStation(station.stationId)
+  }
 }
 
 function handleZoomIn() {
@@ -172,5 +191,9 @@ onMounted(() => {
 
 .overlay-panel :deep(.data-panel-sidebar) {
   border-left: 1px solid rgba(79, 179, 216, 0.34);
+}
+
+.overview-map :deep(.map-legend-wrapper) {
+  bottom: 210px;
 }
 </style>

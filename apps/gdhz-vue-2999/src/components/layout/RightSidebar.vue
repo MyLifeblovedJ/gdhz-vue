@@ -55,6 +55,30 @@
       @refresh="handleAIRefresh"
     />
 
+    <div class="panel direct-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-layer-group"></i>
+          图层
+        </div>
+      </div>
+      <div class="panel-content">
+        <LayerControl @layer-toggle="handleLayerToggle" />
+      </div>
+    </div>
+
+    <div class="panel direct-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <i class="fa-solid fa-satellite-dish"></i>
+          观测设备
+        </div>
+      </div>
+      <div class="panel-content device-panel-content">
+        <DeviceExplorer @device-click="handleDeviceClick" />
+      </div>
+    </div>
+
     <!-- 5. 决策建议 -->
     <div class="panel decision-panel" :class="{ collapsed: decisionCollapsed }">
       <div class="panel-header" @click="decisionCollapsed = !decisionCollapsed">
@@ -113,6 +137,8 @@
 import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useAppStore } from '../../stores/app'
 import AISituationSummary from '../decision/AISituationSummary.vue'
+import LayerControl from '../map/LayerControl.vue'
+import DeviceExplorer from '../device/DeviceExplorer.vue'
 import { mockRealtimeData, mockPredictions } from '../../data/mockData'
 
 const store = useAppStore()
@@ -385,7 +411,7 @@ const keyActions = computed(() => {
   ]
 })
 
-const emit = defineEmits(['risk-click'])
+const emit = defineEmits(['risk-click', 'layer-toggle', 'device-click'])
 
 function handleAlertClick(alert) {
   console.log('Alert clicked:', alert)
@@ -417,6 +443,14 @@ function handleRiskClick(risk) {
 
 function handleAIRefresh() {
   console.log('AI态势摘要刷新')
+}
+
+function handleLayerToggle(payload) {
+  emit('layer-toggle', payload)
+}
+
+function handleDeviceClick(device) {
+  emit('device-click', device)
 }
 
 onUnmounted(() => {
@@ -1080,6 +1114,19 @@ onUnmounted(() => {
 
 .decision-panel .panel-title {
   color: var(--text-secondary);
+}
+
+.direct-panel .panel-header {
+  cursor: default;
+}
+
+.direct-panel .panel-header:hover {
+  background: transparent;
+}
+
+.device-panel-content {
+  max-height: 360px;
+  overflow: hidden;
 }
 
 /* 应急响应卡片（亮色设计） */

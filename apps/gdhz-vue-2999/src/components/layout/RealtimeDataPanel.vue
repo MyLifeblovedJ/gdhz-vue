@@ -35,7 +35,7 @@
         <div class="station-scroll-area">
 
           <!-- ===== 潮位预警站点 ===== -->
-          <div v-if="warningStations.length > 0" class="warning-section">
+          <div v-if="!hideTideStations && warningStations.length > 0" class="warning-section">
             <div class="section-header-bar tide">
               <i class="fa-solid fa-water"></i>
               <span>潮位预警站点</span>
@@ -139,7 +139,7 @@
               </div>
             </div>
             </div>
-            <div v-if="warningStations.length > 1" class="list-toggle" @click="showAllWarningStations = !showAllWarningStations">
+            <div v-if="!hideTideStations && warningStations.length > 1" class="list-toggle" @click="showAllWarningStations = !showAllWarningStations">
               <i class="fa-solid" :class="showAllWarningStations ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
               {{ showAllWarningStations ? '收起其余站点' : `查看其余 ${warningStations.length - 1} 个站点` }}
             </div>
@@ -262,12 +262,12 @@
       </div>
     </div>
 
-    <!-- 2. 海岸侵蚀 -->
-    <div class="disaster-panel erosion-type" :class="{ collapsed: !expandedPanels.erosion, 'has-warning': erosionRisk !== 'normal' }">
+    <!-- 2. 海岸观测 -->
+    <div class="disaster-panel erosion-type coastal-focus" :class="{ collapsed: !expandedPanels.erosion, 'has-warning': erosionRisk !== 'normal' }">
       <div class="disaster-header" @click="togglePanel('erosion')">
         <div class="disaster-title">
           <span class="disaster-icon erosion"><i class="fa-solid fa-video"></i></span>
-          <span>海岸侵蚀</span>
+          <span>海岸观测</span>
           <span class="risk-badge" :class="erosionRisk">
             {{ getRiskText(erosionRisk) }}
           </span>
@@ -303,7 +303,7 @@
             </button>
           </div>
         </div>
-        <!-- 侵蚀关键指标 -->
+        <!-- 海岸关键指标 -->
         <div class="mini-indicators">
           <div class="mini-card" :class="activeErosionStation.riskLevel === 'high' ? 'alarm' : activeErosionStation.riskLevel === 'medium' ? 'warn' : 'normal'">
             <div class="mini-label">侵蚀速率</div>
@@ -478,6 +478,13 @@ import { mockAISummaryData } from '../../data/aiSummaryData'
 import { mockTideForecastStations, mockWaveForecastStations } from '../../data/seaConditionData'
 
 const store = useAppStore()
+
+const props = defineProps({
+  hideTideStations: {
+    type: Boolean,
+    default: false
+  }
+})
 
 // ===== 面板展开/折叠状态 =====
 const expandedPanels = reactive({
@@ -1356,6 +1363,11 @@ onUnmounted(() => {
 
 .disaster-panel.has-warning::before {
   background: linear-gradient(90deg, transparent, var(--right-panel-line) 30%, var(--right-panel-line) 70%, transparent);
+}
+
+.disaster-panel.coastal-focus {
+  border-color: rgba(99, 179, 237, 0.36);
+  box-shadow: 0 0 0 1px rgba(99, 179, 237, 0.14), 0 8px 20px rgba(0, 0, 0, 0.24);
 }
 
 /* 咸潮入侵 - 黄色身份色 */
@@ -2529,6 +2541,8 @@ onUnmounted(() => {
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.2);
 }
 
 .video-placeholder {

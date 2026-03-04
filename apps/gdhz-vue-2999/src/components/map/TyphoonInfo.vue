@@ -58,13 +58,50 @@
         </div>
         <div v-else class="landing-empty">暂无预计登陆点信息</div>
       </div>
+
+      <div class="similar-history">
+        <div class="similar-history-title">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          历史相似台风
+        </div>
+        <div class="similar-list">
+          <div v-if="topMatch" class="similar-row top">
+            <span class="rank">TOP1</span>
+            <span class="name">{{ topMatch.year }} · {{ topMatch.name }}</span>
+            <span class="score">相似度 {{ Math.round(topMatch.similarity * 100) }}%</span>
+          </div>
+          <Transition name="slide-fade">
+            <div v-if="showMoreSimilar" class="similar-more">
+              <div
+                v-for="(item, index) in restMatches"
+                :key="item.id"
+                class="similar-row"
+              >
+                <span class="rank">TOP{{ index + 2 }}</span>
+                <span class="name">{{ item.year }} · {{ item.name }}</span>
+                <span class="score">{{ Math.round(item.similarity * 100) }}%</span>
+              </div>
+            </div>
+          </Transition>
+          <button
+            v-if="restMatches.length"
+            class="more-btn"
+            type="button"
+            @click="showMoreSimilar = !showMoreSimilar"
+          >
+            <i class="fa-solid" :class="showMoreSimilar ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+            {{ showMoreSimilar ? '收起其他相似台风' : `展开其余 ${restMatches.length} 条相似台风` }}
+          </button>
+        </div>
+      </div>
     </div>
   </Transition>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAppStore } from '../../stores/app'
+import { mockHistoricalMatches } from '../../data/mockData'
 
 const props = defineProps({
   embedded: {
@@ -75,6 +112,12 @@ const props = defineProps({
 
 const store = useAppStore()
 const typhoon = computed(() => store.typhoonData)
+const showMoreSimilar = ref(false)
+const sortedMatches = computed(() => {
+  return [...(mockHistoricalMatches.matches || [])].sort((a, b) => b.similarity - a.similarity)
+})
+const topMatch = computed(() => sortedMatches.value[0] || null)
+const restMatches = computed(() => sortedMatches.value.slice(1))
 
 const currentPoint = computed(() => {
   if (!typhoon.value?.track?.length) return null
@@ -128,7 +171,7 @@ function formatCoord(value) {
   position: absolute;
   top: 82px;
   right: 388px;
-  width: 300px;
+  width: 320px;
   background: rgba(16, 23, 42, 0.85);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(239, 68, 68, 0.3);
@@ -203,4 +246,69 @@ function formatCoord(value) {
 .landing-timer { font-size: 11px; color: rgba(255, 255, 255, 0.75); }
 .landing-timer .highlight { color: #ef4444; font-size: 13px; font-weight: 700; margin: 0 1px; }
 .landing-empty { font-size: 12px; color: rgba(226, 232, 240, 0.82); }
+
+.similar-history {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.similar-history-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(245, 158, 11, 0.92);
+  margin-bottom: 8px;
+}
+
+.similar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.similar-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(114, 156, 192, 0.26);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.similar-row.top {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.similar-row .rank {
+  color: rgba(245, 158, 11, 0.95);
+  font-weight: 700;
+}
+
+.similar-row .name {
+  color: rgba(233, 243, 255, 0.94);
+}
+
+.similar-row .score {
+  color: rgba(188, 214, 236, 0.88);
+}
+
+.more-btn {
+  border: 1px dashed rgba(114, 156, 192, 0.34);
+  border-radius: 8px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(190, 212, 233, 0.88);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
 </style>
