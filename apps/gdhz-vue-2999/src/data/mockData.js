@@ -227,29 +227,32 @@ export const mockRiskDecisions = {
 
 // ===== 台风数据 =====
 export const mockTyphoonData = {
-    id: 'TY2601',
-    name: '天鸽',
-    enName: 'Hato',
+    id: 'RAGASA',
+    name: '桦加沙',
+    enName: 'RAGASA',
     status: 'active',
     category: '超强台风',
+    movement: {
+        direction: '西北西',
+        speedKmh: 20
+    },
+    landfallPrediction: null, // 注：早期阶段可能暂无预计登陆点
     track: [
-        { time: '2026-01-12T00:00', lat: 18.5, lng: 125.5, pressure: 998, windSpeed: 18 },
-        { time: '2026-01-12T06:00', lat: 19.0, lng: 123.0, pressure: 992, windSpeed: 25 },
-        { time: '2026-01-12T12:00', lat: 19.8, lng: 120.5, pressure: 975, windSpeed: 35 },
-        { time: '2026-01-12T18:00', lat: 20.5, lng: 118.0, pressure: 955, windSpeed: 45 },
-        { time: '2026-01-13T00:00', lat: 21.2, lng: 115.5, pressure: 940, windSpeed: 52 },
-        { time: '2026-01-13T06:00', lat: 21.8, lng: 114.0, pressure: 935, windSpeed: 55 },
+        { time: '2025-09-23T10:00:00', lat: 20.1, lng: 117.4, pressure: 942, windSpeed: 52 },
+        { time: '2025-09-23T16:00:00', lat: 20.5, lng: 116.4, pressure: 936, windSpeed: 54 },
+        { time: '2025-09-23T22:00:00', lat: 20.9, lng: 115.6, pressure: 930, windSpeed: 55 },
     ],
     forecast: [
-        { time: '2026-01-13T12:00', lat: 22.3, lng: 113.2, probability: 0.8 },
-        { time: '2026-01-13T18:00', lat: 22.8, lng: 112.5, probability: 0.6 },
-        { time: '2026-01-14T00:00', lat: 23.5, lng: 111.8, probability: 0.4 },
+        { time: '2025-09-24T04:00:00', lat: 21.2, lng: 114.8, probability: 0.78 },
+        { time: '2025-09-24T10:00:00', lat: 21.6, lng: 114.0, probability: 0.62 },
+        { time: '2025-09-24T16:00:00', lat: 22.0, lng: 113.1, probability: 0.45 },
     ],
     windCircle: {
-        center: { lat: 21.8, lng: 114.0 },
-        radius7: 280,
-        radius10: 120,
-        radius12: 50,
+        center: { lat: 20.9, lng: 115.6 },
+        radius7: 380,
+        radius7Range: '320-380',
+        radius10: 150,
+        radius12: 90,
     },
 }
 
