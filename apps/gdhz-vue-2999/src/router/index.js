@@ -6,12 +6,28 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAppStore } from '../stores/app'
 
 // 页面组件 (懒加载)
+const HomeOverview = () => import('../views/HomeOverview.vue')
 const Overview = () => import('../views/Overview.vue')
 const Placeholder = () => import('../views/Placeholder.vue')
 
 const routes = [
     {
         path: '/',
+        redirect: '/home'
+    },
+    {
+        path: '/home',
+        name: 'HomeOverview',
+        component: HomeOverview,
+        meta: {
+            title: '首页',
+            pageKey: 'home',
+            showBanner: true,
+            bannerDefaultCollapsed: false,
+        }
+    },
+    {
+        path: '/overview',
         name: 'Overview',
         component: Overview,
         meta: {

@@ -50,9 +50,11 @@
         :key="item.key"
         :to="item.path"
         class="nav-btn"
-        :class="{ active: currentPage === item.key }"
+        :class="{ active: currentPage === item.key, 'icon-only': item.iconOnly }"
+        :title="item.label"
       >
-        <span class="nav-text">{{ item.label }}</span>
+        <i v-if="item.iconOnly && item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
+        <span v-else class="nav-text">{{ item.label }}</span>
         <span class="nav-glow"></span>
       </router-link>
     </nav>
@@ -340,6 +342,15 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.nav-btn.icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .nav-btn:hover {
   color: rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.05);
@@ -363,6 +374,13 @@ onUnmounted(() => {
 .nav-text {
   position: relative;
   z-index: 1;
+}
+
+.nav-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  line-height: 1;
 }
 
 /* 鍙充晶宸ュ叿鍖?*/
