@@ -29,12 +29,14 @@
       <MapLegend />
       <BottomControls
         :map-mode="store.mapMode"
+        :active3-d-view="active3DView"
         @zoom-in="handleZoomIn"
         @zoom-out="handleZoomOut"
         @reset-view="handleResetView"
         @locate="handleLocate"
         @basemap-change="handleBasemapChange"
         @toggle-map-mode="handleToggleMapMode"
+        @switch-3d-view="handleSwitch3DView"
       />
       <DetailPopup
         v-if="selectedDevice"
@@ -62,6 +64,7 @@ const store = useAppStore()
 const mapRef = ref(null)
 const currentBasemap = ref('satellite')
 const selectedDevice = ref(null)
+const active3DView = ref('decision')
 
 function handleDeviceClick(device) {
   selectedDevice.value = device
@@ -108,6 +111,11 @@ function handleBasemapChange(basemapId) {
 
 function handleToggleMapMode() {
   store.toggleMapMode()
+}
+
+function handleSwitch3DView(viewKey) {
+  active3DView.value = viewKey
+  mapRef.value?.switch3DViewPreset(viewKey)
 }
 
 onMounted(() => {

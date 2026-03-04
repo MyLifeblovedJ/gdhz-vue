@@ -1,0 +1,195 @@
+/* ========================================
+   面板通用样式 — 从 RightSidebar 和 RealtimeDataPanel 提取
+   适用于所有侧边栏中的 .panel 组件
+   ======================================== */
+
+/* ===== 面板容器 ===== */
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-normal);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: var(--shadow-panel);
+    flex-shrink: 0;
+    /* 面板色带可由外层覆盖，统一控制视觉重点 */
+    --panel-accent: var(--accent-cyan);
+}
+
+/* 面板顶部扫描线（默认冰蓝，各模块可覆盖） */
+.panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 15%;
+    right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent,
+            var(--panel-accent) 30%,
+            var(--panel-accent) 70%,
+            transparent);
+    opacity: 0.6;
+}
+
+/* ===== 面板头部 ===== */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast);
+}
+
+.panel-header:hover {
+    background: var(--bg-hover);
+}
+
+/* ===== 面板标题 ===== */
+.panel-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--panel-accent);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* ===== 标题旁的徽标 ===== */
+.panel-title .badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.badge.ok {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--status-online);
+}
+
+.badge.alarm {
+    background: rgba(255, 71, 87, 0.2);
+    color: var(--alert-red);
+}
+
+.badge.warn {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--status-warn);
+}
+
+/* ===== 折叠图标 ===== */
+.toggle-icon {
+    color: var(--text-muted);
+    font-size: 10px;
+    transition: transform var(--transition-fast);
+}
+
+/* 通过 .panel.collapsed 或 .toggle-icon.collapsed 触发旋转 */
+.panel.collapsed .toggle-icon,
+.toggle-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+/* ===== 面板内容区 ===== */
+.panel-content {
+    max-height: 2000px;
+    overflow: visible;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 var(--space-3) var(--space-3);
+}
+
+.panel.collapsed .panel-content,
+.panel-content.collapsed {
+    max-height: 0;
+    padding: 0 var(--space-3);
+    overflow: hidden;
+}
+
+/* ===== 侧边栏通用容器 ===== */
+.sidebar-container {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: var(--bg-deepest);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2) 10px;
+    gap: 10px;
+    overflow-y: auto;
+    z-index: 50;
+    transform: translateZ(0);
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 2px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-cyan);
+}
+
+/* ===== 侧栏角色色带统一 ===== */
+.decision-sidebar .panel {
+    --panel-accent: var(--sidebar-action-accent);
+}
+
+.data-panel-sidebar .panel {
+    --panel-accent: var(--sidebar-data-accent);
+}
+
+/* ===== 状态标签通用 ===== */
+.status-badge {
+    font-size: 10px;
+    padding: 2px var(--space-2);
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.status-badge.high {
+    background: rgba(255, 71, 87, 0.2);
+    color: var(--alert-red);
+}
+
+.status-badge.medium {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--status-warn);
+}
+
+.status-badge.low {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--status-online);
+}
+
+/* ===== 模块内滚动区域 ===== */
+.module-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: var(--space-1);
+}
+
+.module-scroll::-webkit-scrollbar {
+    width: 3px;
+}
+
+.module-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}

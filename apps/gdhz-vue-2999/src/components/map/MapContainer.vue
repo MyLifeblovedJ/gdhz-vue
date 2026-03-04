@@ -28,8 +28,11 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   Cartesian3,
+  Color,
+  Math as CesiumMath,
   OpenStreetMapImageryProvider,
   SceneMode,
+  SkyBox,
   UrlTemplateImageryProvider,
   WebMercatorTilingScheme,
   Viewer,
@@ -42,6 +45,8 @@ Ion.defaultAccessToken = ''
 import { basemaps as basemapConfig } from '../../data/mockData'
 import { deviceTypeConfig } from '../../data/deviceConfig'
 import guangdongGeo from '../../data/guangdong_geo.json'
+import gdCityBoundaryGeo from '../../data/GDSJXZQH.json'
+import gdProvinceLineGeo from '../../data/广东省line.json'
 
 const props = defineProps({
   center: {
@@ -84,12 +89,33 @@ let vesselLayer = null
 let windAnimationFrame = null
 let waveAnimationFrame = null
 let isSwitchingBasemap = false
+let provinceBoundaryLayer2D = null
+let provinceBoundaryEntities3D = []
+let cityWarningBoundaryLayer2D = null
+let cityWarningBoundaryEntities3D = []
+const CITY_WARNING_PANE = 'city-warning-pane'
+const PROVINCE_BOUNDARY_PANE = 'province-boundary-pane'
 
-const DEFAULT_3D_VIEW = {
-  lng: 113.5,
-  lat: 22.5,
-  height: 1500000
+const THREE_D_VIEW_PRESETS = {
+  decision: {
+    key: 'decision',
+    label: '当前视角',
+    destination: { lng: 112.3, lat: 11.9, height: 1080000 },
+    orientation: {
+      heading: CesiumMath.toRadians(4),
+      pitch: CesiumMath.toRadians(-46),
+      roll: 0
+    }
+  },
+  legacy5173: {
+    key: 'legacy5173',
+    label: '5173视角',
+    destination: { lng: 113.5, lat: 22.5, height: 1500000 },
+    orientation: null
+  }
 }
+const DEFAULT_3D_PRESET_KEY = 'decision'
+const active3DViewPresetKey = ref(DEFAULT_3D_PRESET_KEY)
 
 const currentMapMode = computed(() => props.mapMode || store.mapMode || '3D')
 const is2DMode = computed(() => currentMapMode.value === '2D')
@@ -132,6 +158,191 @@ function buildTiandituProvider(layerCode) {
     subdomains: ['0', '1', '2', '3', '4', '5', '6', '7'],
     tilingScheme: new WebMercatorTilingScheme(),
     maximumLevel: 18
+  })
+}
+
+function getGeometryPolygons(geometry) {
+  if (!geometry) return []
+  if (geometry.type === 'Polygon') return [geometry.coordinates]
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates
+  return []
+}
+
+function getLinePaths(geojson) {
+  const paths = []
+  if (!geojson?.features?.length) return paths
+  geojson.features.forEach((feature) => {
+    const geometry = feature.geometry
+    if (!geometry) return
+    if (geometry.type === 'LineString') {
+      paths.push(geometry.coordinates)
+      return
+    }
+    if (geometry.type === 'MultiLineString') {
+      geometry.coordinates.forEach(line => paths.push(line))
+    }
+  })
+  return paths
+}
+
+const GD_PROVINCE_LINE_PATHS = getLinePaths(gdProvinceLineGeo)
+
+const WARNING_LEVEL_STYLE = {
+  red: { fill: '#FF4D4F', fillOpacity: 0.55 },
+  orange: { fill: '#FF9C6E', fillOpacity: 0.55 },
+  yellow: { fill: '#FADB14', fillOpacity: 0.55 },
+  blue: { fill: '#1677FF', fillOpacity: 0.55 }
+}
+const WARNING_CITY_BORDER_COLOR = '#777777'
+
+const WARNING_LEVEL_WEIGHT = {
+  red: 4,
+  orange: 3,
+  yellow: 2,
+  blue: 1
+}
+
+function extractStormSurgeCityLevels() {
+  const cityLevelMap = new Map()
+  const alerts = Array.isArray(store.alerts) ? store.alerts : []
+
+  alerts.forEach((alert) => {
+    if (alert?.type !== 'surge') return
+    const match = String(alert.title || '').match(/^(.+?)风暴潮/)
+    if (!match) return
+    const cityName = match[1].trim()
+    const level = alert.level
+    if (!WARNING_LEVEL_STYLE[level]) return
+    const prev = cityLevelMap.get(cityName)
+    if (!prev || (WARNING_LEVEL_WEIGHT[level] > WARNING_LEVEL_WEIGHT[prev])) {
+      cityLevelMap.set(cityName, level)
+    }
+  })
+
+  return cityLevelMap
+}
+
+function renderProvinceBoundary2D() {
+  if (!map || !provinceBoundaryLayer2D) return
+  provinceBoundaryLayer2D.clearLayers()
+
+  GD_PROVINCE_LINE_PATHS.forEach((path) => {
+    const latlngs = path.map(([lng, lat]) => [lat, lng])
+    L.polyline(latlngs, {
+      color: '#ffea00',
+      weight: 2.5,
+      opacity: 1,
+      pane: PROVINCE_BOUNDARY_PANE
+    }).addTo(provinceBoundaryLayer2D)
+  })
+}
+
+function renderProvinceBoundary3D() {
+  if (!viewer) return
+
+  provinceBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
+  provinceBoundaryEntities3D = []
+
+  GD_PROVINCE_LINE_PATHS.forEach((path) => {
+    const degArray = []
+    path.forEach(([lng, lat]) => {
+      degArray.push(lng, lat)
+    })
+    if (degArray.length < 4) return
+
+    const entity = viewer.entities.add({
+      polyline: {
+        positions: Cartesian3.fromDegreesArray(degArray),
+        width: 2.5,
+        material: Color.fromCssColorString('#ffea00')
+      }
+    })
+    provinceBoundaryEntities3D.push(entity)
+  })
+}
+
+function renderCityWarningBoundaries2D() {
+  if (!map || !cityWarningBoundaryLayer2D) return
+  cityWarningBoundaryLayer2D.clearLayers()
+
+  const cityLevelMap = extractStormSurgeCityLevels()
+  if (!cityLevelMap.size) return
+
+  gdCityBoundaryGeo?.features?.forEach((feature) => {
+    const cityName = feature?.properties?.Name || feature?.properties?.name
+    const level = cityLevelMap.get(cityName)
+    const style = WARNING_LEVEL_STYLE[level]
+    if (!style) return
+
+    const polygons = getGeometryPolygons(feature.geometry)
+    polygons.forEach((polygonCoords) => {
+      const rings = polygonCoords.map(ring => ring.map(([lng, lat]) => [lat, lng]))
+      L.polygon(rings, {
+        color: 'transparent',
+        weight: 0,
+        opacity: 0,
+        fillColor: style.fill,
+        fillOpacity: style.fillOpacity,
+        pane: CITY_WARNING_PANE
+      }).addTo(cityWarningBoundaryLayer2D)
+
+      // 统一单色细边界：避免多色/双层描边造成视觉噪音
+      const outerRing = rings[0]
+      if (outerRing?.length > 2) {
+        L.polyline(outerRing, {
+          color: WARNING_CITY_BORDER_COLOR,
+          weight: 0.8,
+          opacity: 1,
+          pane: CITY_WARNING_PANE
+        }).addTo(cityWarningBoundaryLayer2D)
+      }
+    })
+  })
+}
+
+function renderCityWarningBoundaries3D() {
+  if (!viewer) return
+
+  cityWarningBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
+  cityWarningBoundaryEntities3D = []
+
+  const cityLevelMap = extractStormSurgeCityLevels()
+  if (!cityLevelMap.size) return
+
+  gdCityBoundaryGeo?.features?.forEach((feature) => {
+    const cityName = feature?.properties?.Name || feature?.properties?.name
+    const level = cityLevelMap.get(cityName)
+    const style = WARNING_LEVEL_STYLE[level]
+    if (!style) return
+
+    const polygons = getGeometryPolygons(feature.geometry)
+    polygons.forEach((polygonCoords) => {
+      const outerRing = polygonCoords?.[0]
+      if (!outerRing || outerRing.length < 3) return
+      const degArray = []
+      outerRing.forEach(([lng, lat]) => {
+        degArray.push(lng, lat)
+      })
+      if (degArray.length < 6) return
+      const fillColor = Color.fromCssColorString(style.fill)
+      const entity = viewer.entities.add({
+        polygon: {
+          hierarchy: Cartesian3.fromDegreesArray(degArray),
+          material: fillColor.withAlpha(style.fillOpacity),
+          outline: false
+        }
+      })
+      cityWarningBoundaryEntities3D.push(entity)
+
+      const edgeEntity = viewer.entities.add({
+        polyline: {
+          positions: Cartesian3.fromDegreesArray(degArray),
+          width: 1.2,
+          material: Color.fromCssColorString(WARNING_CITY_BORDER_COLOR).withAlpha(0.9)
+        }
+      })
+      cityWarningBoundaryEntities3D.push(edgeEntity)
+    })
   })
 }
 
@@ -200,16 +411,51 @@ function applyCesiumMapMode(mode) {
       viewer.scene.morphTo3D(0.6)
       setTimeout(() => {
         if (currentMapMode.value !== '3D' || !viewer) return
-        viewer.camera.flyTo({
-          destination: Cartesian3.fromDegrees(
-            DEFAULT_3D_VIEW.lng,
-            DEFAULT_3D_VIEW.lat,
-            DEFAULT_3D_VIEW.height
-          ),
-          duration: 1.8
-        })
+        flyTo3DViewPreset(active3DViewPresetKey.value, 1.8)
       }, 680)
+    } else {
+      flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
     }
+  }
+}
+
+function apply3DCameraConstraints() {
+  if (!viewer) return
+  const controller = viewer.scene?.screenSpaceCameraController
+  if (!controller) return
+  controller.enableRotate = true
+  controller.enableTranslate = true
+  controller.enableZoom = true
+  controller.enableTilt = true
+  controller.enableLook = true
+}
+
+function resolve3DViewPreset(presetKey) {
+  return THREE_D_VIEW_PRESETS[presetKey] || THREE_D_VIEW_PRESETS[DEFAULT_3D_PRESET_KEY]
+}
+
+function flyTo3DViewPreset(presetKey = DEFAULT_3D_PRESET_KEY, duration = 1.8) {
+  if (!viewer) return
+  const preset = resolve3DViewPreset(presetKey)
+  const flyToConfig = {
+    destination: Cartesian3.fromDegrees(
+      preset.destination.lng,
+      preset.destination.lat,
+      preset.destination.height
+    ),
+    duration
+  }
+  if (preset.orientation) {
+    flyToConfig.orientation = preset.orientation
+  }
+  viewer.camera.flyTo(flyToConfig)
+}
+
+function switch3DViewPreset(presetKey) {
+  const preset = resolve3DViewPreset(presetKey)
+  active3DViewPresetKey.value = preset.key
+  if (is3DMode.value) {
+    flyTo3DViewPreset(preset.key, 1.2)
   }
 }
 
@@ -231,7 +477,7 @@ async function initCesium() {
       infoBox: false,
       selectionIndicator: false,
       terrainProvider: undefined, // 鏄惧紡绂佺敤榛樿鍦板舰
-      skyBox: false, 
+      skyBox: false,
       skyAtmosphere: false
     })
 
@@ -239,13 +485,26 @@ async function initCesium() {
       viewer.cesiumWidget.creditContainer.style.display = 'none'
     }
 
+    // 显式配置星空盒，兼容当前 Cesium 版本，避免 skyBox:true 的类型错误
+    viewer.scene.skyBox = new SkyBox({
+      sources: {
+        positiveX: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_px.jpg',
+        negativeX: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_mx.jpg',
+        positiveY: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_py.jpg',
+        negativeY: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_my.jpg',
+        positiveZ: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_pz.jpg',
+        negativeZ: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_mz.jpg'
+      }
+    })
+    viewer.scene.skyBox.show = true
+
     // 鎵嬪姩鎸変笟鍔￠€昏緫鍔犺浇搴曞浘
     await mountCesiumImagery(props.currentBasemap)
+    apply3DCameraConstraints()
+    renderCityWarningBoundaries3D()
+    renderProvinceBoundary3D()
     applyCesiumMapMode(currentMapMode.value)
-
-    viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(DEFAULT_3D_VIEW.lng, DEFAULT_3D_VIEW.lat, DEFAULT_3D_VIEW.height)
-    })
+    flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
   } catch (error) {
     console.error('Cesium Viewer initialization failed:', error)
   }
@@ -268,6 +527,14 @@ function initMap() {
   const typhoonPane = map.createPane('typhoon-pane');
   typhoonPane.style.zIndex = 800; // 纭繚鍙伴鍦ㄦ渶椤跺眰
   typhoonPane.style.pointerEvents = 'none'; // 鍏佽鐐瑰嚮涓嬫柟鐨?markers
+
+  const cityWarningPane = map.createPane(CITY_WARNING_PANE)
+  cityWarningPane.style.zIndex = 805
+  cityWarningPane.style.pointerEvents = 'none'
+
+  const provinceBoundaryPane = map.createPane(PROVINCE_BOUNDARY_PANE)
+  provinceBoundaryPane.style.zIndex = 820
+  provinceBoundaryPane.style.pointerEvents = 'none'
 
   // 鍒涘缓搴曞浘鍥惧眰
   basemapConfig.forEach(config => {
@@ -302,6 +569,10 @@ function initMap() {
   
   // 鍒涘缓楂樹寒鍥惧眰
   highlightLayer = L.layerGroup().addTo(map)
+  cityWarningBoundaryLayer2D = L.layerGroup().addTo(map)
+  provinceBoundaryLayer2D = L.layerGroup().addTo(map)
+  renderCityWarningBoundaries2D()
+  renderProvinceBoundary2D()
   
   // 鍒涘缓鍙伴鍥惧眰
   typhoonLayer = L.layerGroup().addTo(map)
@@ -804,9 +1075,7 @@ function zoomIn() { if (is3DMode.value && viewer) viewer.camera.zoomIn(120000); 
 function zoomOut() { if (is3DMode.value && viewer) viewer.camera.zoomOut(120000); else map?.zoomOut(); }
 function resetView() {
   if (is3DMode.value && viewer) {
-    viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(DEFAULT_3D_VIEW.lng, DEFAULT_3D_VIEW.lat, DEFAULT_3D_VIEW.height)
-    })
+    flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
   }
   else map?.flyTo(props.center, props.zoom)
 }
@@ -821,6 +1090,10 @@ function flyToDevice(deviceId) {
 }
 
 watch(() => store.devices, () => renderDevices())
+watch(() => store.alerts, () => {
+  renderCityWarningBoundaries2D()
+  renderCityWarningBoundaries3D()
+}, { deep: true })
 watch(() => props.currentBasemap, (nb) => switchBasemap(nb))
 watch(() => currentMapMode.value, (m) => {
     applyCesiumMapMode(m)
@@ -853,7 +1126,16 @@ watch(currentMapMode, (nm) => {
   }
 })
 
-defineExpose({ zoomIn, zoomOut, resetView, flyToDevice, flyToStation: (id) => flyToDevice(id), flyToRisk, switchBasemap })
+defineExpose({
+  zoomIn,
+  zoomOut,
+  resetView,
+  flyToDevice,
+  flyToStation: (id) => flyToDevice(id),
+  flyToRisk,
+  switchBasemap,
+  switch3DViewPreset
+})
 
 onMounted(() => {
   initMap(); initCesium()
@@ -867,6 +1149,16 @@ onUnmounted(() => {
   if (windAnimationFrame) cancelAnimationFrame(windAnimationFrame)
   window.removeEventListener('resize', resizeCanvas)
   if (waveHeatmapLayer && map) map.removeLayer(waveHeatmapLayer)
+  if (provinceBoundaryLayer2D && map) map.removeLayer(provinceBoundaryLayer2D)
+  if (cityWarningBoundaryLayer2D && map) map.removeLayer(cityWarningBoundaryLayer2D)
+  if (viewer && provinceBoundaryEntities3D.length) {
+    provinceBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
+  }
+  if (viewer && cityWarningBoundaryEntities3D.length) {
+    cityWarningBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
+  }
+  provinceBoundaryEntities3D = []
+  cityWarningBoundaryEntities3D = []
   Object.values(markerLayers).forEach(l => l.clearLayers())
   if (map) map.remove(); if (viewer) viewer.destroy()
 })

@@ -58,6 +58,24 @@
         <button class="tool-btn tool-mode" @click="toggleMapMode" :title="`切换到${mapMode === '3D' ? '2D' : '3D'}`">
           <span>{{ mapMode }}</span>
         </button>
+        <div v-if="mapMode === '3D'" class="view-switch">
+          <button
+            class="tool-btn tool-view"
+            :class="{ active: active3DView === 'decision' }"
+            @click="switch3DView('decision')"
+            title="切换到当前业务视角"
+          >
+            当前
+          </button>
+          <button
+            class="tool-btn tool-view"
+            :class="{ active: active3DView === 'legacy5173' }"
+            @click="switch3DView('legacy5173')"
+            title="切换到5173复刻视角"
+          >
+            5173
+          </button>
+        </div>
         <button class="tool-btn" @click="zoomIn" title="鏀惧ぇ">
           <i class="fa-solid fa-plus"></i>
         </button>
@@ -83,10 +101,14 @@ const props = defineProps({
   mapMode: {
     type: String,
     default: '3D'
+  },
+  active3DView: {
+    type: String,
+    default: 'decision'
   }
 })
 
-const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'basemap-change', 'timeline-change', 'toggle-map-mode'])
+const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'basemap-change', 'timeline-change', 'toggle-map-mode', 'switch-3d-view'])
 
 const mapMode = computed(() => props.mapMode)
 
@@ -168,6 +190,10 @@ function locateUser() {
 
 function toggleMapMode() {
   emit('toggle-map-mode')
+}
+
+function switch3DView(viewKey) {
+  emit('switch-3d-view', viewKey)
 }
 
 // 鐐瑰嚮澶栭儴鍏抽棴涓嬫媺
@@ -464,6 +490,26 @@ onUnmounted(() => {
   border-radius: 14px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.view-switch {
+  display: flex;
+  gap: 4px;
+}
+
+.tool-btn.tool-view {
+  width: auto;
+  min-width: 44px;
+  padding: 0 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tool-btn.tool-view.active {
+  background: var(--accent-cyan);
+  color: #000;
+  border-color: var(--accent-cyan);
 }
 
 .tool-btn:hover {
