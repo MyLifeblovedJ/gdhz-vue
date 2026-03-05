@@ -45,8 +45,9 @@ onUnmounted(() => {
 .app-container {
   position: relative;
   width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-view {

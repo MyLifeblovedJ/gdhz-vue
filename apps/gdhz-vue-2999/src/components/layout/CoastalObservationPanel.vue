@@ -9,11 +9,11 @@
       >
         <div class="mini-video">
           <i class="fa-solid fa-video"></i>
-          <span class="state-dot" :class="item.status"></span>
-        </div>
-        <div class="station-name-row">
-          <span class="station-name">{{ item.stationName }}</span>
-          <span class="status-text" :class="item.status">{{ item.status === 'online' ? '在线' : '离线' }}</span>
+          <div class="status-tag" :class="item.status">
+            <span class="state-dot" :class="item.status"></span>
+            <span>{{ item.status === 'online' ? '在线' : '离线' }}</span>
+          </div>
+          <div class="name-overlay">{{ item.stationName }}</div>
         </div>
       </div>
     </div>
@@ -44,39 +44,51 @@ defineProps({
 }
 
 .station-card {
-  border-radius: 8px;
   border: none;
   background: transparent;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
   min-height: 96px;
 }
 
 .station-card.offline {
-  opacity: 0.6;
+  opacity: 0.62;
 }
 
 .mini-video {
-  height: 74px;
+  height: 96px;
   border-radius: 6px;
-  border: none;
-  background: linear-gradient(135deg, rgba(20, 61, 98, 0.72), rgba(5, 15, 31, 0.9));
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a8ddff;
+  color: rgba(202, 233, 255, 0.86);
   font-size: 14px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(20, 61, 98, 0.74), rgba(5, 15, 31, 0.92));
+}
+
+.status-tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #d7f3e2;
+  background: rgba(1, 20, 11, 0.66);
+}
+
+.status-tag.offline {
+  color: #d7dce7;
+  background: rgba(16, 20, 30, 0.66);
 }
 
 .state-dot {
-  position: absolute;
-  right: 6px;
-  top: 6px;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
 }
 
@@ -89,32 +101,18 @@ defineProps({
   background: #94a3b8;
 }
 
-.station-name-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-}
-
-.station-name {
+.name-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 4px 7px;
   font-size: 12px;
   font-weight: 700;
-  color: #e2f2ff;
+  color: #e8f4ff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.66));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.status-text {
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.status-text.online {
-  color: #22c55e;
-}
-
-.status-text.offline {
-  color: #94a3b8;
 }
 </style>

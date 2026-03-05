@@ -33,11 +33,6 @@
         </div>
       </div>
 
-      <div class="wind-radius">
-        <div class="radius-item">七级半径：<span class="number-font">{{ radius7Text }}</span> 公里</div>
-        <div class="radius-item">十级半径：<span class="number-font">{{ radius10Text }}</span> 公里</div>
-        <div class="radius-item">十二级半径：<span class="number-font">{{ radius12Text }}</span> 公里</div>
-      </div>
 
       <div class="divider"></div>
 

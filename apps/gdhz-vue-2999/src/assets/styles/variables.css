@@ -12,6 +12,10 @@
     --font-body: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
     /* 正文 */
 
+    /* ===== 布局阈值 ===== */
+    --dock-height: 220px;
+    --min-content-height: 900px; /* 侧栏完全展开所需的最小安全高度 */
+
     /* ===== 背景层级 ===== */
     --bg-deepest: #050b12;
     /* 最深层背景 */
@@ -107,8 +111,9 @@
 html,
 body {
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 body {

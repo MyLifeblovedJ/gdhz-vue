@@ -1,5 +1,6 @@
-﻿<template>
+<template>
   <div class="home-page">
+    <!-- 地图背景：fixed 全屏 -->
     <MapContainer
       ref="mapRef"
       class="home-map"
@@ -7,9 +8,36 @@
       :map-mode="store.mapMode"
       :fullscreen="true"
       @device-click="handleDeviceClick"
-    >
-      <AlertBanner class="overlay-banner" />
+    />
 
+    <!-- 独立悬浮交互层：避免被文档流侧栏遮挡 -->
+    <div class="overlay-banner-fixed" :class="{ hidden: isBannerHidden }">
+      <AlertBanner class="overlay-banner" />
+    </div>
+
+    <FloatingToolbar
+      @device-click="handleDeviceClick"
+      @layer-toggle="handleLayerToggle"
+      @model-click="handleModelClick"
+    />
+
+    <MapLegend />
+    <CoastalCameraOverlay :visible="showCameraOverlay" :stations="coastalStations" />
+
+    <MapToolRail
+      :map-mode="store.mapMode"
+      :camera-active="showCameraOverlay"
+      @zoom-in="handleZoomIn"
+      @zoom-out="handleZoomOut"
+      @reset-view="handleResetView"
+      @locate="handleLocate"
+      @toggle-map-mode="handleToggleMapMode"
+      @basemap-change="handleBasemapChange"
+      @toggle-camera="toggleCameraOverlay"
+    />
+
+    <!-- 文档流覆层：可整页滚动 -->
+    <div class="home-overlay">
       <div class="two-column-layout">
         <section class="column left-column">
           <div class="column-block layer-block">
@@ -49,34 +77,13 @@
         </section>
       </div>
 
-      <FloatingToolbar
-        @device-click="handleDeviceClick"
-        @layer-toggle="handleLayerToggle"
-        @model-click="handleModelClick"
-      />
-
-      <MapLegend />
-      <CoastalCameraOverlay :visible="showCameraOverlay" :stations="coastalStations" />
-
-      <MapToolRail
-        :map-mode="store.mapMode"
-        :camera-active="showCameraOverlay"
-        @zoom-in="handleZoomIn"
-        @zoom-out="handleZoomOut"
-        @reset-view="handleResetView"
-        @locate="handleLocate"
-        @toggle-map-mode="handleToggleMapMode"
-        @basemap-change="handleBasemapChange"
-        @toggle-camera="toggleCameraOverlay"
-      />
-
       <DataDock />
-    </MapContainer>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useAppStore } from '../stores/app'
 import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
@@ -94,6 +101,7 @@ const store = useAppStore()
 const mapRef = ref(null)
 const currentBasemap = ref('satellite')
 const showCameraOverlay = ref(false)
+const isBannerHidden = ref(false)
 
 const coastalStations = [
   { id: 'C01', stationName: '湛江东海站', status: 'online', mapX: 29.8, mapY: 74.5 },
@@ -130,6 +138,10 @@ function handleZoomOut() {
   mapRef.value?.zoomOut()
 }
 
+function handleTransitionEnd() {
+  // 动画结束后的清理
+}
+
 function handleResetView() {
   mapRef.value?.resetView()
 }
@@ -150,42 +162,89 @@ function toggleCameraOverlay() {
   showCameraOverlay.value = !showCameraOverlay.value
 }
 
+function handleScroll() {
+  const scrollTop = window.scrollY || document.documentElement.scrollTop || 0
+  isBannerHidden.value = scrollTop > 12
+}
+
 onMounted(() => {
   store.initializeData()
   store.setMapMode('3D')
+  handleScroll()
+  window.addEventListener('scroll', handleScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 </script>
 
 <style scoped>
 .home-page {
   position: relative;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  width: 100%;
+  width: 100vw;
+  min-height: 100vh;
   --home-column-width: clamp(360px, 28vw, 500px);
+  --toolbar-gap: 10px;
+  --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));
+  --tool-rail-safe-right: calc(12px + var(--home-column-width) + var(--toolbar-gap));
 }
 
+/* 地图固定底座 */
 .home-map {
-  width: 100%;
-  height: 100%;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+.overlay-banner-fixed {
+  position: fixed;
+  top: 72px;
+  left: 12px;
+  right: 12px;
+  z-index: 1200;
+  pointer-events: auto;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.overlay-banner-fixed.hidden {
+  opacity: 0;
+  transform: translateY(-12px);
+  pointer-events: none;
 }
 
 .overlay-banner {
   pointer-events: auto;
 }
 
+/* 文档流覆层 */
+.home-overlay {
+  position: relative;
+  z-index: 760;
+  pointer-events: none;
+  min-height: 100vh;
+  padding-top: 82px;
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-overlay > * {
+  pointer-events: auto;
+}
+
 .two-column-layout {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 82px;
-  bottom: max(240px, 24vh);
+  position: relative;
   display: flex;
   justify-content: space-between;
   gap: 14px;
-  z-index: 760;
-  pointer-events: none;
+  flex: 0 0 auto;
 }
 
 .column {
@@ -196,7 +255,6 @@ onMounted(() => {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   pointer-events: auto;
 }
 
@@ -207,13 +265,13 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
-.layer-block { flex: 0 0 40%; }
-.device-block { flex: 1; margin-bottom: 10px; }
-.typhoon-block { flex: 0 0 42%; }
-.coast-block { flex: 1; margin-bottom: 10px; }
+/* 所有 block 自然高度展开 */
+.layer-block { flex: 0 0 auto; }
+.device-block { flex: 0 0 auto; margin-bottom: 10px; }
+.typhoon-block { flex: 0 0 auto; }
+.coast-block { flex: 0 0 auto; margin-bottom: 10px; }
 
 .block-title {
   height: 34px;
@@ -225,16 +283,15 @@ onMounted(() => {
   color: #c7e6ff;
   font-size: 12px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .block-body {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   padding: 8px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.layer-block .block-body { overflow-y: auto; }
 .device-body { padding-top: 0; }
 
 .stats-row {
@@ -268,7 +325,16 @@ onMounted(() => {
 
 .home-map :deep(.map-legend-wrapper) {
   left: calc(18px + var(--home-column-width));
-  bottom: max(245px, 24vh);
-  z-index: 110;
+  bottom: 20px;
+  z-index: 1150;
+}
+
+.home-page :deep(.floating-toolbar) {
+  z-index: 1250;
+}
+
+.home-page :deep(.tool-rail) {
+  right: var(--tool-rail-safe-right);
+  z-index: 1250;
 }
 </style>
