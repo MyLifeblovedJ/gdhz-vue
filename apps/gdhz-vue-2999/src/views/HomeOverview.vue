@@ -37,13 +37,12 @@
     />
 
     <!-- 文档流覆层：可整页滚动 -->
-    <div class="home-overlay">
+    <div class="home-overlay" ref="overlayRef">
       <div class="two-column-layout">
         <section class="column left-column">
-          <div class="column-block layer-block">
-            <div class="block-title"><i class="fa-solid fa-layer-group"></i> 图层控制</div>
-            <div class="block-body">
-              <LayerControl @layer-toggle="handleLayerToggle" />
+          <div class="column-block warning-block">
+            <div class="block-body warning-body">
+              <SituationAlerts :alerts="store.alerts" />
             </div>
           </div>
 
@@ -89,13 +88,13 @@ import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
 import TyphoonInfo from '../components/map/TyphoonInfo.vue'
 import FloatingToolbar from '../components/map/FloatingToolbar.vue'
-import LayerControl from '../components/map/LayerControl.vue'
 import DeviceExplorer from '../components/device/DeviceExplorer.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
 import CoastalObservationPanel from '../components/layout/CoastalObservationPanel.vue'
 import CoastalCameraOverlay from '../components/layout/CoastalCameraOverlay.vue'
 import MapToolRail from '../components/layout/MapToolRail.vue'
 import DataDock from '../components/layout/DataDock.vue'
+import SituationAlerts from '../components/common/SituationAlerts.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
@@ -138,10 +137,6 @@ function handleZoomOut() {
   mapRef.value?.zoomOut()
 }
 
-function handleTransitionEnd() {
-  // 动画结束后的清理
-}
-
 function handleResetView() {
   mapRef.value?.resetView()
 }
@@ -167,15 +162,28 @@ function handleScroll() {
   isBannerHidden.value = scrollTop > 12
 }
 
+function handleWheelBridge(e) {
+  const target = e.target
+  const isOverPanel = target.closest(
+    '.column, .data-dock, .overlay-banner-fixed, .floating-toolbar, .tool-rail, .map-legend-wrapper'
+  )
+  if (isOverPanel) return
+
+  // 地图裸露区域：仅阻止整页滚动，缩放完全交给 MapContainer 内部原生链路
+  e.preventDefault()
+}
+
 onMounted(() => {
   store.initializeData()
   store.setMapMode('3D')
   handleScroll()
   window.addEventListener('scroll', handleScroll, { passive: true })
+  window.addEventListener('wheel', handleWheelBridge, { passive: false })
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('wheel', handleWheelBridge)
 })
 </script>
 
@@ -245,6 +253,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 14px;
   flex: 0 0 auto;
+  pointer-events: none; /* 让中间间隙的事件穿透到底图 */
 }
 
 .column {
@@ -255,7 +264,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
-  pointer-events: auto;
+  pointer-events: auto; /* 侧边栏保持可交互 */
 }
 
 .column-block {
@@ -268,7 +277,7 @@ onBeforeUnmount(() => {
 }
 
 /* 所有 block 自然高度展开 */
-.layer-block { flex: 0 0 auto; }
+.warning-block { flex: 0 0 auto; }
 .device-block { flex: 0 0 auto; margin-bottom: 10px; }
 .typhoon-block { flex: 0 0 auto; }
 .coast-block { flex: 0 0 auto; margin-bottom: 10px; }
@@ -290,6 +299,16 @@ onBeforeUnmount(() => {
   flex: 0 0 auto;
   padding: 8px;
   overflow: visible;
+}
+
+.warning-body {
+  padding: 0;
+}
+
+.warning-body :deep(.panel.alert-panel) {
+  border: none;
+  border-radius: 10px;
+  background: transparent;
 }
 
 .device-body { padding-top: 0; }

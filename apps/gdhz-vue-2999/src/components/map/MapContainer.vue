@@ -1554,6 +1554,61 @@ function switchBasemap(basemapId) {
 
 function zoomIn() { if (is3DMode.value && viewer) viewer.camera.zoomIn(120000); else map?.zoomIn(); }
 function zoomOut() { if (is3DMode.value && viewer) viewer.camera.zoomOut(120000); else map?.zoomOut(); }
+
+// 外部滚轮事件转发 —— 与内部滚轮一致的高频缩放节奏
+let externalWheelDelta = 0
+let externalWheelRaf = 0
+let lastExternalWheelTime = 0
+
+function handleExternalWheel(deltaY, clientX = null, clientY = null) {
+  externalWheelDelta += Number(deltaY || 0)
+  if (externalWheelRaf) return
+
+  externalWheelRaf = requestAnimationFrame(() => {
+    externalWheelRaf = 0
+    const now = performance.now()
+    // 与内部 wheel 捕获对齐（约60fps）
+    if (now - lastExternalWheelTime < 16) return
+    lastExternalWheelTime = now
+
+    const delta = externalWheelDelta
+    externalWheelDelta = 0
+    if (!Number.isFinite(delta) || delta === 0) return
+
+    if (is3DMode.value && viewer) {
+      // 3D 动态步进：按滚轮幅度调整，避免“跳格”
+      const step = Math.min(260000, Math.max(45000, Math.abs(delta) * 900))
+      if (delta < 0) {
+        viewer.camera.zoomIn(step)
+      } else {
+        viewer.camera.zoomOut(step)
+      }
+    } else if (is2DMode.value && map) {
+      const currentZoom = map.getZoom()
+      const nextZoom = delta < 0 ? currentZoom + 1 : currentZoom - 1
+      const limitedZoom = map._limitZoom ? map._limitZoom(nextZoom) : nextZoom
+      if (limitedZoom === currentZoom) return
+      if (
+        Number.isFinite(clientX) &&
+        Number.isFinite(clientY) &&
+        mapRef.value
+      ) {
+        const rect = mapRef.value.getBoundingClientRect()
+        const insideMap =
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom
+        if (insideMap) {
+          const containerPoint = L.point(clientX - rect.left, clientY - rect.top)
+          map.setZoomAround(containerPoint, limitedZoom, { animate: false })
+          return
+        }
+      }
+      map.setZoom(limitedZoom, { animate: false })
+    }
+  })
+}
 function resetView() {
   if (is3DMode.value && viewer) {
     flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
@@ -1618,7 +1673,8 @@ defineExpose({
   flyToStation: (id) => flyToDevice(id),
   flyToRisk,
   switchBasemap,
-  switch3DViewPreset
+  switch3DViewPreset,
+  handleExternalWheel
 })
 
 onMounted(() => {
