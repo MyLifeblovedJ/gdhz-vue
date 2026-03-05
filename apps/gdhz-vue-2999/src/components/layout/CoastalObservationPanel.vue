@@ -7,8 +7,10 @@
         class="station-card"
         :class="item.status"
       >
-        <div class="mini-video">
-          <i class="fa-solid fa-video"></i>
+        <div
+          class="mini-video"
+          :style="{ backgroundImage: `url(/images/coastal/${item.id}.png)` }"
+        >
           <div class="status-tag" :class="item.status">
             <span class="state-dot" :class="item.status"></span>
             <span>{{ item.status === 'online' ? '在线' : '离线' }}</span>
@@ -63,7 +65,9 @@ defineProps({
   color: rgba(202, 233, 255, 0.86);
   font-size: 14px;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(20, 61, 98, 0.74), rgba(5, 15, 31, 0.92));
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(5, 15, 31, 0.92);
 }
 
 .status-tag {
@@ -106,13 +110,14 @@ defineProps({
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 4px 7px;
+  padding: 14px 7px 4px;
   font-size: 12px;
   font-weight: 700;
   color: #e8f4ff;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.66));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 </style>
