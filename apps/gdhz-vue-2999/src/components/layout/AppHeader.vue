@@ -44,11 +44,36 @@
     </div>
 
     <!-- 涓棿瀵艰埅鍖?-->
-    <nav class="header-nav">
+    <nav ref="navRef" class="header-nav">
+      <svg class="nav-liquid-svg" aria-hidden="true">
+        <defs>
+          <filter
+            :id="navFilterId"
+            filterUnits="userSpaceOnUse"
+            color-interpolation-filters="sRGB"
+            x="0"
+            y="0"
+            width="240"
+            height="64"
+          >
+            <feImage ref="feImageRef" result="nav_lg_map" width="240" height="64" />
+            <feDisplacementMap
+              ref="feDisplacementMapRef"
+              in="SourceGraphic"
+              in2="nav_lg_map"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+      </svg>
+      <div class="nav-active-glass" :class="{ visible: activeGlass.visible }" :style="activeGlassStyle"></div>
       <router-link
         v-for="item in navItems"
         :key="item.key"
         :to="item.path"
+        :ref="(el) => setNavBtnRef(item.key, el)"
+        @click="handleNavClick(item.key)"
         class="nav-btn"
         :class="{ active: currentPage === item.key, 'icon-only': item.iconOnly }"
         :title="item.label"
@@ -80,16 +105,31 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { navItems } from '../../data/mockData'
 
 const store = useAppStore()
 const currentPage = computed(() => store.currentPage)
+const navRef = ref(null)
+const feImageRef = ref(null)
+const feDisplacementMapRef = ref(null)
+const navFilterId = `lg-nav-displace-${Math.random().toString(36).slice(2, 9)}`
+const navBtnRefMap = new Map()
+const activeGlass = ref({
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+  visible: false
+})
 
 // 鏃堕棿鐩稿叧
 const now = ref(new Date())
 let timer = null
+let rafId = 0
+const NAV_FILTER_W = 240
+const NAV_FILTER_H = 64
 
 // 澶╂皵鐩稿叧
 const weatherLocation = ref('加载中...')
@@ -210,6 +250,125 @@ const lunarInfo = computed(() => {
 
 let weatherTimer = null
 
+const activeGlassStyle = computed(() => ({
+  width: `${activeGlass.value.width}px`,
+  height: `${activeGlass.value.height}px`,
+  transform: `translate(${activeGlass.value.x}px, ${activeGlass.value.y}px)`,
+  backdropFilter: `url(#${navFilterId}) blur(0.25px) contrast(1.02) brightness(1.01) saturate(1.02)`,
+  WebkitBackdropFilter: `url(#${navFilterId}) blur(0.25px) contrast(1.02) brightness(1.01) saturate(1.02)`
+}))
+
+function smoothStep(a, b, t) {
+  t = Math.max(0, Math.min(1, (t - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+
+function roundedRectSDF(x, y, w, h, r) {
+  const qx = Math.abs(x) - w + r
+  const qy = Math.abs(y) - h + r
+  return Math.min(Math.max(qx, qy), 0) + Math.sqrt(Math.max(qx, 0) ** 2 + Math.max(qy, 0) ** 2) - r
+}
+
+function generateDisplacementMap(width, height) {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  const data = new Uint8ClampedArray(width * height * 4)
+  const raw = []
+  let maxScale = 0
+
+  for (let i = 0; i < data.length; i += 4) {
+    const px = (i / 4) % width
+    const py = Math.floor(i / 4 / width)
+    const ux = px / width - 0.5
+    const uy = py / height - 0.5
+    const dist = roundedRectSDF(ux, uy, 0.42, 0.25, 0.15)
+    const displacement = smoothStep(0.6, 0, dist - 0.08)
+    const scaled = smoothStep(0, 1, displacement)
+    const dx = ux * scaled * width - (px - width / 2)
+    const dy = uy * scaled * height - (py - height / 2)
+    maxScale = Math.max(maxScale, Math.abs(dx), Math.abs(dy))
+    raw.push(dx, dy)
+  }
+
+  maxScale *= 0.5
+  if (maxScale < 1e-6) maxScale = 1
+  let idx = 0
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = (raw[idx++] / maxScale + 0.5) * 255
+    data[i + 1] = (raw[idx++] / maxScale + 0.5) * 255
+    data[i + 2] = 0
+    data[i + 3] = 255
+  }
+  ctx.putImageData(new ImageData(data, width, height), 0, 0)
+  return { dataUrl: canvas.toDataURL(), scale: maxScale }
+}
+
+function initNavLiquidFilter() {
+  if (!feImageRef.value || !feDisplacementMapRef.value) return
+  const { dataUrl, scale } = generateDisplacementMap(NAV_FILTER_W, NAV_FILTER_H)
+  feImageRef.value.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataUrl)
+  feImageRef.value.setAttribute('href', dataUrl)
+  feImageRef.value.setAttribute('width', String(NAV_FILTER_W))
+  feImageRef.value.setAttribute('height', String(NAV_FILTER_H))
+  feDisplacementMapRef.value.setAttribute('scale', (scale * 1.6).toString())
+  feDisplacementMapRef.value.setAttribute('in2', 'nav_lg_map')
+}
+
+function setNavBtnRef(key, el) {
+  if (!el) {
+    navBtnRefMap.delete(key)
+    return
+  }
+  navBtnRefMap.set(key, el.$el || el)
+}
+
+function updateActiveGlass() {
+  const navEl = navRef.value
+  const targetEl = navBtnRefMap.get(currentPage.value)
+  if (!navEl || !targetEl) {
+    activeGlass.value.visible = false
+    return
+  }
+
+  const navRect = navEl.getBoundingClientRect()
+  const targetRect = targetEl.getBoundingClientRect()
+  const width = Math.max(1, Math.round(targetRect.width))
+  const height = Math.max(1, Math.round(targetRect.height))
+  const x = targetRect.left - navRect.left
+  const y = targetRect.top - navRect.top
+
+  activeGlass.value = { x, y, width, height, visible: true }
+}
+
+function scheduleUpdateActiveGlass() {
+  if (rafId) cancelAnimationFrame(rafId)
+  rafId = requestAnimationFrame(() => {
+    rafId = 0
+    updateActiveGlass()
+  })
+}
+
+function handleHeaderResize() {
+  scheduleUpdateActiveGlass()
+}
+
+function handleNavClick(key) {
+  const navEl = navRef.value
+  const targetEl = navBtnRefMap.get(key)
+  if (!navEl || !targetEl) return
+  const navRect = navEl.getBoundingClientRect()
+  const targetRect = targetEl.getBoundingClientRect()
+  activeGlass.value = {
+    x: targetRect.left - navRect.left,
+    y: targetRect.top - navRect.top,
+    width: Math.max(1, Math.round(targetRect.width)),
+    height: Math.max(1, Math.round(targetRect.height)),
+    visible: true
+  }
+}
+
 onMounted(() => {
   timer = setInterval(() => {
     now.value = new Date()
@@ -219,11 +378,23 @@ onMounted(() => {
   fetchWeather()
   // 姣?0鍒嗛挓鏇存柊涓€娆″ぉ姘?
   weatherTimer = setInterval(fetchWeather, 30 * 60 * 1000)
+  nextTick(() => {
+    initNavLiquidFilter()
+    scheduleUpdateActiveGlass()
+  })
+  window.addEventListener('resize', handleHeaderResize)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
   if (weatherTimer) clearInterval(weatherTimer)
+  if (rafId) cancelAnimationFrame(rafId)
+  window.removeEventListener('resize', handleHeaderResize)
+})
+
+watch(currentPage, async () => {
+  await nextTick()
+  scheduleUpdateActiveGlass()
 })
 </script>
 
@@ -321,6 +492,7 @@ onUnmounted(() => {
 
 /* 涓棿瀵艰埅鍖?*/
 .header-nav {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -328,18 +500,69 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 30px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  contain: layout paint;
+}
+
+.nav-liquid-svg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.nav-active-glass {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 20px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    inset 0 -10px 25px rgba(0, 0, 0, 0.05);
+  background:
+    radial-gradient(130% 165% at 8% -8%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1) 35%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 255, 255, 0.01) 100%),
+    linear-gradient(148deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 58%, rgba(255, 255, 255, 0.08));
+  will-change: transform, width, height;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.nav-active-glass.visible {
+  opacity: 1;
+}
+
+.nav-active-glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 2.5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(79, 179, 216, 0.12), rgba(79, 179, 216, 0.95), rgba(79, 179, 216, 0.12));
+  box-shadow:
+    0 0 12px rgba(79, 179, 216, 0.62),
+    0 0 24px rgba(79, 179, 216, 0.35);
+  pointer-events: none;
 }
 
 .nav-btn {
   position: relative;
-  padding: 8px 20px;
-  font-size: 13px;
-  font-weight: 500;
+  z-index: 1;
+  min-width: 114px;
+  padding: 9px 18px;
+  font-size: 17px;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
   border-radius: 20px;
   transition: all 0.3s ease;
   overflow: hidden;
+  text-align: center;
 }
 
 .nav-btn.icon-only {
@@ -358,8 +581,8 @@ onUnmounted(() => {
 
 .nav-btn.active {
   color: #fff;
-  background: linear-gradient(135deg, rgba(79, 179, 216, 0.3), rgba(74, 143, 196, 0.15));
-  box-shadow: 0 0 18px rgba(79, 179, 216, 0.2);
+  background: transparent;
+  box-shadow: none;
 }
 
 .nav-btn.active .nav-glow {
@@ -379,7 +602,7 @@ onUnmounted(() => {
 .nav-icon {
   position: relative;
   z-index: 1;
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1;
 }
 

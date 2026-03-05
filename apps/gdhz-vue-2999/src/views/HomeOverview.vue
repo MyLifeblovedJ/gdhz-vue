@@ -39,7 +39,6 @@
     <!-- 文档流覆层：可整页滚动 -->
     <div class="home-overlay" ref="overlayRef">
       <!-- AI 液态玻璃搜索栏 -->
-      <AISearchBar />
 
       <div class="two-column-layout">
         <section class="column left-column">
@@ -98,7 +97,6 @@ import CoastalCameraOverlay from '../components/layout/CoastalCameraOverlay.vue'
 import MapToolRail from '../components/layout/MapToolRail.vue'
 import DataDock from '../components/layout/DataDock.vue'
 import SituationAlerts from '../components/common/SituationAlerts.vue'
-import AISearchBar from '../components/ai/AISearchBar.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
@@ -169,7 +167,7 @@ function handleScroll() {
 function handleWheelBridge(e) {
   const target = e.target
   const isOverPanel = target.closest(
-    '.column, .data-dock, .overlay-banner-fixed, .floating-toolbar, .tool-rail, .map-legend-wrapper, .lg-glass'
+    '.column, .data-dock, .overlay-banner-fixed, .floating-toolbar, .tool-rail, .map-legend-wrapper'
   )
   if (isOverPanel) return
 
