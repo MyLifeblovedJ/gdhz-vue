@@ -113,7 +113,17 @@
     <DetailPopup
       v-if="selectedDevice"
       :device="selectedDevice"
-      @close="selectedDevice = null"
+      @close="selectedDevice = null; glassVisible = false"
+    />
+
+    <!-- Station Glass Popup on Map -->
+    <StationGlassPopup
+      :device="selectedDevice"
+      :screenX="glassScreenX"
+      :screenY="glassScreenY"
+      :visible="glassVisible"
+      @glass-show="(id) => mapRef?.setDevicePulseVisible(id, false)"
+      @glass-hide="(id) => mapRef?.setDevicePulseVisible(id, true)"
     />
   </div>
 </template>
@@ -136,6 +146,7 @@ import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
 import TyphoonInfo from '../components/map/TyphoonInfo.vue'
 import DetailPopup from '../components/common/DetailPopup.vue'
+import StationGlassPopup from '../components/map/StationGlassPopup.vue'
 
 const store = useAppStore()
 const mapRef = ref(null)
@@ -201,9 +212,25 @@ function updateLegendTop() {
   legendTop.value = Math.round(deviceBlockRef.value.getBoundingClientRect().top)
 }
 
-function handleDeviceClick(device) {
+const glassVisible = ref(false)
+const glassScreenX = ref(0)
+const glassScreenY = ref(0)
+
+async function handleDeviceClick(device) {
   selectedDevice.value = device
-  mapRef.value?.flyToDevice(device.id)
+  glassVisible.value = false
+  await mapRef.value?.flyToDevice(device.id)
+  updateGlassPosition(device)
+  glassVisible.value = true
+}
+
+function updateGlassPosition(device) {
+  if (!device) return
+  const pt = mapRef.value?.latLngToScreenPoint(device.lat, device.lng)
+  if (pt) {
+    glassScreenX.value = pt.x
+    glassScreenY.value = pt.y
+  }
 }
 
 function handleLayerToggle({ layerId, checked }) {

@@ -90,6 +90,7 @@ let viewer = null
 let basemapLayers = {}
 let markerLayers = {}
 let markers = {}
+let pulseMarkers = {}
 let deviceEntities3D = []
 let typhoonLayer = null
 let typhoonEntities3D = []
@@ -1443,6 +1444,7 @@ function renderDevices2D() {
 
   Object.values(markerLayers).forEach(layer => layer.clearLayers())
   markers = {}
+  pulseMarkers = {}
 
   mapRenderSpec.value.devices.forEach((item) => {
     const marker = renderLeafletPointMarker(null, item, { pane: 'markers-pane', tooltip: false })
@@ -1452,6 +1454,25 @@ function renderDevices2D() {
     })
 
     const device = store.devices.find(candidate => candidate.id === item.sourceId)
+
+    // Add pulse ring for alarm/warn stations
+    if (device && (device.status === 'alarm' || device.status === 'warn')) {
+      const pulseClass = device.status === 'alarm' ? 'device-pulse-red' : 'device-pulse-yellow'
+      const pulseMarker = L.marker([item.lat, item.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="${pulseClass}"></div>`,
+          iconSize: [40, 40],
+          iconAnchor: [20, 20],
+        }),
+        pane: 'markers-pane',
+        interactive: false,
+      })
+      const layer = markerLayers[device?.type]
+      if (layer) layer.addLayer(pulseMarker)
+      pulseMarkers[item.sourceId] = pulseMarker
+    }
+
     const layer = markerLayers[device?.type]
     if (layer) {
       layer.addLayer(marker)
@@ -1807,11 +1828,40 @@ function resetView() {
 
 function flyToDevice(deviceId) {
   const device = store.devices.find(d => d.id === deviceId)
-  if (device && is3DMode.value && viewer) {
-    viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(device.lng, device.lat, 180000) })
-  } else if (markers[deviceId] && device) {
-    map?.flyTo([device.lat, device.lng], 12, { duration: 1 }); markers[deviceId].openPopup()
+  return new Promise((resolve) => {
+    if (device && is3DMode.value && viewer) {
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(device.lng, device.lat, 180000),
+        complete: () => resolve(),
+        cancel: () => resolve(),
+      })
+    } else if (markers[deviceId] && device) {
+      map?.flyTo([device.lat, device.lng], 12, { duration: 1 })
+      setTimeout(resolve, 1050)
+    } else {
+      resolve()
+    }
+  })
+}
+
+function latLngToScreenPoint(lat, lng) {
+  if (is3DMode.value && viewer) {
+    const cartesian = Cartesian3.fromDegrees(lng, lat)
+    const windowPos = SceneTransforms.wgs84ToWindowCoordinates(viewer.scene, cartesian)
+    return windowPos ? { x: windowPos.x, y: windowPos.y } : null
   }
+  if (!map) return null
+  const pt = map.latLngToContainerPoint([lat, lng])
+  const rect = mapRef.value?.getBoundingClientRect()
+  if (!rect) return null
+  return { x: rect.left + pt.x, y: rect.top + pt.y }
+}
+
+function setDevicePulseVisible(deviceId, visible) {
+  const pm = pulseMarkers[deviceId]
+  if (!pm) return
+  const el = pm.getElement ? pm.getElement() : pm._icon
+  if (el) el.style.display = visible ? '' : 'none'
 }
 
 watch(() => store.devices, () => renderDevices(), { deep: true })
@@ -1869,7 +1919,9 @@ defineExpose({
   flyToRisk,
   switchBasemap,
   switch3DViewPreset,
-  handleExternalWheel
+  handleExternalWheel,
+  latLngToScreenPoint,
+  setDevicePulseVisible,
 })
 
 onMounted(() => {
@@ -1954,6 +2006,35 @@ onUnmounted(() => {
 @keyframes risk-pulse { 0%, 100% { opacity: 0.1; transform: scale(0.95); } 50% { opacity: 0.4; transform: scale(1.05); } }
 @keyframes marker-blink { from { opacity: 1; stroke-width: 0; } to { opacity: 0.5; stroke-width: 4px; stroke: rgba(223, 93, 106, 0.45); } }
 @keyframes focus-ring-shrink { 0% { transform: scale(5); border-color: transparent; border-width: 0; } 20% { opacity: 1; border-color: #df5d6a; border-width: 4px; } 100% { transform: scale(1); opacity: 0; border-width: 0; } }
+
+:deep(.device-pulse-red),
+:deep(.device-pulse-yellow) {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+:deep(.device-pulse-red) {
+  background: rgba(239, 68, 68, 0.6);
+  animation: device-pulse-red 1.2s ease-out infinite;
+}
+:deep(.device-pulse-yellow) {
+  background: rgba(245, 158, 11, 0.6);
+  animation: device-pulse-yellow 1.5s ease-out infinite;
+}
+@keyframes device-pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+@keyframes device-pulse-yellow {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 16px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
 
 .wind-canvas, .wave-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400; }
 .wave-canvas { z-index: 399; opacity: 0.6; }
