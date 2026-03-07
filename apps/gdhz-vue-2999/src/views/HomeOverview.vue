@@ -124,6 +124,7 @@
       :visible="glassVisible"
       @glass-show="(id) => mapRef?.setDevicePulseVisible(id, false)"
       @glass-hide="(id) => mapRef?.setDevicePulseVisible(id, true)"
+      @close="closeGlass"
     />
   </div>
 </template>
@@ -216,12 +217,53 @@ const glassVisible = ref(false)
 const glassScreenX = ref(0)
 const glassScreenY = ref(0)
 
+let glassOpenZoom = null
+let zoomWatcher = null
+let glassRaf = null
+
+function startGlassTracking() {
+  stopGlassTracking()
+  const tick = () => {
+    if (glassVisible.value && selectedDevice.value) {
+      updateGlassPosition(selectedDevice.value)
+    }
+    glassRaf = requestAnimationFrame(tick)
+  }
+  glassRaf = requestAnimationFrame(tick)
+}
+
+function stopGlassTracking() {
+  if (glassRaf) { cancelAnimationFrame(glassRaf); glassRaf = null }
+}
+
 async function handleDeviceClick(device) {
   selectedDevice.value = device
   glassVisible.value = false
+  // Remove previous watchers
+  if (zoomWatcher) { mapRef.value?.offZoomChange(zoomWatcher); zoomWatcher = null }
+  stopGlassTracking()
   await mapRef.value?.flyToDevice(device.id)
   updateGlassPosition(device)
   glassVisible.value = true
+  glassOpenZoom = mapRef.value?.getZoom() ?? null
+
+  // Watch for zoom-out beyond 2 steps (tolerance = 1.0) to close glass
+  zoomWatcher = (zoom) => {
+    if (glassOpenZoom !== null && zoom < glassOpenZoom - 1.0) {
+      closeGlass()
+    }
+  }
+  mapRef.value?.onZoomChange(zoomWatcher)
+
+  // Start rAF loop for frame-perfect tracking
+  startGlassTracking()
+}
+
+function closeGlass() {
+  glassVisible.value = false
+  glassOpenZoom = null
+  if (zoomWatcher) { mapRef.value?.offZoomChange(zoomWatcher); zoomWatcher = null }
+  stopGlassTracking()
 }
 
 function updateGlassPosition(device) {

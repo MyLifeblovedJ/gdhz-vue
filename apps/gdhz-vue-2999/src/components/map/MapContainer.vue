@@ -130,6 +130,7 @@ const COUNTY_BOUNDARY_PANE = 'county-boundary-pane'
 const COUNTY_LABEL_PANE = 'county-label-pane'
 const COUNTY_BOUNDARY_MIN_ZOOM = 9
 const COUNTY_LABEL_MIN_ZOOM = 10
+const CITY_WARNING_MAX_ZOOM = 8.5
 const COUNTY_BOUNDARY_MAX_HEIGHT_3D = 800000
 const COUNTY_LABEL_MAX_HEIGHT_3D = 500000
 
@@ -571,6 +572,19 @@ async function applyCountyBoundaryVisibility2D() {
   }
 }
 
+function applyCityWarningVisibility2D() {
+  if (!map || !cityWarningBoundaryLayer2D) return
+  const zoom = map.getZoom()
+  if (zoom >= CITY_WARNING_MAX_ZOOM) {
+    cityWarningBoundaryLayer2D.eachLayer(l => l.setStyle({ opacity: 0, fillOpacity: 0 }))
+  } else {
+    cityWarningBoundaryLayer2D.eachLayer(l => {
+      const style = l.options._originalStyle
+      if (style) l.setStyle({ opacity: style.opacity ?? 1, fillOpacity: style.fillOpacity ?? 0.55 })
+    })
+  }
+}
+
 function renderCountyBoundaries3D() {
   if (!viewer) return
   if (countyBoundariesRendered3D) return
@@ -709,7 +723,7 @@ function renderCityWarningBoundaries2D() {
     const polygons = getGeometryPolygons(feature.geometry)
     polygons.forEach((polygonCoords) => {
       const rings = polygonCoords.map(ring => ring.map(([lng, lat]) => [lat, lng]))
-      L.polygon(rings, {
+      const poly = L.polygon(rings, {
         color: 'transparent',
         weight: 0,
         opacity: 0,
@@ -717,7 +731,8 @@ function renderCityWarningBoundaries2D() {
         fillOpacity: style.fillOpacity,
         interactive: false,
         bubblingMouseEvents: false,
-        pane: CITY_WARNING_PANE
+        pane: CITY_WARNING_PANE,
+        _originalStyle: { opacity: 0, fillOpacity: style.fillOpacity }
       }).addTo(cityWarningBoundaryLayer2D)
 
       // 统一单色细边界：避免多色/双层描边造成视觉噪音
@@ -729,7 +744,8 @@ function renderCityWarningBoundaries2D() {
           opacity: 1,
           interactive: false,
           bubblingMouseEvents: false,
-          pane: CITY_WARNING_PANE
+          pane: CITY_WARNING_PANE,
+          _originalStyle: { opacity: 1, fillOpacity: 0 }
         }).addTo(cityWarningBoundaryLayer2D)
       }
     })
@@ -1095,7 +1111,10 @@ function initMap() {
   renderCoastalCityLabels2D()
   applyCountyBoundaryVisibility2D()
 
-  mapZoomLevelHandler = () => applyCountyBoundaryVisibility2D()
+  mapZoomLevelHandler = () => {
+    applyCountyBoundaryVisibility2D()
+    applyCityWarningVisibility2D()
+  }
   map.on('zoomend', mapZoomLevelHandler)
 
   // 鍒涘缓鍙伴鍥惧眰
@@ -1864,6 +1883,35 @@ function setDevicePulseVisible(deviceId, visible) {
   if (el) el.style.display = visible ? '' : 'none'
 }
 
+const externalZoomCallbacks = new Set()
+function getZoom() { return is3DMode.value ? null : map?.getZoom() ?? null }
+function onZoomChange(cb) {
+  externalZoomCallbacks.add(cb)
+  if (!map) return
+  if (!map._externalZoomHandler) {
+    map._externalZoomHandler = () => {
+      const z = map.getZoom()
+      externalZoomCallbacks.forEach(fn => fn(z))
+    }
+    map.on('zoomend', map._externalZoomHandler)
+  }
+}
+function offZoomChange(cb) { externalZoomCallbacks.delete(cb) }
+
+const externalMoveCallbacks = new Set()
+function onMapMove(cb) {
+  externalMoveCallbacks.add(cb)
+  if (!map) return
+  if (!map._externalMoveHandler) {
+    map._externalMoveHandler = () => {
+      externalMoveCallbacks.forEach(fn => fn())
+    }
+    map.on('move', map._externalMoveHandler)
+    map.on('zoom', map._externalMoveHandler)
+  }
+}
+function offMapMove(cb) { externalMoveCallbacks.delete(cb) }
+
 watch(() => store.devices, () => renderDevices(), { deep: true })
 watch(() => store.alerts, () => {
   renderCityWarningBoundaries2D()
@@ -1922,6 +1970,11 @@ defineExpose({
   handleExternalWheel,
   latLngToScreenPoint,
   setDevicePulseVisible,
+  getZoom,
+  onZoomChange,
+  offZoomChange,
+  onMapMove,
+  offMapMove,
 })
 
 onMounted(() => {

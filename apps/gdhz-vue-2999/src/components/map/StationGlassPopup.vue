@@ -4,6 +4,7 @@
     <Transition name="glass-fade">
       <div v-if="visible" class="station-glass-wrap" :class="{ 'is-alarm': isAlarm }" :style="wrapStyle">
         <div ref="glassEl" class="station-glass">
+          <button class="glass-close" @click="emit('close')">×</button>
           <div class="glass-text">
             <div class="glass-name">{{ device?.name || '--' }}</div>
           </div>
@@ -23,7 +24,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['glass-show', 'glass-hide'])
+const emit = defineEmits(['glass-show', 'glass-hide', 'close'])
 
 const glassEl = ref(null)
 let shaderInstance = null
@@ -216,6 +217,36 @@ onBeforeUnmount(() => {
   padding: 16px 20px 28px;
   z-index: 1;
   pointer-events: none;
+}
+
+.glass-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 2;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.glass-close:hover {
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+  border-color: transparent;
 }
 
 .glass-name {
