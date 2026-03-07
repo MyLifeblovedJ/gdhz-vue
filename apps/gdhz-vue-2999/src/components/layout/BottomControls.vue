@@ -241,7 +241,7 @@ onUnmounted(() => {
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-normal);
   border-radius: 25px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 20px rgba(14, 116, 144, 0.1);
   pointer-events: auto;
 }
 

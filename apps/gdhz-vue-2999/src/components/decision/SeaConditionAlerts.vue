@@ -142,7 +142,7 @@ function handleViewHistory() {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 8px;
   border-left: 3px solid transparent;
   cursor: pointer;
@@ -236,7 +236,7 @@ function handleViewHistory() {
   gap: 8px;
   padding: 10px 12px;
   margin-top: 4px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 6px;
   border: 1px dashed var(--border-subtle);
   cursor: pointer;

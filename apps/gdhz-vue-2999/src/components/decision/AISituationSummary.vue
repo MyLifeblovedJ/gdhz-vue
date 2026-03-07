@@ -1347,7 +1347,7 @@ onUnmounted(() => {
 .ref-impacts .impact-item {
   text-align: center;
   padding: 6px 4px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
 }
 
@@ -1525,7 +1525,7 @@ onUnmounted(() => {
 .match-details {
   padding: 8px 10px;
   border-top: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
 }
 
 .detail-section {
@@ -1633,13 +1633,13 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .risk-hl-header:hover {
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(14, 116, 144, 0.07);
 }
 
 .risk-hl-header .header-left {
@@ -1787,7 +1787,7 @@ onUnmounted(() => {
 .risk-hotspots-expanded {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
 }
 
 .hotspots-header {
@@ -1918,7 +1918,7 @@ onUnmounted(() => {
 .hotspot-details {
   padding: 8px 10px;
   border-top: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
 }
 
 .detail-row {
@@ -2133,7 +2133,7 @@ onUnmounted(() => {
 .stat-item {
   text-align: center;
   padding: 8px 4px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
 }
 
@@ -2178,7 +2178,7 @@ onUnmounted(() => {
 .station-select {
   margin-left: auto;
   padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(14, 116, 144, 0.1);
   border: 1px solid rgba(6, 182, 212, 0.3);
   border-radius: 6px;
   color: var(--text-primary);
@@ -2265,7 +2265,7 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 10px;
   border-left: 4px solid transparent;
   cursor: pointer;

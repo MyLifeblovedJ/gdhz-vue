@@ -116,13 +116,13 @@ const combinedRisk = computed(() => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border: 1px solid var(--border-subtle);
   transition: all 0.2s;
 }
 
 .warning-item:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(14, 116, 144, 0.08);
 }
 
 /* 预警等级颜色 */

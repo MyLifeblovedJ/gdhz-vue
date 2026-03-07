@@ -9,15 +9,15 @@
 
     <!-- 中间主内容区（包含地图） -->
     <div class="main-content-area">
-      <!-- 预警横幅 -->
-      <AlertBanner />
-
       <!-- 地图容器 -->
       <MapContainer
         ref="mapRef"
         :current-basemap="currentBasemap"
         @device-click="handleDeviceClick"
       >
+        <!-- 预警横幅 - 统一为地图上方的悬浮覆盖物 -->
+        <AlertBanner class="overlay-banner" />
+
         <!-- Windy 风格悬浮工具栏 -->
         <FloatingToolbar
           @device-click="handleDeviceClick"
@@ -160,5 +160,17 @@ onMounted(() => {
   min-height: 0;
   min-width: 0;
   position: relative;
+}
+
+.overlay-banner {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: auto;
+  min-width: 600px;
+  max-width: 90vw;
+  pointer-events: auto;
 }
 </style>

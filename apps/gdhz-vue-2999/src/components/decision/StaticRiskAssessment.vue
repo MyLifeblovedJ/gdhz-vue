@@ -292,7 +292,7 @@ function handleVulnerabilityClick(item) {
 
 /* 影响范围 */
 .impact-summary {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 8px;
   padding: 10px;
 }
@@ -330,7 +330,7 @@ function handleVulnerabilityClick(item) {
 
 /* 承灾体列表 */
 .vulnerability-section {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 8px;
   padding: 10px;
 }

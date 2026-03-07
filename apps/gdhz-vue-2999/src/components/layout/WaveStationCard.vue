@@ -46,10 +46,10 @@ const deviationText = computed(() => {
   min-width: 280px;
   height: 112px;
   border-radius: 10px;
-  border: 1px solid rgba(120, 160, 196, 0.32);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  background: rgba(220, 238, 248, 0.65);
   padding: 10px;
-  color: #e6f4ff;
+  color: #1a3a5c;
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -57,8 +57,8 @@ const deviationText = computed(() => {
   cursor: pointer;
 }
 .wave-card.active {
-  border-color: rgba(95, 198, 255, 0.78);
-  box-shadow: 0 0 0 1px rgba(95, 198, 255, 0.24);
+  border-color: rgba(8, 145, 178, 0.55);
+  box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.18);
 }
 .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .name { font-size: 14px; font-weight: 700; }
@@ -68,13 +68,13 @@ const deviationText = computed(() => {
   border-radius: 999px;
   border: 1px solid transparent;
 }
-.badge.red { color: #fecaca; background: rgba(220, 38, 38, 0.24); border-color: rgba(220, 38, 38, 0.5); }
-.badge.orange { color: #fed7aa; background: rgba(249, 115, 22, 0.24); border-color: rgba(249, 115, 22, 0.5); }
-.badge.yellow { color: #fef08a; background: rgba(234, 179, 8, 0.24); border-color: rgba(234, 179, 8, 0.5); }
-.badge.blue { color: #bfdbfe; background: rgba(59, 130, 246, 0.24); border-color: rgba(59, 130, 246, 0.5); }
+.badge.red { color: #dc2626; background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.35); }
+.badge.orange { color: #ea580c; background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.35); }
+.badge.yellow { color: #ca8a04; background: rgba(234, 179, 8, 0.12); border-color: rgba(234, 179, 8, 0.35); }
+.badge.blue { color: #2563eb; background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.35); }
 .value-row { display: flex; justify-content: space-between; align-items: baseline; }
 .main { font-size: 24px; font-weight: 800; line-height: 1; }
 .main em { font-size: 12px; font-style: normal; opacity: 0.72; margin-left: 2px; }
-.sub { font-size: 12px; color: rgba(194, 215, 234, 0.78); }
-.meta-row { display: flex; justify-content: space-between; font-size: 12px; color: rgba(191, 212, 232, 0.82); }
+.sub { font-size: 12px; color: rgba(26, 58, 92, 0.6); }
+.meta-row { display: flex; justify-content: space-between; font-size: 12px; color: rgba(26, 58, 92, 0.55); }
 </style>

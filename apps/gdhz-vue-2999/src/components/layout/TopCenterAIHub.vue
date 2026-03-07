@@ -110,14 +110,16 @@ function submitQuery() {
   height: 52px;
   padding: 0 10px 0 14px;
   border-radius: 14px;
-  background: linear-gradient(135deg, rgba(10, 22, 46, 0.94), rgba(15, 33, 66, 0.9));
-  border: 1px solid rgba(79, 179, 216, 0.45);
-  box-shadow: 0 14px 34px rgba(6, 16, 35, 0.45);
+  background: rgba(225, 240, 252, 0.78);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(8, 145, 178, 0.25);
+  box-shadow: 0 8px 24px rgba(14, 116, 144, 0.1);
 }
 
 .ai-prefix {
   font-size: 13px;
-  color: #d8f0ff;
+  color: #0e7490;
   white-space: nowrap;
 }
 
@@ -127,21 +129,21 @@ function submitQuery() {
   border: none;
   outline: none;
   background: transparent;
-  color: #f8fbff;
+  color: #1a3a5c;
   font-size: 14px;
 }
 
 .ai-input::placeholder {
-  color: rgba(195, 218, 237, 0.68);
+  color: rgba(26, 58, 92, 0.45);
 }
 
 .ai-send {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid rgba(124, 212, 255, 0.38);
-  background: rgba(20, 65, 104, 0.75);
-  color: #bce9ff;
+  border: 1px solid rgba(8, 145, 178, 0.25);
+  background: rgba(8, 145, 178, 0.1);
+  color: #0891b2;
   cursor: pointer;
 }
 
@@ -150,9 +152,11 @@ function submitQuery() {
   margin-top: 10px;
   border-radius: 14px;
   padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(7, 18, 38, 0.85), rgba(11, 27, 53, 0.78));
-  border: 1px solid rgba(83, 176, 126, 0.32);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+  background: rgba(225, 240, 252, 0.78);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  box-shadow: 0 8px 24px rgba(14, 116, 144, 0.08);
 }
 
 .summary-head {
@@ -164,18 +168,18 @@ function submitQuery() {
 .summary-title {
   font-size: 13px;
   font-weight: 700;
-  color: #9ce7c2;
+  color: #16a34a;
 }
 
 .summary-meta {
   font-size: 12px;
-  color: rgba(191, 212, 236, 0.82);
+  color: rgba(26, 58, 92, 0.55);
 }
 
 .summary-main {
   margin-top: 8px;
   font-size: 13px;
-  color: #e8f4ff;
+  color: #1a3a5c;
   line-height: 1.5;
 }
 
@@ -189,8 +193,8 @@ function submitQuery() {
 .summary-item {
   border-radius: 10px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(122, 168, 204, 0.18);
+  background: rgba(220, 238, 248, 0.65);
+  border: 1px solid rgba(14, 116, 144, 0.1);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -198,12 +202,12 @@ function submitQuery() {
 
 .summary-item .label {
   font-size: 11px;
-  color: rgba(189, 210, 229, 0.7);
+  color: rgba(26, 58, 92, 0.55);
 }
 
 .summary-item .value {
   font-size: 12px;
-  color: #eff7ff;
+  color: #1a3a5c;
   font-weight: 600;
 }
 

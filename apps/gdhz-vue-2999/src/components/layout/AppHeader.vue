@@ -1,90 +1,34 @@
 ﻿<template>
   <header class="app-header">
-    <!-- 宸︿晶鍝佺墝鍖?-->
     <div class="header-brand">
-      <div class="brand-logo">
+      <div class="brand-logo" aria-hidden="true">
         <svg viewBox="0 0 48 48" class="logo-svg">
-          <defs>
-            <linearGradient id="sky-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#081425"/>
-              <stop offset="100%" stop-color="#12314b"/>
-            </linearGradient>
-            <linearGradient id="wave1-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#4fb3d8"/>
-              <stop offset="100%" stop-color="#2f6c95"/>
-            </linearGradient>
-            <linearGradient id="wave2-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#3b81ad"/>
-              <stop offset="100%" stop-color="#255f85"/>
-            </linearGradient>
-            <linearGradient id="wave3-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#2f6c95"/>
-              <stop offset="100%" stop-color="#1b425f"/>
-            </linearGradient>
-            <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#d7e3ef"/>
-              <stop offset="50%" stop-color="#7db8d6"/>
-              <stop offset="100%" stop-color="#4a8fc4" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <circle cx="24" cy="24" r="22" fill="url(#sky-grad)" stroke="#4a8fc4" stroke-width="1" stroke-opacity="0.45"/>
-          <circle cx="34" cy="12" r="5" fill="url(#sun-glow)" class="sun-pulse"/>
-          <circle cx="34" cy="12" r="3" fill="#bcd5e6"/>
-          <path d="M2 32 Q8 28 14 32 T26 32 T38 32 T46 32 L46 46 L2 46 Z" fill="url(#wave1-grad)" class="wave-layer wave-1"/>
-          <path d="M2 36 Q10 32 18 36 T34 36 T46 36 L46 46 L2 46 Z" fill="url(#wave2-grad)" class="wave-layer wave-2"/>
-          <path d="M2 40 Q12 36 22 40 T42 40 T46 40 L46 46 L2 46 Z" fill="url(#wave3-grad)" class="wave-layer wave-3"/>
-          <path d="M12 18 Q14 16 16 18 M13 17 L14 16 L15 17" fill="none" stroke="#8ab7d3" stroke-width="0.8" stroke-linecap="round"/>
-          <path d="M20 14 Q22 12 24 14 M21 13 L22 12 L23 13" fill="none" stroke="#78a9c7" stroke-width="0.6" stroke-linecap="round"/>
+          <rect x="4" y="4" width="40" height="40" rx="14" fill="#ffffff" stroke="rgba(15, 23, 42, 0.1)" />
+          <path d="M13 18h22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+          <path d="M13 25c3.2 0 3.2-2 6.3-2s3.2 2 6.4 2 3.2-2 6.4-2 3.2 2 6.4 2" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M13 31h14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
         </svg>
       </div>
       <div class="brand-text">
         <span class="brand-title">广东省海洋灾害综合决策系统</span>
-        <span class="brand-subtitle">OCEAN DISASTER DECISION SYSTEM</span>
+        <span class="brand-subtitle">Ocean Disaster Decision System</span>
       </div>
     </div>
 
-    <!-- 涓棿瀵艰埅鍖?-->
-    <nav ref="navRef" class="header-nav">
-      <svg class="nav-liquid-svg" aria-hidden="true">
-        <defs>
-          <filter
-            :id="navFilterId"
-            filterUnits="userSpaceOnUse"
-            color-interpolation-filters="sRGB"
-            x="0"
-            y="0"
-            width="240"
-            height="64"
-          >
-            <feImage ref="feImageRef" result="nav_lg_map" width="240" height="64" />
-            <feDisplacementMap
-              ref="feDisplacementMapRef"
-              in="SourceGraphic"
-              in2="nav_lg_map"
-              xChannelSelector="R"
-              yChannelSelector="G"
-            />
-          </filter>
-        </defs>
-      </svg>
-      <div class="nav-active-glass" :class="{ visible: activeGlass.visible }" :style="activeGlassStyle"></div>
+    <nav class="header-nav" aria-label="主导航">
       <router-link
         v-for="item in navItems"
         :key="item.key"
         :to="item.path"
-        :ref="(el) => setNavBtnRef(item.key, el)"
-        @click="handleNavClick(item.key)"
         class="nav-btn"
-        :class="{ active: currentPage === item.key, 'icon-only': item.iconOnly }"
+        :class="{ active: currentPage === item.key }"
         :title="item.label"
       >
-        <i v-if="item.iconOnly && item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
-        <span v-else class="nav-text">{{ item.label }}</span>
-        <span class="nav-glow"></span>
+        <i v-if="item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
+        <span class="nav-text">{{ item.label }}</span>
       </router-link>
     </nav>
 
-    <!-- 鍙充晶宸ュ叿鍖?-->
     <div class="header-tools">
       <div class="tool-datetime">
         <div class="dt-clock">
@@ -93,6 +37,9 @@
         </div>
         <div class="dt-date">{{ formattedDate }}</div>
       </div>
+
+      <div class="tool-divider" aria-hidden="true"></div>
+
       <div class="tool-weather" :title="weatherLocation">
         <i :class="weatherIcon"></i>
         <div class="weather-info">
@@ -105,98 +52,74 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { navItems } from '../../data/mockData'
 
 const store = useAppStore()
 const currentPage = computed(() => store.currentPage)
-const navRef = ref(null)
-const feImageRef = ref(null)
-const feDisplacementMapRef = ref(null)
-const navFilterId = `lg-nav-displace-${Math.random().toString(36).slice(2, 9)}`
-const navBtnRefMap = new Map()
-const activeGlass = ref({
-  x: 0,
-  y: 0,
-  width: 0,
-  height: 0,
-  visible: false
-})
 
-// 鏃堕棿鐩稿叧
 const now = ref(new Date())
 let timer = null
-let rafId = 0
-const NAV_FILTER_W = 240
-const NAV_FILTER_H = 64
+let weatherTimer = null
 
-// 澶╂皵鐩稿叧
 const weatherLocation = ref('加载中...')
 const weatherText = ref('')
 const weatherTemp = ref('')
 const weatherIcon = ref('fa-solid fa-cloud-sun')
 
-// 澶╂皵鍥炬爣鏄犲皠
 const weatherIconMap = {
-  '晴': 'fa-solid fa-sun',
-  '多云': 'fa-solid fa-cloud-sun',
-  '阴': 'fa-solid fa-cloud',
-  '少云': 'fa-solid fa-cloud-sun',
-  '晴间多云': 'fa-solid fa-cloud-sun',
-  '小雨': 'fa-solid fa-cloud-rain',
-  '中雨': 'fa-solid fa-cloud-showers-heavy',
-  '大雨': 'fa-solid fa-cloud-showers-heavy',
-  '暴雨': 'fa-solid fa-cloud-showers-water',
-  '雷阵雨': 'fa-solid fa-cloud-bolt',
-  '雪': 'fa-solid fa-snowflake',
-  '小雪': 'fa-solid fa-snowflake',
-  '中雪': 'fa-solid fa-snowflake',
-  '大雪': 'fa-solid fa-snowflake',
-  '雾': 'fa-solid fa-smog',
-  '霾': 'fa-solid fa-smog',
-  '阵雨': 'fa-solid fa-cloud-rain',
-  '雨夹雪': 'fa-solid fa-cloud-meatball',
-  '浮尘': 'fa-solid fa-wind',
-  '扬沙': 'fa-solid fa-wind',
-  '沙尘暴': 'fa-solid fa-wind',
+  晴: 'fa-solid fa-sun',
+  多云: 'fa-solid fa-cloud-sun',
+  阴: 'fa-solid fa-cloud',
+  少云: 'fa-solid fa-cloud-sun',
+  晴间多云: 'fa-solid fa-cloud-sun',
+  小雨: 'fa-solid fa-cloud-rain',
+  中雨: 'fa-solid fa-cloud-showers-heavy',
+  大雨: 'fa-solid fa-cloud-showers-heavy',
+  暴雨: 'fa-solid fa-cloud-showers-water',
+  雷阵雨: 'fa-solid fa-cloud-bolt',
+  雪: 'fa-solid fa-snowflake',
+  小雪: 'fa-solid fa-snowflake',
+  中雪: 'fa-solid fa-snowflake',
+  大雪: 'fa-solid fa-snowflake',
+  雾: 'fa-solid fa-smog',
+  霾: 'fa-solid fa-smog',
+  阵雨: 'fa-solid fa-cloud-rain',
+  雨夹雪: 'fa-solid fa-cloud-meatball',
+  浮尘: 'fa-solid fa-wind',
+  扬沙: 'fa-solid fa-wind',
+  沙尘暴: 'fa-solid fa-wind'
 }
 
-// 鏍规嵁澶╂皵鎻忚堪鑾峰彇鍥炬爣
 const getWeatherIcon = (weather) => {
   for (const key in weatherIconMap) {
     if (weather && weather.includes(key)) {
       return weatherIconMap[key]
     }
   }
-  return 'fa-solid fa-cloud-sun' // 榛樿鍥炬爣
+  return 'fa-solid fa-cloud-sun'
 }
 
-// 楂樺痉鍦板浘Web鏈嶅姟API Key锛堝厤璐圭敵璇凤細https://lbs.amap.com/锛?
 const AMAP_KEY = '0fcea6d3fd884f1b8e27746f87245f03'
 
-// 鑾峰彇澶╂皵鏁版嵁
 const fetchWeather = async () => {
   try {
-    // 1. 浣跨敤楂樺痉IP瀹氫綅API鑾峰彇绮剧‘浣嶇疆锛堝彲绮剧‘鍒板尯/琛楅亾锛?
     const ipRes = await fetch(`https://restapi.amap.com/v3/ip?key=${AMAP_KEY}`)
     const ipData = await ipRes.json()
-    
-    let adcode = '440100' // 默认广州
+
+    let adcode = '440100'
     let district = '广州'
-    
+
     if (ipData.status === '1' && ipData.adcode) {
       adcode = ipData.adcode
-      // 浼樺厛鏄剧ず鍖虹骇锛屽鏋滄病鏈夊垯鏄剧ず鍩庡競
       district = ipData.district || ipData.city || '广州'
-      // 绉婚櫎"鍖?銆?鍘?銆?甯?鍚庣紑浣挎樉绀烘洿绠€娲?
       district = district.replace(/(区|县|市)$/, '')
     }
-    
-    // 2. 浣跨敤楂樺痉澶╂皵API鑾峰彇瀹炴椂澶╂皵
+
     const weatherRes = await fetch(`https://restapi.amap.com/v3/weather/weatherInfo?key=${AMAP_KEY}&city=${adcode}&extensions=base`)
     const weatherData = await weatherRes.json()
-    
+
     if (weatherData.status === '1' && weatherData.lives && weatherData.lives.length > 0) {
       const live = weatherData.lives[0]
       weatherLocation.value = district
@@ -204,27 +127,22 @@ const fetchWeather = async () => {
       weatherTemp.value = `${live.temperature}°C`
       weatherIcon.value = getWeatherIcon(live.weather)
     } else {
-      // 澶╂皵API澶辫触鏃朵娇鐢ㄩ粯璁ゅ€?
       weatherLocation.value = district
       weatherText.value = '多云'
       weatherTemp.value = '--°C'
     }
   } catch (error) {
-    console.error('鑾峰彇澶╂皵澶辫触:', error)
-    // 浣跨敤榛樿鍊?
+    console.error('获取天气失败:', error)
     weatherLocation.value = '广州'
     weatherText.value = '多云'
     weatherTemp.value = '--°C'
   }
 }
 
-// 鏃堕棿鏍煎紡鍖?
-const formattedTime = computed(() => {
-  return now.value.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-})
+const formattedTime = computed(() => now.value.toLocaleTimeString('zh-CN', {
+  hour: '2-digit',
+  minute: '2-digit'
+}))
 
 const formattedDate = computed(() => {
   const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
@@ -232,197 +150,39 @@ const formattedDate = computed(() => {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
 })
 
-const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-const lunarMonths = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊']
-const lunarDays = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
-  '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
-  '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十']
-
-const lunarInfo = computed(() => {
-  const date = now.value
-  const month = date.getMonth()
-  const day = date.getDate()
-  const lunarMonth = (month + 11) % 12
-  const lunarDay = (day + 14) % 30
-  const weekDay = weekDays[date.getDay()]
-  return `${lunarMonths[lunarMonth]}月${lunarDays[lunarDay]} ${weekDay}`
-})
-
-let weatherTimer = null
-
-const activeGlassStyle = computed(() => ({
-  width: `${activeGlass.value.width}px`,
-  height: `${activeGlass.value.height}px`,
-  transform: `translate(${activeGlass.value.x}px, ${activeGlass.value.y}px)`,
-  backdropFilter: `url(#${navFilterId}) blur(0.25px) contrast(1.02) brightness(1.01) saturate(1.02)`,
-  WebkitBackdropFilter: `url(#${navFilterId}) blur(0.25px) contrast(1.02) brightness(1.01) saturate(1.02)`
-}))
-
-function smoothStep(a, b, t) {
-  t = Math.max(0, Math.min(1, (t - a) / (b - a)))
-  return t * t * (3 - 2 * t)
-}
-
-function roundedRectSDF(x, y, w, h, r) {
-  const qx = Math.abs(x) - w + r
-  const qy = Math.abs(y) - h + r
-  return Math.min(Math.max(qx, qy), 0) + Math.sqrt(Math.max(qx, 0) ** 2 + Math.max(qy, 0) ** 2) - r
-}
-
-function generateDisplacementMap(width, height) {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  const data = new Uint8ClampedArray(width * height * 4)
-  const raw = []
-  let maxScale = 0
-
-  for (let i = 0; i < data.length; i += 4) {
-    const px = (i / 4) % width
-    const py = Math.floor(i / 4 / width)
-    const ux = px / width - 0.5
-    const uy = py / height - 0.5
-    const dist = roundedRectSDF(ux, uy, 0.42, 0.25, 0.15)
-    const displacement = smoothStep(0.6, 0, dist - 0.08)
-    const scaled = smoothStep(0, 1, displacement)
-    const dx = ux * scaled * width - (px - width / 2)
-    const dy = uy * scaled * height - (py - height / 2)
-    maxScale = Math.max(maxScale, Math.abs(dx), Math.abs(dy))
-    raw.push(dx, dy)
-  }
-
-  maxScale *= 0.5
-  if (maxScale < 1e-6) maxScale = 1
-  let idx = 0
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = (raw[idx++] / maxScale + 0.5) * 255
-    data[i + 1] = (raw[idx++] / maxScale + 0.5) * 255
-    data[i + 2] = 0
-    data[i + 3] = 255
-  }
-  ctx.putImageData(new ImageData(data, width, height), 0, 0)
-  return { dataUrl: canvas.toDataURL(), scale: maxScale }
-}
-
-function initNavLiquidFilter() {
-  if (!feImageRef.value || !feDisplacementMapRef.value) return
-  const { dataUrl, scale } = generateDisplacementMap(NAV_FILTER_W, NAV_FILTER_H)
-  feImageRef.value.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataUrl)
-  feImageRef.value.setAttribute('href', dataUrl)
-  feImageRef.value.setAttribute('width', String(NAV_FILTER_W))
-  feImageRef.value.setAttribute('height', String(NAV_FILTER_H))
-  feDisplacementMapRef.value.setAttribute('scale', (scale * 1.6).toString())
-  feDisplacementMapRef.value.setAttribute('in2', 'nav_lg_map')
-}
-
-function setNavBtnRef(key, el) {
-  if (!el) {
-    navBtnRefMap.delete(key)
-    return
-  }
-  navBtnRefMap.set(key, el.$el || el)
-}
-
-function updateActiveGlass() {
-  const navEl = navRef.value
-  const targetEl = navBtnRefMap.get(currentPage.value)
-  if (!navEl || !targetEl) {
-    activeGlass.value.visible = false
-    return
-  }
-
-  const navRect = navEl.getBoundingClientRect()
-  const targetRect = targetEl.getBoundingClientRect()
-  const width = Math.max(1, Math.round(targetRect.width))
-  const height = Math.max(1, Math.round(targetRect.height))
-  const x = targetRect.left - navRect.left
-  const y = targetRect.top - navRect.top
-
-  activeGlass.value = { x, y, width, height, visible: true }
-}
-
-function scheduleUpdateActiveGlass() {
-  if (rafId) cancelAnimationFrame(rafId)
-  rafId = requestAnimationFrame(() => {
-    rafId = 0
-    updateActiveGlass()
-  })
-}
-
-function handleHeaderResize() {
-  scheduleUpdateActiveGlass()
-}
-
-function handleNavClick(key) {
-  const navEl = navRef.value
-  const targetEl = navBtnRefMap.get(key)
-  if (!navEl || !targetEl) return
-  const navRect = navEl.getBoundingClientRect()
-  const targetRect = targetEl.getBoundingClientRect()
-  activeGlass.value = {
-    x: targetRect.left - navRect.left,
-    y: targetRect.top - navRect.top,
-    width: Math.max(1, Math.round(targetRect.width)),
-    height: Math.max(1, Math.round(targetRect.height)),
-    visible: true
-  }
-}
-
 onMounted(() => {
   timer = setInterval(() => {
     now.value = new Date()
   }, 60000)
-  
-  // 鍒濆鍖栬幏鍙栧ぉ姘?
+
   fetchWeather()
-  // 姣?0鍒嗛挓鏇存柊涓€娆″ぉ姘?
   weatherTimer = setInterval(fetchWeather, 30 * 60 * 1000)
-  nextTick(() => {
-    initNavLiquidFilter()
-    scheduleUpdateActiveGlass()
-  })
-  window.addEventListener('resize', handleHeaderResize)
 })
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
   if (weatherTimer) clearInterval(weatherTimer)
-  if (rafId) cancelAnimationFrame(rafId)
-  window.removeEventListener('resize', handleHeaderResize)
-})
-
-watch(currentPage, async () => {
-  await nextTick()
-  scheduleUpdateActiveGlass()
 })
 </script>
 
 <style scoped>
 .app-header {
-  height: 64px;
+  height: 68px;
   flex-shrink: 0;
-  z-index: 100;
-  background: linear-gradient(180deg, rgba(8, 20, 36, 0.98) 0%, rgba(7, 17, 31, 0.95) 100%);
-  border-bottom: 1px solid rgba(79, 179, 216, 0.2);
-  display: flex;
+  z-index: 1300;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 28px;
   padding: 0 24px;
-  position: relative;
-}
-
-.app-header::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(79, 179, 216, 0.35), transparent);
 }
 
-/* 宸︿晶鍝佺墝鍖?*/
 .header-brand {
   display: flex;
   align-items: center;
@@ -431,40 +191,15 @@ watch(currentPage, async () => {
 }
 
 .brand-logo {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
 }
 
-.brand-logo .logo-svg {
+.logo-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 10px rgba(79, 179, 216, 0.35));
-}
-
-/* 澶槼鍛煎惛鍔ㄧ敾 */
-.sun-pulse {
-  animation: sun-breathe 3s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes sun-breathe {
-  0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
-}
-
-/* 娴锋氮鍔ㄧ敾 */
-.wave-layer {
-  animation: wave-flow 3s ease-in-out infinite;
-}
-
-.wave-1 { animation-delay: 0s; }
-.wave-2 { animation-delay: 0.4s; }
-.wave-3 { animation-delay: 0.8s; }
-
-@keyframes wave-flow {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(2px); }
+  color: #0f172a;
 }
 
 .brand-text {
@@ -474,143 +209,69 @@ watch(currentPage, async () => {
 }
 
 .brand-title {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 700;
-  letter-spacing: 2px;
-  background: linear-gradient(90deg, #fff, #bcd5e6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
 }
 
 .brand-subtitle {
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: rgba(167, 187, 207, 0.72);
-  text-transform: uppercase;
+  display: none;
 }
 
-/* 涓棿瀵艰埅鍖?*/
 .header-nav {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  contain: layout paint;
-}
-
-.nav-liquid-svg {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-
-.nav-active-glass {
-  position: absolute;
-  left: 0;
-  top: 0;
-  border-radius: 20px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow:
-    0 4px 8px rgba(0, 0, 0, 0.15),
-    inset 0 -10px 25px rgba(0, 0, 0, 0.05);
-  background:
-    radial-gradient(130% 165% at 8% -8%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1) 35%, rgba(255, 255, 255, 0.02) 62%, rgba(255, 255, 255, 0.01) 100%),
-    linear-gradient(148deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 58%, rgba(255, 255, 255, 0.08));
-  will-change: transform, width, height;
-  transition:
-    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.2s ease;
-}
-
-.nav-active-glass.visible {
-  opacity: 1;
-}
-
-.nav-active-glass::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  width: 80%;
-  height: 2.5px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(79, 179, 216, 0.12), rgba(79, 179, 216, 0.95), rgba(79, 179, 216, 0.12));
-  box-shadow:
-    0 0 12px rgba(79, 179, 216, 0.62),
-    0 0 24px rgba(79, 179, 216, 0.35);
-  pointer-events: none;
+  justify-content: center;
+  gap: 22px;
+  min-width: 0;
 }
 
 .nav-btn {
-  position: relative;
-  z-index: 1;
-  min-width: 114px;
-  padding: 9px 18px;
-  font-size: 17px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
-  text-decoration: none;
-  border-radius: 20px;
-  transition: all 0.3s ease;
-  overflow: hidden;
-  text-align: center;
-}
-
-.nav-btn.icon-only {
-  width: 36px;
-  height: 36px;
-  padding: 0;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  color: rgba(15, 23, 42, 0.82);
+  text-decoration: none;
+  transition: color 0.18s ease, transform 0.18s ease;
+  white-space: nowrap;
 }
 
-.nav-btn:hover {
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.05);
+.nav-btn:hover,
+.nav-btn.active {
+  color: var(--text-primary);
 }
 
 .nav-btn.active {
-  color: #fff;
-  background: transparent;
-  box-shadow: none;
+  transform: translateY(-1px);
 }
 
-.nav-btn.active .nav-glow {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #4fb3d8, transparent);
-}
-
-.nav-text {
-  position: relative;
-  z-index: 1;
+.nav-btn.active .nav-text {
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .nav-icon {
-  position: relative;
-  z-index: 1;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 14px;
+  color: currentColor;
+  transition: transform 0.18s ease;
 }
 
-/* 鍙充晶宸ュ叿鍖?*/
+.nav-btn.active .nav-icon {
+  transform: scale(1.08);
+}
+
+.nav-text {
+  font-size: 15px;
+  font-weight: 580;
+  letter-spacing: 0;
+  transition: font-size 0.18s ease, font-weight 0.18s ease;
+}
+
 .header-tools {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
@@ -625,34 +286,32 @@ watch(currentPage, async () => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
-.dt-clock i {
+.dt-clock i,
+.tool-weather > i {
   font-size: 14px;
-  color: #4fb3d8;
+  color: var(--text-secondary);
 }
 
 .dt-date {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-tertiary);
+}
+
+.tool-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(15, 23, 42, 0.1);
 }
 
 .tool-weather {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.tool-weather > i {
-  font-size: 20px;
-  color: #7db8d6;
+  gap: 8px;
 }
 
 .weather-info {
@@ -664,13 +323,34 @@ watch(currentPage, async () => {
 .weather-temp {
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .weather-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 1440px) {
+  .app-header {
+    gap: 20px;
+    padding: 0 18px;
+  }
+
+  .header-nav {
+    gap: 18px;
+  }
+
+  .nav-text {
+    font-size: 14px;
+  }
+
+  .nav-btn.active .nav-text {
+    font-size: 15px;
+  }
+
+  .brand-title {
+    font-size: 18px;
+  }
 }
 </style>
-
-

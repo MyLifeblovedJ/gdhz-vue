@@ -12,15 +12,24 @@
                 :key="index"
                 class="marquee-item"
               >
-                {{ msg }}
+                <span
+                  v-if="msg.title"
+                  class="marquee-title"
+                  :class="msg.level ? `level-${msg.level}` : ''"
+                >
+                  【{{ msg.title }}】
+                </span>
+                <span class="marquee-body">{{ msg.body }}</span>
               </span>
             </div>
           </div>
 
-          <!-- 鏀惰捣鎸夐挳 -->
-          <button class="marquee-collapse-btn" @click="collapseBanner" title="鏀惰捣棰勮妯箙">
-            <i class="fa-solid fa-chevron-up"></i>
-          </button>
+          <div class="marquee-action-slot">
+            <!-- 鏀惰捣鎸夐挳 -->
+            <button class="marquee-collapse-btn" @click="collapseBanner">
+              <i class="fa-solid fa-chevron-up"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -42,6 +51,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../../stores/app'
+import { duplicateAlertBannerMessages } from '../../utils/alertBanner'
 
 const route = useRoute()
 const store = useAppStore()
@@ -51,8 +61,7 @@ const isCollapsed = ref(false)
 
 // 鏄剧ず鐨勬秷鎭?(澶嶅埗涓€浠界敤浜庢棤缂濇粴鍔?
 const displayMessages = computed(() => {
-  const messages = store.marqueeMessages
-  return [...messages, ...messages]
+  return duplicateAlertBannerMessages(store.marqueeMessages)
 })
 
 function collapseBanner() {
@@ -97,6 +106,7 @@ onMounted(() => {
 .alert-banner-wrapper {
   position: relative;
   flex-shrink: 0;
+  width: 100%;
 }
 
 /* Grid 鍖呰鍣?- 瀹炵幇骞虫粦楂樺害鍔ㄧ敾 */
@@ -104,6 +114,7 @@ onMounted(() => {
   display: grid;
   grid-template-rows: 1fr;
   transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  contain: layout paint;
 }
 
 .banner-grid-wrapper.collapsed {
@@ -118,28 +129,20 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* 妯箙鍐呴儴瀹為檯鍐呭鍖?*/
-.alert-marquee-bar::before {
-  content: '';
-  height: 8px; /* margin-top 鐨勬浛浠ｏ紝鍙備笌 grid 鍔ㄧ敾 */
-  flex-shrink: 0;
-}
-
 .alert-marquee-bar-inner {
-  height: 50px;
+  height: 48px;
   flex-shrink: 0;
-  background: linear-gradient(90deg,
-    rgba(239, 68, 68, 0.28) 0%,
-    rgba(239, 68, 68, 0.12) 40%,
-    rgba(239, 68, 68, 0.12) 60%,
-    rgba(239, 68, 68, 0.28) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  border-radius: var(--border-radius);
+  background: rgba(255, 255, 255, 0.985);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   position: relative;
+  overflow: hidden;
+  isolation: isolate;
   opacity: 1;
   transition: opacity 0.25s ease-out;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .banner-grid-wrapper.collapsed .alert-marquee-bar-inner {
@@ -154,21 +157,30 @@ onMounted(() => {
   height: 100%;
   display: flex;
   align-items: center;
-  padding-left: 15px;
-  mask-image: linear-gradient(90deg,
-    black 0%,
-    black 90%,
-    transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg,
-    black 0%,
-    black 90%,
-    transparent 100%);
+  padding-left: 18px;
+  padding-right: 8px;
+  contain: layout paint;
+}
+
+.alert-marquee-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 64px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.985) 72%);
 }
 
 .marquee-track {
-  display: flex;
-  animation: marquee-scroll 40s linear infinite;
+  display: inline-flex;
+  width: max-content;
+  animation: marquee-scroll 44s linear infinite;
   white-space: nowrap;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .marquee-track:hover {
@@ -177,49 +189,71 @@ onMounted(() => {
 
 @keyframes marquee-scroll {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .marquee-item {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
-  padding: 0 80px;
+  padding: 0 64px;
   font-size: 14px;
-  color: #ffd9d9;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
+}
+
+.marquee-title {
+  color: var(--text-secondary);
+}
+
+.marquee-title.level-red {
+  color: #dc2626;
+}
+
+.marquee-title.level-orange {
+  color: #ea580c;
+}
+
+.marquee-title.level-yellow {
+  color: #ca8a04;
+}
+
+.marquee-title.level-blue {
+  color: #2563eb;
+}
+
+.marquee-body {
+  color: var(--text-primary);
 }
 
 .marquee-item::before {
   content: '•';
-  color: var(--alert-red);
+  color: #dc2626;
   margin-right: 12px;
-  font-size: 12px;
-  animation: blink 1.2s infinite;
+  font-size: 11px;
 }
 
-@keyframes blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
+.marquee-action-slot {
+  width: 48px;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.985) 38%);
 }
 
-/* 鏀惰捣鎸夐挳 */
+/* 收起按钮 */
 .marquee-collapse-btn {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(239, 68, 68, 0.3);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  color: var(--alert-red);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text-secondary);
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -228,39 +262,47 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  z-index: 20;
-  transition: all 0.15s ease-out;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .marquee-collapse-btn:hover {
-  background: var(--alert-red);
-  color: #fff;
+  background: rgba(255, 248, 236, 0.98);
+  color: #8a5a00;
+  border-color: rgba(196, 134, 28, 0.26);
+  box-shadow: 0 4px 12px rgba(196, 134, 28, 0.18);
+  transform: scale(1.05);
 }
 
 /* 灞曞紑鎸夐挳 - 鍥哄畾瀹氫綅纭繚鍙 */
 .marquee-expand-btn {
   position: absolute;
-  top: 8px;
-  right: 15px;
-  background: rgba(239, 68, 68, 0.92);
-  border: none;
-  color: #fff;
-  width: 32px;
-  height: 32px;
-  border-radius: 0 0 8px 8px;
+  top: 12px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--text-secondary);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
   cursor: pointer;
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.55);
-  transition: all 0.15s ease-out;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  transition: background 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
 }
 
 .marquee-expand-btn:hover {
-  background: var(--alert-red);
-  transform: translateY(2px);
+  background: rgba(255, 248, 236, 0.98);
+  color: #8a5a00;
+  border-color: rgba(196, 134, 28, 0.26);
+  box-shadow: 0 12px 28px rgba(196, 134, 28, 0.18);
+  transform: scale(1.05);
 }
 
 /* 灞曞紑鎸夐挳鍔ㄧ敾 */
@@ -281,6 +323,13 @@ onMounted(() => {
 .expand-btn-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
 }
 </style>
 

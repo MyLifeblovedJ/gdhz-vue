@@ -314,9 +314,9 @@ function renderChart() {
     xAxis: {
       type: 'category',
       data: hours,
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.12)' } },
+      axisLine: { lineStyle: { color: 'rgba(14, 116, 144, 0.15)' } },
       axisLabel: {
-        color: 'rgba(255,255,255,0.45)', fontSize: 12,
+        color: 'rgba(26, 58, 92, 0.5)', fontSize: 12,
         interval: 5, formatter: v => v.slice(0, 2) + 'h'
       },
       splitLine: { show: false }
@@ -325,22 +325,22 @@ function renderChart() {
       {
         type: 'value',
         name: isTide ? '潮位(m)' : '浪高(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 12 },
+        nameTextStyle: { color: 'rgba(26, 58, 92, 0.45)', fontSize: 12 },
         nameLocation: 'middle', nameGap: 40,
         min: val => Math.floor(val.min * 10) / 10,
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 12, margin: 10, formatter: '{value}' },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.06)' } }
+        axisLabel: { color: 'rgba(26, 58, 92, 0.5)', fontSize: 12, margin: 10, formatter: '{value}' },
+        splitLine: { lineStyle: { color: 'rgba(14, 116, 144, 0.08)' } }
       },
       {
         type: 'value',
         name: '增水(m)',
-        nameTextStyle: { color: 'rgba(255,255,255,0.35)', fontSize: 12 },
+        nameTextStyle: { color: 'rgba(217, 151, 58, 0.7)', fontSize: 12 },
         nameLocation: 'middle', nameGap: 36,
         min: 0,
         max: Math.max(surgeHeight * 2, 1),
         axisLine: { show: false },
-        axisLabel: { color: 'rgba(217, 151, 58, 0.6)', fontSize: 12, margin: 8, formatter: '{value}' },
+        axisLabel: { color: 'rgba(217, 151, 58, 0.7)', fontSize: 12, margin: 8, formatter: '{value}' },
         splitLine: { show: false }
       }
     ],
@@ -350,14 +350,14 @@ function renderChart() {
       type: 'plain', top: 4, left: 'center', right: 'auto',
       itemGap: 14,
       formatter: name => legendAlias[name] || name,
-      textStyle: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
+      textStyle: { color: 'rgba(26, 58, 92, 0.55)', fontSize: 12 },
       itemWidth: 10, itemHeight: 6
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(20, 30, 50, 0.95)',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#e5e7eb', fontSize: 12 },
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: 'rgba(14, 116, 144, 0.15)',
+      textStyle: { color: '#3d6a8e', fontSize: 12 },
       formatter: params => {
         const time = params[0].axisValue
         let html = `<div style="font-weight:600;margin-bottom:4px">${time}</div>`
@@ -405,10 +405,11 @@ function handleResize() {
   min-height: var(--dock-height, 220px);
   z-index: 10;
   border-radius: 14px;
-  border: 1px solid rgba(109, 156, 193, 0.38);
-  background: linear-gradient(180deg, rgba(1, 10, 23, 0.94), rgba(5, 18, 36, 0.91));
-  backdrop-filter: blur(10px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(14, 116, 144, 0.18);
+  background: rgba(225, 240, 252, 0.78);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 8px 24px rgba(14, 116, 144, 0.08);
   padding: 10px;
   display: grid;
   grid-template-columns: var(--home-column-width, 420px) 1fr var(--home-column-width, 420px);
@@ -420,8 +421,8 @@ function handleResize() {
 .dock-center,
 .dock-right {
   border-radius: 10px;
-  border: 1px solid rgba(112, 159, 195, 0.24);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(14, 116, 144, 0.12);
+  background: rgba(220, 238, 248, 0.65);
   padding: 8px;
   min-height: 0;
   display: flex;
@@ -431,7 +432,7 @@ function handleResize() {
 .dock-title {
   font-size: 13px;
   font-weight: 700;
-  color: #99d8ff;
+  color: #0e7490;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -459,8 +460,8 @@ function handleResize() {
 
 .station-card {
   border-radius: 8px;
-  border: 1px solid rgba(112, 158, 194, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(14, 116, 144, 0.1);
+  background: rgba(220, 238, 248, 0.65);
   padding: 6px 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -468,14 +469,14 @@ function handleResize() {
 }
 
 .station-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(130, 180, 220, 0.36);
+  background: rgba(8, 145, 178, 0.06);
+  border-color: rgba(8, 145, 178, 0.22);
 }
 
 .station-card.active {
-  border-color: rgba(95, 198, 255, 0.6);
-  background: rgba(95, 198, 255, 0.08);
-  box-shadow: 0 0 0 1px rgba(95, 198, 255, 0.15);
+  border-color: rgba(8, 145, 178, 0.45);
+  background: rgba(8, 145, 178, 0.08);
+  box-shadow: 0 0 0 1px rgba(8, 145, 178, 0.12);
 }
 
 .station-card.warning-red { border-left: 3px solid rgba(239, 68, 68, 0.7); }
@@ -493,7 +494,7 @@ function handleResize() {
 .station-name {
   font-size: 12px;
   font-weight: 700;
-  color: #e7f4ff;
+  color: #1a3a5c;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -528,13 +529,13 @@ function handleResize() {
 
 .metric-label {
   font-size: 10px;
-  color: rgba(180, 206, 228, 0.65);
+  color: rgba(26, 58, 92, 0.55);
 }
 
 .metric-value {
   font-size: 11px;
   font-weight: 700;
-  color: #dbeeff;
+  color: #1a3a5c;
 }
 
 .metric-value.peak {
@@ -586,7 +587,7 @@ function handleResize() {
   justify-content: space-between;
   gap: 12px;
   padding: 4px 0;
-  border-bottom: 1px solid rgba(112, 159, 195, 0.2);
+  border-bottom: 1px solid rgba(14, 116, 144, 0.12);
   flex-shrink: 0;
 }
 
@@ -597,14 +598,14 @@ function handleResize() {
 }
 
 .info-left i {
-  color: #60a5fa;
+  color: #0891b2;
   font-size: 12px;
 }
 
 .info-name {
   font-size: 14px;
   font-weight: 700;
-  color: #e7f4ff;
+  color: #1a3a5c;
 }
 
 .info-metrics {
@@ -622,13 +623,13 @@ function handleResize() {
 
 .info-label {
   font-size: 10px;
-  color: rgba(185, 210, 232, 0.6);
+  color: rgba(26, 58, 92, 0.5);
 }
 
 .info-value {
   font-size: 12px;
   font-weight: 700;
-  color: #e6f3ff;
+  color: #1a3a5c;
 }
 
 .info-value.accent {
@@ -680,7 +681,7 @@ function handleResize() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: rgba(187, 211, 231, 0.6);
+  color: rgba(26, 58, 92, 0.5);
   font-size: 13px;
 }
 
@@ -700,8 +701,8 @@ function handleResize() {
 
 .summary-item {
   border-radius: 8px;
-  border: 1px solid rgba(115, 158, 193, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(14, 116, 144, 0.1);
+  background: rgba(220, 238, 248, 0.65);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -710,16 +711,16 @@ function handleResize() {
 
 .summary-item .label {
   font-size: 11px;
-  color: rgba(182, 208, 229, 0.74);
+  color: rgba(26, 58, 92, 0.55);
 }
 
 .summary-item .value {
   font-size: 20px;
   font-weight: 800;
-  color: #e7f2ff;
+  color: #1a3a5c;
 }
 
-.summary-item .value.online { color: #22c55e; }
+.summary-item .value.online { color: #16a34a; }
 .summary-item .value.warn { color: #ef4444; }
 
 /* ===== 响应式 ===== */

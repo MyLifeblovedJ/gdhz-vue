@@ -2,111 +2,106 @@
   <Transition name="popup">
     <div v-if="device" class="detail-popup" :class="{ show: device }">
       <div class="panel">
-        <!-- 关闭按钮 -->
-        <button class="close-btn" @click="handleClose">
+        <button class="close-btn" type="button" @click="handleClose">
           <i class="fas fa-times"></i>
         </button>
-        
-        <!-- 设备信息头部 -->
-        <div class="detail-header">
-          <div class="device-icon" :style="{ borderColor: deviceColor }">
-            <i :class="'fa-solid ' + deviceIcon"></i>
-          </div>
-          <div class="device-info">
-            <div class="device-name">{{ device.name }}</div>
-            <div class="device-meta">
-              <span class="device-type-badge" :style="{ background: deviceColor }">
-                {{ device.typeName }}
-              </span>
-              <span class="device-id">{{ device.id }}</span>
+
+        <div class="panel-grid">
+          <section class="col col-left">
+            <div class="device-header">
+              <div class="device-icon" :style="{ borderColor: deviceColor }">
+                <i :class="'fa-solid ' + deviceIcon"></i>
+              </div>
+              <div class="device-name">{{ device.name }}</div>
             </div>
-          </div>
-          <div class="device-status" :class="device.status">
-            <span class="status-dot"></span>
-            {{ getStatusText(device.status) }}
-          </div>
-        </div>
-        
-        <!-- 设备详细信息 -->
-        <div class="detail-info">
-          <div class="info-item">
-            <i class="fa-solid fa-location-dot"></i>
-            <span>{{ device.lat.toFixed(4) }}, {{ device.lng.toFixed(4) }}</span>
-          </div>
-          <div class="info-item">
-            <i class="fa-solid fa-clock"></i>
-            <span>最后更新: {{ formatTime(device.lastUpdate) }}</span>
-          </div>
-          <div class="info-item current-value" :class="device.status">
-            <i class="fa-solid fa-gauge-high"></i>
-            <span>当前值: <strong>{{ device.val }}</strong></span>
-          </div>
-        </div>
-        
-        <!-- 数据类型切换 -->
-        <div class="data-tabs">
-          <button 
-            :class="{ active: dataMode === 'realtime' }"
-            @click="dataMode = 'realtime'"
-          >
-            <i class="fa-solid fa-bolt"></i>
-            实时数据
-          </button>
-          <button 
-            :class="{ active: dataMode === 'history' }"
-            @click="dataMode = 'history'"
-          >
-            <i class="fa-solid fa-clock-rotate-left"></i>
-            历史数据
-          </button>
-        </div>
-        
-        <!-- 时间范围选择器（仅历史模式） -->
-        <TimeRangeSelector 
-          v-if="dataMode === 'history'"
-          v-model="timeRange"
-          @change="handleTimeRangeChange"
-        />
-        
-        <!-- 观测要素选择 -->
-        <div class="element-selector" v-if="deviceElements.length > 1">
-          <span class="selector-label">观测要素：</span>
-          <div class="element-buttons">
-            <button 
-              v-for="el in deviceElements" 
-              :key="el.key"
-              :class="{ active: selectedElement === el.key }"
-              @click="selectedElement = el.key"
-            >
-              {{ el.name }}
-            </button>
-          </div>
-        </div>
-        
-        <!-- 阈值图例（如果有） -->
-        <div class="threshold-legend" v-if="hasThresholds">
-          <span class="legend-title">预警阈值：</span>
-          <div class="legend-items">
-            <span 
-              v-for="(value, level) in currentThresholds" 
-              :key="level"
-              class="legend-item"
-              :style="{ color: getLevelColor(level) }"
-            >
-              <span class="legend-dot" :style="{ background: getLevelColor(level) }"></span>
-              {{ getLevelText(level) }}: {{ value }}{{ selectedElementConfig?.unit }}
-            </span>
-          </div>
-        </div>
-        
-        <!-- 数据图表 -->
-        <div class="chart-area">
-          <DeviceChart 
-            :device-type="device.type"
-            :element-key="selectedElement"
-            :data="chartData"
-            :show-thresholds="true"
-          />
+
+            <div class="info-card">
+              <div class="info-row">
+                <span class="info-label">状态</span>
+                <span class="device-status-text" :class="device.status">
+                  <span class="status-dot"></span>
+                  {{ getStatusText(device.status) }}
+                </span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">类型</span>
+                <span class="info-text">{{ device.typeName }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">编号</span>
+                <span class="info-text">{{ device.id }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">坐标</span>
+                <span class="info-text">{{ device.lat.toFixed(4) }}, {{ device.lng.toFixed(4) }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">更新</span>
+                <span class="info-text">{{ formatTime(device.lastUpdate) }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="col col-center">
+            <div class="center-toolbar">
+              <div class="element-tabs" v-if="deviceElements.length > 1">
+                <button
+                  v-for="el in deviceElements"
+                  :key="el.key"
+                  :class="{ active: selectedElement === el.key }"
+                  @click="selectedElement = el.key"
+                >
+                  {{ el.name }}
+                </button>
+              </div>
+
+              <!-- 时间范围选择器 -->
+              <TimeRangeSelector
+                v-model="timeRange"
+                @change="handleTimeRangeChange"
+              />
+            </div>
+
+            <!-- 图表区域（内含阈值图例） -->
+            <div class="chart-wrapper">
+              <div class="chart-legend-bar" v-if="hasThresholds">
+                <span
+                  v-for="item in sortedThresholdEntries"
+                  :key="item.level"
+                  class="threshold-chip"
+                  :style="{ '--tc': getLevelColor(item.level) }"
+                >
+                  <span class="tc-dot"></span>
+                  {{ getLevelShortText(item.level) }} {{ item.value }}{{ selectedElementConfig?.unit || '' }}
+                </span>
+              </div>
+              <div class="chart-area">
+                <DeviceChart
+                  :device-type="device.type"
+                  :element-key="selectedElement"
+                  :data="chartData"
+                  :show-thresholds="true"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section class="col col-right">
+            <div class="device-header">
+              <div class="device-name">实时观测</div>
+            </div>
+            <div class="info-card">
+              <div
+                v-for="card in readingCards"
+                :key="card.key"
+                class="info-row"
+                :class="{ active: selectedElement === card.key }"
+              >
+                <span class="info-label">{{ card.name }}</span>
+                <span class="info-text">{{ card.value }} {{ card.unit }}</span>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -114,463 +109,481 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { useAppStore } from '../../stores/app'
+import { computed, ref, watch } from 'vue'
 import { deviceTypeConfig, ALERT_LEVEL_COLORS } from '../../data/deviceConfig'
 import { generateHistoryData } from '../../data/mockData'
-import TimeRangeSelector from './TimeRangeSelector.vue'
 import DeviceChart from './DeviceChart.vue'
+import TimeRangeSelector from './TimeRangeSelector.vue'
 
 const props = defineProps({
-  device: {
-    type: Object,
-    default: null
-  }
+  device: { type: Object, default: null },
 })
 
 const emit = defineEmits(['close'])
 
-const store = useAppStore()
-
-// 状态
-const dataMode = ref('realtime')
 const selectedElement = ref('')
 const timeRange = ref({
-  start: new Date(Date.now() - 24 * 3600000),
+  start: new Date(Date.now() - 2 * 3600000),
   end: new Date(),
 })
 const chartData = ref([])
 
-// 设备配置
-const deviceConfig = computed(() => 
-  props.device ? deviceTypeConfig[props.device.type] || {} : {}
+const thresholdOrder = ['blue', 'yellow', 'orange', 'red']
+
+const deviceConfig = computed(() => (props.device ? deviceTypeConfig[props.device.type] || {} : {}))
+const deviceElements = computed(() => deviceConfig.value.elements || [])
+const deviceIcon = computed(() => deviceConfig.value.icon || 'fa-circle')
+const deviceColor = computed(() => deviceConfig.value.color || '#0ea5e9')
+const selectedElementConfig = computed(() => deviceElements.value.find((e) => e.key === selectedElement.value))
+const currentThresholds = computed(() => deviceConfig.value.thresholds?.[selectedElement.value] || {})
+const hasThresholds = computed(() => Object.keys(currentThresholds.value).length > 0)
+const sortedThresholdEntries = computed(() =>
+  thresholdOrder
+    .filter((level) => currentThresholds.value[level] !== undefined)
+    .map((level) => ({ level, value: currentThresholds.value[level] })),
 )
 
-const deviceElements = computed(() => 
-  deviceConfig.value.elements || []
+const elementReadingMap = ref({})
+
+const readingCards = computed(() =>
+  deviceElements.value.map((element) => {
+    const reading = elementReadingMap.value[element.key]
+    return {
+      key: element.key,
+      name: element.name,
+      value: reading?.value ?? '--',
+      unit: element.unit || '',
+    }
+  }),
 )
 
-const deviceIcon = computed(() => 
-  deviceConfig.value.icon || 'fa-circle'
-)
-
-const deviceColor = computed(() => 
-  deviceConfig.value.color || '#00b4e6'
-)
-
-const selectedElementConfig = computed(() => 
-  deviceElements.value.find(e => e.key === selectedElement.value)
-)
-
-const currentThresholds = computed(() => 
-  deviceConfig.value.thresholds?.[selectedElement.value] || {}
-)
-
-const hasThresholds = computed(() => 
-  Object.keys(currentThresholds.value).length > 0
-)
-
-// 方法
 function handleClose() {
   emit('close')
 }
 
 function getStatusText(status) {
-  const texts = {
-    online: '在线',
-    warn: '预警',
-    alarm: '告警',
-    offline: '离线',
-  }
-  return texts[status] || status
+  return { online: '在线', warn: '预警', alarm: '告警', offline: '离线' }[status] || status
 }
 
 function formatTime(time) {
   if (!time) return '--'
   const date = new Date(time)
-  return date.toLocaleString('zh-CN')
+  if (Number.isNaN(date.getTime())) return '--'
+  return date.toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function getLevelColor(level) {
-  return ALERT_LEVEL_COLORS[level]?.color || '#666'
+  return ALERT_LEVEL_COLORS[level]?.color || '#64748b'
+}
+
+function getLevelShortText(level) {
+  return { blue: '蓝色', yellow: '黄色', orange: '橙色', red: '红色' }[level] || getLevelText(level)
 }
 
 function getLevelText(level) {
   return ALERT_LEVEL_COLORS[level]?.name || level
 }
 
-function handleTimeRangeChange(range) {
-  loadHistoryData()
+function handleTimeRangeChange() {
+  loadData()
 }
 
-function loadHistoryData() {
+function buildRealtimeReadings() {
+  if (!props.device || !deviceElements.value.length) {
+    elementReadingMap.value = {}
+    return
+  }
+
+  const now = new Date()
+  const nextMap = {}
+
+  deviceElements.value.forEach((element, index) => {
+    if (index === 0 && props.device?.val) {
+      const match = String(props.device.val).match(/-?\d+(\.\d+)?/)
+      nextMap[element.key] = {
+        value: match ? match[0] : String(props.device.val),
+      }
+      return
+    }
+
+    const series = generateHistoryData(
+      props.device.id,
+      element.key,
+      new Date(now.getTime() - 2 * 3600000),
+      now,
+    )
+    const lastPoint = series.at(-1)
+    nextMap[element.key] = {
+      value: lastPoint ? Number(lastPoint.value).toFixed(2) : '--',
+    }
+  })
+
+  elementReadingMap.value = nextMap
+}
+
+function loadData() {
   if (!props.device || !selectedElement.value) return
-  
   chartData.value = generateHistoryData(
     props.device.id,
     selectedElement.value,
     timeRange.value.start,
-    timeRange.value.end
+    timeRange.value.end,
   )
 }
 
-function loadRealtimeData() {
-  if (!props.device || !selectedElement.value) return
-  
-  // 生成最近2小时的实时数据
-  const now = new Date()
-  chartData.value = generateHistoryData(
-    props.device.id,
-    selectedElement.value,
-    new Date(now.getTime() - 2 * 3600000),
-    now
-  )
-}
-
-// 监听设备变化
-watch(() => props.device, (newDevice) => {
-  if (newDevice) {
-    // 设置默认选中的观测要素
-    const elements = deviceTypeConfig[newDevice.type]?.elements || []
+watch(
+  () => props.device,
+  (device) => {
+    if (!device) return
+    const elements = deviceTypeConfig[device.type]?.elements || []
     selectedElement.value = elements[0]?.key || ''
-    
-    // 加载数据
-    dataMode.value = 'realtime'
-    loadRealtimeData()
-  }
-}, { immediate: true })
+    timeRange.value = {
+      start: new Date(Date.now() - 2 * 3600000),
+      end: new Date(),
+    }
+    buildRealtimeReadings()
+    loadData()
+  },
+  { immediate: true },
+)
 
-// 监听数据模式变化
-watch(dataMode, (mode) => {
-  if (mode === 'realtime') {
-    loadRealtimeData()
-  } else {
-    loadHistoryData()
-  }
-})
-
-// 监听观测要素变化
 watch(selectedElement, () => {
-  if (dataMode.value === 'realtime') {
-    loadRealtimeData()
-  } else {
-    loadHistoryData()
-  }
+  loadData()
 })
 </script>
 
 <style scoped>
 .detail-popup {
-  position: absolute;
-  bottom: 70px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 720px;
-  max-width: calc(100vw - 360px);
+  position: fixed;
+  bottom: 26px;
+  left: var(--toolbar-safe-left, 460px);
+  right: var(--tool-rail-safe-right, 460px);
   z-index: 1500;
   pointer-events: auto;
 }
 
 .panel {
-  background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-normal);
-  border-radius: var(--border-radius);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   position: relative;
-  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(246, 248, 252, 0.9));
+  backdrop-filter: blur(22px) saturate(1.08);
+  -webkit-backdrop-filter: blur(22px) saturate(1.08);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* 顶部光条 */
 .panel::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 15%;
-  right: 15%;
-  height: 1px;
-  background: linear-gradient(90deg,
-    transparent,
-    var(--accent-cyan) 30%,
-    var(--accent-cyan) 70%,
-    transparent);
-  opacity: 0.8;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.55), transparent);
+  z-index: 1;
 }
 
 .close-btn {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 16px;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 9px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  cursor: pointer;
   z-index: 10;
+  transition: all 0.18s ease;
 }
 
 .close-btn:hover {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(254, 242, 242, 0.92);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.18);
 }
 
-/* 设备头部 */
-.detail-header {
+.panel-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 170px;
+  height: 340px;
+}
+
+.col {
+  min-width: 0;
+  padding: 12px 14px;
+}
+
+.col-left,
+.col-right {
+  background: linear-gradient(180deg, rgba(248, 250, 253, 0.9), rgba(242, 245, 249, 0.82));
+}
+
+.col-left {
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.col-center {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.9));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.col-right {
+  border-left: 1px solid rgba(148, 163, 184, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.col-right .device-header {
+  justify-content: center;
+}
+
+.side-section-title {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.device-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-height: 38px;
 }
 
 .device-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(0, 0, 0, 0.4);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   border: 2px solid;
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  color: var(--text-primary);
-}
-
-.device-info {
-  flex: 1;
+  color: #0f172a;
+  font-size: 14px;
+  flex-shrink: 0;
 }
 
 .device-name {
-  font-family: var(--font-display);
-  font-size: 18px;
+  color: #0f172a;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary);
-}
-
-.device-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  line-height: 1.2;
 }
 
 .device-type-badge {
-  font-size: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
   color: #fff;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 3px;
 }
 
-.device-id {
+.info-card {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.info-row {
+  display: grid;
+  gap: 4px;
+}
+
+.info-label {
+  color: #64748b;
   font-size: 11px;
-  color: var(--text-muted);
 }
 
-.device-status {
-  display: flex;
+.info-text,
+.device-status-text {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.device-status-text {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
 }
 
-.device-status.online {
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-}
-
-.device-status.warn {
-  background: rgba(245, 158, 11, 0.15);
-  color: #F59E0B;
-}
-
-.device-status.alarm {
-  background: rgba(239, 68, 68, 0.15);
-  color: #EF4444;
-}
-
-.device-status.offline {
-  background: rgba(107, 114, 128, 0.15);
-  color: #6B7280;
-}
+.device-status-text.online { color: #15803d; }
+.device-status-text.warn { color: #b45309; }
+.device-status-text.alarm { color: #b91c1c; }
+.device-status-text.offline { color: #64748b; }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
   background: currentColor;
 }
 
-.device-status.warn .status-dot,
-.device-status.alarm .status-dot {
-  animation: pulse-dot 1.5s infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-
-/* 详细信息 */
-.detail-info {
+.col-center {
   display: flex;
-  gap: 20px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  flex-direction: column;
+  gap: 12px;
 }
 
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.info-item i {
-  color: var(--text-muted);
-  width: 14px;
-}
-
-.info-item.current-value strong {
-  font-size: 14px;
-  font-family: var(--font-display);
-}
-
-.info-item.current-value.warn strong { color: #F59E0B; }
-.info-item.current-value.alarm strong { color: #EF4444; }
-
-/* 数据切换标签 */
-.data-tabs {
-  display: flex;
-  gap: 8px;
-}
-
-.data-tabs button {
-  flex: 1;
-  padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
+.col-center .center-toolbar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: all 0.2s;
-}
-
-.data-tabs button:hover {
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-
-.data-tabs button.active {
-  background: rgba(0, 180, 230, 0.15);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-
-/* 观测要素选择 */
-.element-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.selector-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.element-buttons {
-  display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.element-buttons button {
-  padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-subtle);
-  border-radius: 15px;
-  color: var(--text-secondary);
-  font-size: 10px;
+.element-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(226, 232, 240, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.element-tabs button {
+  min-height: 28px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.18s ease;
 }
 
-.element-buttons button:hover {
-  border-color: var(--accent-cyan);
+.element-tabs button:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.element-buttons button.active {
-  background: var(--accent-cyan);
-  border-color: var(--accent-cyan);
-  color: var(--bg-deepest);
+.element-tabs button.active {
+  background: #0284c7;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
 }
 
-/* 阈值图例 */
-.threshold-legend {
+.chart-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  overflow: hidden;
+}
+
+.chart-legend-bar {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 5;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-}
-
-.legend-title {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.legend-items {
-  display: flex;
-  gap: 15px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
   gap: 5px;
-  font-size: 10px;
+  flex-wrap: wrap;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 3px;
-  border-radius: 1px;
-}
-
-/* 图表区域 */
 .chart-area {
-  height: 180px;
+  width: 100%;
+  height: 100%;
 }
 
-/* 过渡动画 */
+/* Threshold chips */
+
+.threshold-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tc) 10%, white);
+  color: color-mix(in srgb, var(--tc) 80%, #334155);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tc-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--tc);
+}
+
+.obs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.obs-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  transition: background 0.18s;
+}
+
+.obs-item.active {
+  background: rgba(240, 249, 255, 0.95);
+  border-color: rgba(14, 165, 233, 0.22);
+}
+
+.obs-label {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.obs-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.obs-unit {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
 .popup-enter-active,
 .popup-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.28s ease;
 }
 
 .popup-enter-from,
 .popup-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateY(16px);
 }
 </style>

@@ -259,8 +259,8 @@ function renderTideChart() {
     xAxis: {
       type: 'category',
       data: allTimes,
-      axisLine: { lineStyle: { color: 'rgba(255,255,255,0.15)' } },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
+      axisLine: { lineStyle: { color: 'rgba(14, 116, 144, 0.15)' } },
+      axisLabel: { color: 'rgba(26, 58, 92, 0.5)', fontSize: 12 },
       splitLine: { show: false }
     },
     yAxis: {
@@ -268,8 +268,8 @@ function renderTideChart() {
       min: 0,
       max: 3.5,
       axisLine: { show: false },
-      axisLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 12, formatter: '{value}m' },
-      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } }
+      axisLabel: { color: 'rgba(26, 58, 92, 0.5)', fontSize: 12, formatter: '{value}m' },
+      splitLine: { lineStyle: { color: 'rgba(14, 116, 144, 0.08)' } }
     },
     series: [
       // 警戒线
@@ -335,15 +335,15 @@ function renderTideChart() {
         if (name === '警戒线') return '警戒'
         return name
       },
-      textStyle: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
+      textStyle: { color: 'rgba(26, 58, 92, 0.6)', fontSize: 12 },
       itemWidth: 15,
       itemHeight: 8
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(20, 30, 50, 0.9)',
-      borderColor: 'rgba(6, 182, 212, 0.3)',
-      textStyle: { color: '#fff', fontSize: 12 }
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: 'rgba(14, 116, 144, 0.15)',
+      textStyle: { color: '#3d6a8e', fontSize: 12 }
     }
   }
   
@@ -597,8 +597,8 @@ function getTrendIcon(trend) {
 }
 
 .data-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(240, 248, 255, 0.5);
+  border: 1px solid rgba(14, 116, 144, 0.1);
   padding: 10px;
   border-radius: 6px;
 }
@@ -718,7 +718,7 @@ function getTrendIcon(trend) {
 
 /* 统计区域 */
 .stats-section {
-  background: rgba(30, 40, 60, 0.4);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 8px;
   padding: 12px;
   flex-shrink: 0;
@@ -744,7 +744,7 @@ function getTrendIcon(trend) {
 .stat-mini {
   text-align: center;
   padding: 6px 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(240, 248, 255, 0.5);
   border-radius: 6px;
   border: 1px solid var(--border-subtle);
 }
@@ -771,7 +771,7 @@ function getTrendIcon(trend) {
 }
 
 .stat-mini.online .stat-mini-value {
-  color: #53b07e;
+  color: #16a34a;
 }
 
 .stat-mini.alert .stat-mini-value {
@@ -797,7 +797,7 @@ function getTrendIcon(trend) {
 .quality-bar {
   flex: 1;
   height: 3px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(14, 116, 144, 0.1);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -893,8 +893,8 @@ function getTrendIcon(trend) {
 }
 
 .station-select option {
-  background: #1e293b;
-  color: #fff;
+  background: #fff;
+  color: #1a3a5c;
 }
 
 .chart-container {

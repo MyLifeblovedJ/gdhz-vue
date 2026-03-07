@@ -1,9 +1,8 @@
 /* ========================================
-   面板通用样式 — 从 RightSidebar 和 RealtimeDataPanel 提取
-   适用于所有侧边栏中的 .panel 组件
+   面板通用样式
+   适用于侧栏中的通用 .panel 组件
    ======================================== */
 
-/* ===== 面板容器 ===== */
 .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border-normal);
@@ -14,27 +13,20 @@
     position: relative;
     box-shadow: var(--shadow-panel);
     flex-shrink: 0;
-    /* 面板色带可由外层覆盖，统一控制视觉重点 */
-    --panel-accent: var(--accent-cyan);
+    --panel-accent: var(--text-primary);
 }
 
-/* 面板顶部扫描线（默认冰蓝，各模块可覆盖） */
 .panel::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 15%;
-    right: 15%;
+    left: 16px;
+    right: 16px;
     height: 1px;
-    background: linear-gradient(90deg,
-            transparent,
-            var(--panel-accent) 30%,
-            var(--panel-accent) 70%,
-            transparent);
-    opacity: 0.6;
+    background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.14) 24%, rgba(15, 23, 42, 0.14) 76%, transparent);
+    opacity: 0.32;
 }
 
-/* ===== 面板头部 ===== */
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -42,63 +34,57 @@
     padding: var(--space-3);
     cursor: pointer;
     user-select: none;
-    transition: background var(--transition-fast);
+    transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .panel-header:hover {
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.5);
 }
 
-/* ===== 面板标题 ===== */
 .panel-title {
-    font-family: var(--font-display);
-    font-size: 13px;
+    font-family: var(--font-body);
+    font-size: 14px;
     font-weight: 700;
-    color: var(--panel-accent);
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
     display: flex;
     align-items: center;
     gap: var(--space-2);
 }
 
-/* ===== 标题旁的徽标 ===== */
 .panel-title .badge {
-    font-size: 9px;
-    padding: 2px 7px;
-    border-radius: 10px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
     font-weight: 700;
 }
 
 .badge.ok {
-    background: rgba(16, 185, 129, 0.2);
+    background: rgba(22, 163, 74, 0.14);
     color: var(--status-online);
 }
 
 .badge.alarm {
-    background: rgba(255, 71, 87, 0.2);
+    background: rgba(220, 38, 38, 0.14);
     color: var(--alert-red);
 }
 
 .badge.warn {
-    background: rgba(245, 158, 11, 0.2);
+    background: rgba(180, 83, 9, 0.14);
     color: var(--status-warn);
 }
 
-/* ===== 折叠图标 ===== */
 .toggle-icon {
     color: var(--text-muted);
-    font-size: 10px;
+    font-size: 12px;
     transition: transform var(--transition-fast);
 }
 
-/* 通过 .panel.collapsed 或 .toggle-icon.collapsed 触发旋转 */
 .panel.collapsed .toggle-icon,
 .toggle-icon.collapsed {
     transform: rotate(-90deg);
 }
 
-/* ===== 面板内容区 ===== */
 .panel-content {
     max-height: 2000px;
     overflow: visible;
@@ -113,7 +99,6 @@
     overflow: hidden;
 }
 
-/* ===== 侧边栏通用容器 ===== */
 .sidebar-container {
     width: var(--sidebar-width);
     flex-shrink: 0;
@@ -143,10 +128,9 @@
 }
 
 .sidebar-container::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-cyan);
+    background: var(--border-accent);
 }
 
-/* ===== 侧栏角色色带统一 ===== */
 .decision-sidebar .panel {
     --panel-accent: var(--sidebar-action-accent);
 }
@@ -155,30 +139,28 @@
     --panel-accent: var(--sidebar-data-accent);
 }
 
-/* ===== 状态标签通用 ===== */
 .status-badge {
-    font-size: 10px;
-    padding: 2px var(--space-2);
-    border-radius: 10px;
+    font-size: 11px;
+    padding: 3px var(--space-2);
+    border-radius: 999px;
     font-weight: 600;
 }
 
 .status-badge.high {
-    background: rgba(255, 71, 87, 0.2);
+    background: rgba(220, 38, 38, 0.14);
     color: var(--alert-red);
 }
 
 .status-badge.medium {
-    background: rgba(245, 158, 11, 0.2);
+    background: rgba(180, 83, 9, 0.14);
     color: var(--status-warn);
 }
 
 .status-badge.low {
-    background: rgba(16, 185, 129, 0.2);
+    background: rgba(22, 163, 74, 0.14);
     color: var(--status-online);
 }
 
-/* ===== 模块内滚动区域 ===== */
 .module-scroll {
     max-height: 480px;
     overflow-y: auto;
@@ -190,6 +172,6 @@
 }
 
 .module-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--border-normal);
     border-radius: 2px;
 }

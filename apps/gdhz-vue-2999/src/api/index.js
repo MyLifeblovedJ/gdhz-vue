@@ -10,6 +10,7 @@ import {
     mockRiskData,
     mockMarqueeMessages
 } from '../data/mockData'
+import { homeMonitoringMockData } from '../data/homeMonitoringData'
 
 // ===== API 基础配置 =====
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -166,11 +167,24 @@ export const timelineApi = {
     },
 }
 
+// ===== 首页重点站点与海堤值守接口 =====
+export const homeApi = {
+    /**
+     * 获取首页重点站点与海堤风险数据
+     * @returns {Promise<Object>}
+     */
+    async getHomeMonitoringData() {
+        await simulateDelay(180)
+        return JSON.parse(JSON.stringify(homeMonitoringMockData))
+    },
+}
+
 // ===== 统一导出 =====
 export default {
     device: deviceApi,
     alert: alertApi,
     risk: riskApi,
     timeline: timelineApi,
+    home: homeApi,
 }
 

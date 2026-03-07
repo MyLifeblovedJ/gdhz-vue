@@ -32,7 +32,10 @@ import {
   Color,
   Math as CesiumMath,
   OpenStreetMapImageryProvider,
+  PolylineDashMaterialProperty,
+  SceneTransforms,
   SceneMode,
+  ScreenSpaceEventType,
   SkyBox,
   UrlTemplateImageryProvider,
   WebMercatorTilingScheme,
@@ -45,6 +48,7 @@ Ion.defaultAccessToken = ''
 
 import { basemaps as basemapConfig } from '../../data/mockData'
 import { deviceTypeConfig } from '../../data/deviceConfig'
+import { buildMapRenderSpec } from '../../utils/mapRenderSpec'
 import guangdongGeo from '../../data/guangdong_geo.json'
 import gdCityBoundaryGeo from '../../data/GDSJXZQH.json'
 import gdProvinceLineGeo from '../../data/广东省line.json'
@@ -86,14 +90,15 @@ let viewer = null
 let basemapLayers = {}
 let markerLayers = {}
 let markers = {}
+let deviceEntities3D = []
 let typhoonLayer = null
+let typhoonEntities3D = []
 let vesselLayer = null
+let vesselEntities3D = []
+let spinningBillboards3D = []
+let spinBillboardRaf = 0
 let windAnimationFrame = null
 let waveAnimationFrame = null
-let mapWheelCaptureHandler = null
-let lastWheelZoomTime = 0
-let pendingWheelDelta = 0
-let wheelZoomRaf = 0
 let isSwitchingBasemap = false
 let provinceBoundaryLayer2D = null
 let provinceBoundaryEntities3D = []
@@ -114,6 +119,10 @@ let countyBoundariesRendered2D = false
 let countyLabelsRendered2D = false
 let countyBoundariesRendered3D = false
 let countyLabelsRendered3D = false
+let viewerScenePostRenderHandler = null
+let cesiumHoverPickRaf = 0
+let pendingCesiumHoverPosition = null
+let lastCesiumFrameUpdate = 0
 const CITY_WARNING_PANE = 'city-warning-pane'
 const PROVINCE_BOUNDARY_PANE = 'province-boundary-pane'
 const COUNTY_BOUNDARY_PANE = 'county-boundary-pane'
@@ -152,9 +161,29 @@ const is3DMode = computed(() => currentMapMode.value === '3D')
 const layerVisibility = computed(() => store.layerVisibility)
 const typhoonData = computed(() => store.typhoonData)
 const vesselData = computed(() => store.vesselData)
+const mapRenderSpec = computed(() => buildMapRenderSpec({
+  devices: store.devices,
+  typhoonData: typhoonData.value,
+  vessels: vesselData.value,
+  layerVisibility: layerVisibility.value
+}))
 
 // 鍏ㄥ眬鍙橀噺鍖烘坊鍔?
 let highlightLayer = null
+
+function createOverlayState() {
+  return {
+    visible: false,
+    html: '',
+    x: 0,
+    y: 0,
+    position: null,
+    entityId: null
+  }
+}
+
+const cesiumHoverOverlay = ref(createOverlayState())
+const cesiumPopupOverlay = ref(createOverlayState())
 
 // 椋庨櫓浣嶇疆鏄犲皠锛堝吋瀹圭己澶辩粡绾害鐨勬棫鏁版嵁锛?
 const riskLocationMap = {
@@ -865,6 +894,33 @@ function switch3DViewPreset(presetKey) {
   }
 }
 
+function applyCesiumResolutionScale() {
+  if (!viewer) return
+
+  const pixelRatio = Number(window.devicePixelRatio || 1)
+  const resolutionScale = Math.min(Math.max(pixelRatio, 1), 1.25)
+
+  viewer.useBrowserRecommendedResolution = false
+  viewer.resolutionScale = resolutionScale
+  if (viewer.scene?.postProcessStages?.fxaa) {
+    viewer.scene.postProcessStages.fxaa.enabled = false
+  }
+  viewer.scene?.requestRender?.()
+}
+
+function processCesiumHoverPick(position) {
+  if (!viewer) return
+  const meta = resolveCesiumMetaFromPick(viewer.scene?.pick(position))
+  if (!meta?.hoverHtml) {
+    resetCesiumHoverOverlay()
+  } else {
+    setCesiumHoverOverlay(meta)
+  }
+  if (viewer?.scene?.canvas) {
+    viewer.scene.canvas.style.cursor = meta?.hoverHtml || meta?.popupHtml ? 'pointer' : 'default'
+  }
+}
+
 async function initCesium() {
   if (!cesiumRef.value) return
 
@@ -886,12 +942,13 @@ async function initCesium() {
       skyBox: false,
       skyAtmosphere: false
     })
+    applyCesiumResolutionScale()
 
     if (viewer.cesiumWidget && viewer.cesiumWidget.creditContainer) {
       viewer.cesiumWidget.creditContainer.style.display = 'none'
     }
 
-    // 显式配置星空盒，兼容当前 Cesium 版本，避免 skyBox:true 的类型错误
+    // 显式配置星空盒锛屽吋瀹瑰綋鍓?Cesium 鐗堟본紝閬垮厤 skyBox:true 鐨勭被鍨嬮敊璇?
     viewer.scene.skyBox = new SkyBox({
       sources: {
         positiveX: '/cesium/Assets/Textures/SkyBox/tycho2t3_80_px.jpg',
@@ -913,8 +970,43 @@ async function initCesium() {
     applyCountyBoundaryVisibility3D()
     viewerCameraMoveEndHandler = () => applyCountyBoundaryVisibility3D()
     viewer.camera.moveEnd.addEventListener(viewerCameraMoveEndHandler)
+    viewer.screenSpaceEventHandler.setInputAction((movement) => {
+      const meta = resolveCesiumMetaFromPick(viewer?.scene?.pick(movement.position))
+      if (!meta?.popupHtml) {
+        closeCesiumPopup()
+        return
+      }
+      setCesiumPopupOverlay(meta)
+      if (meta.sourceType === 'device') {
+        const device = store.devices.find(item => item.id === meta.sourceId)
+        if (device) {
+          emit('device-click', device)
+        }
+      }
+      viewer.scene.requestRender()
+    }, ScreenSpaceEventType.LEFT_CLICK)
+    viewer.screenSpaceEventHandler.setInputAction((movement) => {
+      pendingCesiumHoverPosition = movement.endPosition
+      if (cesiumHoverPickRaf) return
+      cesiumHoverPickRaf = requestAnimationFrame(() => {
+        cesiumHoverPickRaf = 0
+        if (!pendingCesiumHoverPosition) return
+        processCesiumHoverPick(pendingCesiumHoverPosition)
+        pendingCesiumHoverPosition = null
+      })
+    }, ScreenSpaceEventType.MOUSE_MOVE)
+    viewerScenePostRenderHandler = () => {
+      if (cesiumHoverOverlay.value.visible || cesiumPopupOverlay.value.visible) {
+        updateCesiumOverlayPositions()
+      }
+    }
+    viewer.scene.postRender.addEventListener(viewerScenePostRenderHandler)
     applyCesiumMapMode(currentMapMode.value)
     flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
+    renderDevices3D()
+    renderTyphoon()
+    startSpinBillboardLoop()
+    renderVessels()
   } catch (error) {
     console.error('Cesium Viewer initialization failed:', error)
   }
@@ -927,7 +1019,11 @@ function initMap() {
     center: props.center,
     zoom: props.zoom,
     preferCanvas: true,
-    scrollWheelZoom: false,
+    scrollWheelZoom: true,
+    zoomSnap: 0.25,
+    zoomDelta: 0.5,
+    wheelDebounceTime: 60,
+    wheelPxPerZoomLevel: 80,
     zoomControl: false,
     attributionControl: false
   })
@@ -938,7 +1034,7 @@ function initMap() {
   
   const typhoonPane = map.createPane('typhoon-pane');
   typhoonPane.style.zIndex = 800; // 纭繚鍙伴鍦ㄦ渶椤跺眰
-  typhoonPane.style.pointerEvents = 'none'; // 鍏佽鐐瑰嚮涓嬫柟鐨?markers
+  typhoonPane.style.pointerEvents = 'auto';
 
   const cityWarningPane = map.createPane(CITY_WARNING_PANE)
   cityWarningPane.style.zIndex = 805
@@ -986,7 +1082,6 @@ function initMap() {
   Object.keys(deviceTypeConfig).forEach(type => {
     markerLayers[type] = L.layerGroup().addTo(map)
   })
-  
   // 鍒涘缓楂樹寒鍥惧眰
   highlightLayer = L.layerGroup().addTo(map)
   cityWarningBoundaryLayer2D = L.layerGroup().addTo(map)
@@ -1001,10 +1096,10 @@ function initMap() {
 
   mapZoomLevelHandler = () => applyCountyBoundaryVisibility2D()
   map.on('zoomend', mapZoomLevelHandler)
-  
+
   // 鍒涘缓鍙伴鍥惧眰
   typhoonLayer = L.layerGroup().addTo(map)
-  
+
   // 鍒涘缓鑸硅埗鍥惧眰
   vesselLayer = L.layerGroup().addTo(map)
 
@@ -1084,249 +1179,369 @@ function flyToRisk(risk) {
   }
 }
 
-// 娓叉煋璁惧鏍囪
-function renderDevices() {
-  const devices = store.devices
+function createLeafletImageIcon(item) {
+  return L.icon({
+    iconUrl: item.image,
+    iconSize: [item.size, item.size],
+    iconAnchor: [item.size / 2, item.size / 2],
+    popupAnchor: [0, -Math.max(6, item.size / 2)],
+    tooltipAnchor: [0, -Math.max(6, item.size / 2)],
+    className: 'shared-map-icon'
+  })
+}
+
+function createLeafletSpinningIcon(item) {
+  return L.divIcon({
+    className: 'typhoon-spinning-icon',
+    html: `
+      <div class="typhoon-svg-wrapper">
+        <img src="${item.image}" width="${item.size}" height="${item.size}" alt="typhoon" style="${item.filter ? `filter:${item.filter};` : ''}" />
+      </div>
+    `,
+    iconSize: [item.size, item.size],
+    iconAnchor: [item.size / 2, item.size / 2]
+  })
+}
+
+function toLeafletLatLngs(points = []) {
+  return points.map(point => [point.lat, point.lng])
+}
+
+function toDegreesArray(points = [], closeLoop = false) {
+  const source = closeLoop && points.length > 2 ? [...points, points[0]] : points
+  return source.flatMap(point => [point.lng, point.lat])
+}
+
+function toDegreesArrayHeights(points = [], height = 0, closeLoop = false) {
+  const source = closeLoop && points.length > 2 ? [...points, points[0]] : points
+  return source.flatMap(point => [point.lng, point.lat, height])
+}
+
+function parseDashLength(dashArray) {
+  const segments = String(dashArray || '')
+    .split(',')
+    .map(item => Number(item.trim()))
+    .filter(value => Number.isFinite(value) && value > 0)
+  if (!segments.length) return 16
+  return segments.reduce((sum, value) => sum + value, 0)
+}
+
+function clearCesiumEntityCollection(collection) {
+  if (!viewer || !collection.length) return
+  collection.forEach(entity => viewer.entities.remove(entity))
+  collection.length = 0
+  viewer.scene.requestRender()
+}
+
+function buildCesiumAnchor(position, height = 160) {
+  if (!position) return null
+  return Cartesian3.fromDegrees(position.lng, position.lat, height)
+}
+
+function resetCesiumHoverOverlay() {
+  cesiumHoverOverlay.value = createOverlayState()
+  viewer?.scene?.requestRender()
+}
+
+function closeCesiumPopup() {
+  cesiumPopupOverlay.value = createOverlayState()
+  viewer?.scene?.requestRender()
+}
+
+function updateCesiumOverlayPosition(key) {
+  if (!viewer) return
+  const overlayRef = key === 'popup' ? cesiumPopupOverlay : cesiumHoverOverlay
+  const overlay = overlayRef.value
+  if (!overlay.visible || !overlay.position) return
+
+  const projectToWindow = SceneTransforms.worldToWindowCoordinates || SceneTransforms.wgs84ToWindowCoordinates
+  const windowPosition = projectToWindow
+    ? projectToWindow(viewer.scene, overlay.position, new Cartesian2())
+    : null
+  if (!windowPosition) {
+    overlayRef.value = { ...overlay, visible: false }
+    return
+  }
+
+  const canvas = viewer.scene.canvas
+  const scaleX = canvas.clientWidth / canvas.width
+  const scaleY = canvas.clientHeight / canvas.height
+  overlayRef.value = {
+    ...overlay,
+    x: windowPosition.x * scaleX,
+    y: windowPosition.y * scaleY
+  }
+}
+
+function updateCesiumOverlayPositions() {
+  updateCesiumOverlayPosition('hover')
+  updateCesiumOverlayPosition('popup')
+}
+
+function setCesiumHoverOverlay(meta) {
+  if (!meta?.hoverHtml) {
+    resetCesiumHoverOverlay()
+    return
+  }
+  cesiumHoverOverlay.value = {
+    visible: true,
+    html: meta.hoverHtml,
+    x: 0,
+    y: 0,
+    position: meta.position,
+    entityId: meta.id
+  }
+  updateCesiumOverlayPosition('hover')
+  viewer.scene.requestRender()
+}
+
+function setCesiumPopupOverlay(meta) {
+  if (!meta?.popupHtml) {
+    closeCesiumPopup()
+    return
+  }
+  cesiumPopupOverlay.value = {
+    visible: true,
+    html: meta.popupHtml,
+    x: 0,
+    y: 0,
+    position: meta.position,
+    entityId: meta.id
+  }
+  updateCesiumOverlayPosition('popup')
+  viewer.scene.requestRender()
+}
+
+function resolveCesiumMetaFromPick(picked) {
+  const entity = picked?.id
+  return entity?.renderMeta || null
+}
+
+function renderLeafletLine(layer, item) {
+  layer.addLayer(L.polyline(toLeafletLatLngs(item.points), {
+    color: item.style.color,
+    weight: item.style.width,
+    opacity: item.style.opacity,
+    dashArray: item.style.dashArray,
+    pane: 'typhoon-pane',
+    interactive: false
+  }))
+}
+
+function renderLeafletPolygon(layer, item) {
+  layer.addLayer(L.polygon(toLeafletLatLngs(item.points), {
+    color: item.style.strokeColor,
+    weight: item.style.strokeWidth,
+    opacity: item.style.strokeOpacity ?? 1,
+    dashArray: item.style.dashArray,
+    fillColor: item.style.fillColor,
+    fillOpacity: item.style.fillOpacity,
+    pane: 'typhoon-pane',
+    interactive: false
+  }))
+}
+
+function renderLeafletPointMarker(layer, item, { pane = 'markers-pane', zIndexOffset = 0, popup = true, tooltip = true } = {}) {
+  const marker = L.marker([item.lat, item.lng], {
+    icon: createLeafletImageIcon(item),
+    pane,
+    zIndexOffset
+  })
+
+  if (popup && item.popupHtml) {
+    marker.bindPopup(item.popupHtml)
+  }
+
+  if (tooltip && item.hoverHtml) {
+    marker.bindTooltip(item.hoverHtml, {
+      className: 'typhoon-tooltip',
+      direction: 'top',
+      offset: [0, -(item.hoverOffsetY || 6)]
+    })
+  }
+
+  return marker
+}
+
+function attachCesiumInteraction(entity, item, height = 160) {
+  entity.renderMeta = {
+    id: item.id,
+    sourceId: item.sourceId,
+    sourceType: item.sourceType,
+    hoverHtml: item.hoverHtml || '',
+    popupHtml: item.popupHtml || '',
+    position: buildCesiumAnchor(item, height)
+  }
+  return entity
+}
+
+function renderCesiumBillboardPoint(collection, item, { height = 160, disableDepth = true } = {}) {
+  if (!viewer) return null
+  const entity = viewer.entities.add({
+    position: buildCesiumAnchor(item, height),
+    billboard: {
+      image: item.image,
+      width: item.size,
+      height: item.size,
+      color: Color.WHITE,
+      disableDepthTestDistance: disableDepth ? Number.POSITIVE_INFINITY : undefined
+    }
+  })
+  attachCesiumInteraction(entity, item, height)
+  collection.push(entity)
+  return entity
+}
+
+function renderCesiumLine(collection, item) {
+  if (!viewer) return
+  const baseColor = Color.fromCssColorString(item.style.color)
+  const material = item.style.dashArray
+    ? new PolylineDashMaterialProperty({
+      color: baseColor.withAlpha(item.style.opacity ?? 1),
+      dashLength: parseDashLength(item.style.dashArray)
+    })
+    : baseColor.withAlpha(item.style.opacity ?? 1)
+
+  collection.push(viewer.entities.add({
+    polyline: {
+      positions: Cartesian3.fromDegreesArrayHeights(toDegreesArrayHeights(item.points, 30)),
+      width: item.style.width,
+      material
+    }
+  }))
+}
+
+function renderCesiumPolygon(collection, item) {
+  if (!viewer) return
+  const fillDegreeArray = toDegreesArrayHeights(item.points, 20)
+  const outlineDegreeArray = toDegreesArrayHeights(item.points, 22, true)
+  collection.push(viewer.entities.add({
+    polygon: {
+      hierarchy: Cartesian3.fromDegreesArrayHeights(fillDegreeArray),
+      material: Color.fromCssColorString(item.style.fillColor).withAlpha(item.style.fillOpacity),
+      perPositionHeight: true,
+      outline: false
+    }
+  }))
+
+  collection.push(viewer.entities.add({
+    polyline: {
+      positions: Cartesian3.fromDegreesArrayHeights(outlineDegreeArray),
+      width: item.style.strokeWidth,
+      material: item.style.dashArray
+        ? new PolylineDashMaterialProperty({
+          color: Color.fromCssColorString(item.style.strokeColor).withAlpha(item.style.strokeOpacity ?? 1),
+          dashLength: parseDashLength(item.style.dashArray)
+        })
+        : Color.fromCssColorString(item.style.strokeColor).withAlpha(item.style.strokeOpacity ?? 1)
+    }
+  }))
+}
+
+function renderDevices2D() {
   if (!map) return
 
-  // 娓呯┖鐜版湁鏍囪
   Object.values(markerLayers).forEach(layer => layer.clearLayers())
   markers = {}
 
-  devices.forEach(device => {
-    const config = deviceTypeConfig[device.type]
-    if (!config) return
-    
-    const isAlert = device.status === 'alarm'
-    const isWarn = device.status === 'warn'
-    let color = config.color
-    if (isWarn) color = 'var(--status-warn)'
-    if (isAlert) color = 'var(--alert-red)'
-
-    const customIcon = L.divIcon({
-      className: 'custom-div-icon',
-      html: `<div style="
-        width: 14px; height: 14px;
-        background: rgba(10, 22, 38, 0.9);
-        border: 1px solid ${color};
-        border-radius: 50%;
-        box-shadow: 0 0 ${isAlert || isWarn ? '5px' : '3px'} ${color};
-        display: flex; align-items: center; justify-content: center;
-        color: ${color}; font-size: 8px;
-        ${isAlert ? 'animation: marker-pulse-ring-red 1.2s ease-out infinite;' : ''}
-        ${isWarn && !isAlert ? 'animation: marker-pulse-ring-yellow 1.5s ease-out infinite;' : ''}
-      ">
-        <i class="fa-solid ${config.icon}" style="transform: scale(0.8);"></i>
-      </div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    })
-
-    const marker = L.marker([device.lat, device.lng], { 
-      icon: customIcon,
-      pane: 'markers-pane' // 鎸囧畾闈㈡澘
-    })
-      .bindPopup(`<b>${device.name}</b><br>绫诲瀷: ${device.typeName}<br>鏁板€? ${device.val}`)
-
+  mapRenderSpec.value.devices.forEach((item) => {
+    const marker = renderLeafletPointMarker(null, item, { pane: 'markers-pane', tooltip: false })
     marker.on('click', () => {
-      emit('device-click', device)
+      const device = store.devices.find(candidate => candidate.id === item.sourceId)
+      if (device) emit('device-click', device)
     })
 
-    if (markerLayers[device.type]) {
-      markerLayers[device.type].addLayer(marker)
+    const device = store.devices.find(candidate => candidate.id === item.sourceId)
+    const layer = markerLayers[device?.type]
+    if (layer) {
+      layer.addLayer(marker)
     }
-
-    markers[device.id] = marker
+    markers[item.sourceId] = marker
   })
 }
 
-// 娓叉煋鍙伴璺緞
+function renderDevices3D() {
+  clearCesiumEntityCollection(deviceEntities3D)
+  closeCesiumPopup()
+  resetCesiumHoverOverlay()
+  mapRenderSpec.value.devices.forEach((item) => {
+    renderCesiumBillboardPoint(deviceEntities3D, item, { height: 180 })
+  })
+  viewer?.scene?.requestRender()
+}
+
+function renderDevices() {
+  renderDevices2D()
+  renderDevices3D()
+}
+
 function renderTyphoon() {
-  if (!map || !typhoonLayer) return
-  
-  typhoonLayer.clearLayers()
-  
-  // 鎬诲紑鍏虫鏌?
-  if (!layerVisibility.value.typhoon || !typhoonData.value) return
-  
-  const { track, forecast, windCircle } = typhoonData.value
-  
-  // 1. 缁樺埗鍘嗗彶璺緞
-  if (layerVisibility.value.typhoon_history_track && track && track.length > 0) {
-    const trackPoints = track.map(p => [p.lat, p.lng])
-    const trackLine = L.polyline(trackPoints, {
-      color: '#EF4444',
-      weight: 3,
-      opacity: 0.8,
-      pane: 'typhoon-pane'
-    })
-    typhoonLayer.addLayer(trackLine)
-    
-    // 璺緞鐐规爣璁?
-    track.forEach((point, index) => {
-      const isLatest = index === track.length - 1
-      if (isLatest && layerVisibility.value.typhoon_marker) return
-
-      const marker = L.circleMarker([point.lat, point.lng], {
-        radius: isLatest ? 8 : 4,
-        color: '#EF4444',
-        fillColor: '#fff',
-        fillOpacity: 1,
-        weight: 2,
-        pane: 'typhoon-pane'
-      })
-      typhoonLayer.addLayer(marker)
-    })
+  if (typhoonLayer) {
+    typhoonLayer.clearLayers()
   }
-  
-  // 2. 缁樺埗棰勬祴璺緞
-  if (layerVisibility.value.typhoon_forecast_track && forecast && forecast.length > 0) {
-    const lastTrack = track[track.length - 1]
-    const forecastPoints = [[lastTrack.lat, lastTrack.lng], ...forecast.map(p => [p.lat, p.lng])]
-    const forecastLine = L.polyline(forecastPoints, {
-      color: '#F97316',
-      weight: 2,
-      opacity: 0.6,
-      dashArray: '10, 10',
-      pane: 'typhoon-pane'
-    })
-    typhoonLayer.addLayer(forecastLine)
+  clearCesiumEntityCollection(typhoonEntities3D)
+  spinningBillboards3D = spinningBillboards3D.filter(item => item.group !== 'typhoon')
+  closeCesiumPopup()
+  resetCesiumHoverOverlay()
+
+  const spec = mapRenderSpec.value.typhoon
+  if (!layerVisibility.value.typhoon || (!spec.lines.length && !spec.polygons.length && !spec.points.length && !spec.markers.length)) {
+    viewer?.scene?.requestRender()
+    return
   }
 
-  // 3. 缁樺埗鍙伴涓績姒傜巼鑼冨洿 (骞虫粦鐨勯敟褰㈣竟鐣?
-  if (layerVisibility.value.typhoon_probability_range && forecast && forecast.length > 0 && track && track.length > 0) {
-    const lastTrack = track[track.length - 1];
-    const allPoints = [lastTrack, ...forecast];
-    const centerLine = allPoints.map(p => [p.lat, p.lng]);
-    const radii = allPoints.map((_, i) => i * 0.35);
-    const leftEdge = [];
-    const rightEdge = [];
-    
-    for (let i = 0; i < centerLine.length; i++) {
-        const [lat, lng] = centerLine[i];
-        const r = radii[i];
-        let dx = 0, dy = 0;
-        if (i < centerLine.length - 1) {
-            dx = centerLine[i+1][1] - lng;
-            dy = centerLine[i+1][0] - lat;
-        } else if (i > 0) {
-            dx = lng - centerLine[i-1][1];
-            dy = lat - centerLine[i-1][0];
-        }
-        const len = Math.sqrt(dx*dx + dy*dy) || 1;
-        const nx = -dy / len; 
-        const ny = dx / len;
-        if (r > 0) {
-            leftEdge.push([lat + nx * r, lng + ny * r]);
-            rightEdge.push([lat - nx * r, lng - ny * r]);
-        }
-    }
-    
-    const lastIdx = centerLine.length - 1;
-    const endCenter = centerLine[lastIdx];
-    const endRadius = radii[lastIdx];
-    const endArc = [];
-    const endDx = centerLine[lastIdx][1] - centerLine[lastIdx-1][1];
-    const endDy = centerLine[lastIdx][0] - centerLine[lastIdx-1][0];
-    const endAngle = Math.atan2(endDy, endDx);
-    
-    for (let a = Math.PI/2; a >= -Math.PI/2; a -= Math.PI/24) {
-        const lat = endCenter[0] + Math.sin(endAngle + a) * endRadius;
-        const lng = endCenter[1] + Math.cos(endAngle + a) * endRadius;
-        endArc.push([lat, lng]);
-    }
-    
-    const startPoint = centerLine[0]; 
-    const outline = [
-        startPoint,
-        ...leftEdge,
-        ...endArc,
-        ...rightEdge.slice().reverse()
-    ];
-    
-    const probabilityShape = L.polygon(outline, {
-        color: '#ffffff',
-        weight: 2,
-        dashArray: '8, 6',
-        fillColor: '#3B82F6',
-        fillOpacity: 0.15,
-        pane: 'typhoon-pane'
-    });
-    typhoonLayer.addLayer(probabilityShape);
-  }
-  
-  // 4. 缁樺埗椋庡湀
-  if (layerVisibility.value.typhoon_wind_circle && windCircle) {
-    const center = [windCircle.center.lat, windCircle.center.lng]
-    const configs = [
-        { radius: windCircle.radius7, color: '#3B82F6', opacity: 0.1 },
-        { radius: windCircle.radius10, color: '#F97316', opacity: 0.15 },
-        { radius: windCircle.radius12, color: '#EF4444', opacity: 0.2 }
-    ];
-    
-    configs.forEach(c => {
-        typhoonLayer.addLayer(L.circle(center, {
-            radius: c.radius * 1000,
-            color: c.color,
-            fillColor: c.color,
-            fillOpacity: c.opacity,
-            weight: 1,
-            pane: 'typhoon-pane'
-        }));
-    });
-  }
-
-  // 5. 鍙伴鏃嬭浆鏍囧織
-  if (layerVisibility.value.typhoon_marker && track && track.length > 0) {
-    const latest = track[track.length - 1]
-    const typhoonIcon = L.divIcon({
-        className: 'typhoon-spinning-icon',
-        html: `
-            <div class="typhoon-svg-wrapper">
-                <svg viewBox="0 0 1024 1024" width="60" height="60">
-                    <path d="M512 512m-320 0a320 320 0 1 0 640 0 320 320 0 1 0-640 0Z" fill="#d81e06"></path>
-                    <path d="M512 512m-128 0a128 128 0 1 0 256 0 128 128 0 1 0-256 0Z" fill="#e6e6e6"></path>
-                    <path d="M688 112c-145.6 96.992-286.816 244.352-304 304-16.512 57.312-58.432 111.136-118 108-22.016-1.152-63.216-52.256-42-108A497.6 497.6 0 0 1 688 112z" fill="#d81e06"></path>
-                    <path d="M330.496 924c145.6-96.992 286.816-244.352 304-304 16.512-57.312 58.432-111.136 118-108 22.016 1.152 63.216 52.256 42 108a497.6 497.6 0 0 1-464 304z" fill="#d81e06"></path>
-                </svg>
-            </div>
-        `,
-        iconSize: [60, 60],
-        iconAnchor: [30, 30]
-    })
-    const marker = L.marker([latest.lat, latest.lng], { 
-        icon: typhoonIcon,
+  if (typhoonLayer) {
+    spec.lines.forEach(item => renderLeafletLine(typhoonLayer, item))
+    spec.polygons.forEach(item => renderLeafletPolygon(typhoonLayer, item))
+    spec.points.forEach((item) => {
+      typhoonLayer.addLayer(renderLeafletPointMarker(typhoonLayer, item, {
         pane: 'typhoon-pane',
-        zIndexOffset: 1000
+        popup: false,
+        tooltip: true
+      }))
     })
-    typhoonLayer.addLayer(marker)
+    spec.markers.forEach((item) => {
+      typhoonLayer.addLayer(L.marker([item.lat, item.lng], {
+        icon: createLeafletSpinningIcon(item),
+        pane: 'typhoon-pane',
+        zIndexOffset: 1000,
+        interactive: false
+      }))
+    })
   }
+
+  spec.lines.forEach(item => renderCesiumLine(typhoonEntities3D, item))
+  spec.polygons.forEach(item => renderCesiumPolygon(typhoonEntities3D, item))
+  spec.points.forEach((item) => {
+    renderCesiumBillboardPoint(typhoonEntities3D, item, { height: 220 })
+  })
+  spec.markers.forEach((item) => {
+    const entity = renderCesiumBillboardPoint(typhoonEntities3D, item, { height: 260 })
+    if (entity?.billboard) {
+      spinningBillboards3D.push({ entity, group: 'typhoon' })
+    }
+  })
+  viewer?.scene?.requestRender()
 }
 
-// 娓叉煋鑸硅埗
 function renderVessels() {
-  if (!map || !vesselLayer) return
-  vesselLayer.clearLayers()
-  if (!layerVisibility.value.vessels || !vesselData.value) return
-  
-  vesselData.value.forEach(vessel => {
-    const color = vessel.status === 'warning' ? MAP_COLORS.vesselWarn : MAP_COLORS.vesselNormal
-    const marker = L.circleMarker([vessel.lat, vessel.lng], {
-      radius: 3,
-      color: color,
-      fillColor: color,
-      fillOpacity: 0.8,
-      weight: 1,
-      pane: 'markers-pane'
-    })
-    marker.bindPopup(`
-      <b>${vessel.name}</b><br>
-      绫诲瀷: ${vessel.type}<br>
-      鑸€? ${vessel.speed.toFixed(1)}kn<br>
-      鑸悜: ${vessel.heading}掳
-    `)
-    vesselLayer.addLayer(marker)
+  if (vesselLayer) {
+    vesselLayer.clearLayers()
+  }
+  clearCesiumEntityCollection(vesselEntities3D)
+  closeCesiumPopup()
+
+  mapRenderSpec.value.vessels.forEach((item) => {
+    if (vesselLayer) {
+      vesselLayer.addLayer(renderLeafletPointMarker(vesselLayer, item, {
+        pane: 'markers-pane',
+        popup: true,
+        tooltip: false
+      }))
+    }
+    renderCesiumBillboardPoint(vesselEntities3D, item, { height: 150 })
   })
+  viewer?.scene?.requestRender()
 }
 
 function getTyphoonPosition() {
@@ -1485,59 +1700,31 @@ function resizeCanvas() {
     windCanvas.value.width = mapRef.value.offsetWidth
     windCanvas.value.height = mapRef.value.offsetHeight
   }
+  applyCesiumResolutionScale()
 }
 
-function bindLeafletWheelCapture() {
-  if (!mapAreaRef.value || !map) return
-  if (mapWheelCaptureHandler) return
-
-  mapWheelCaptureHandler = (event) => {
-    if (!is2DMode.value || !map) return
-    if (!mapRef.value) return
-
-    const rect = mapRef.value.getBoundingClientRect()
-    const insideMap =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom
-    if (!insideMap) return
-
-    // 保持可点击图层交互，但滚轮始终优先用于地图缩放，避免 hover 后“卡住”
-    event.preventDefault()
-    pendingWheelDelta += Number(event.deltaY || 0)
-    if (wheelZoomRaf) return
-
-    wheelZoomRaf = requestAnimationFrame(() => {
-      wheelZoomRaf = 0
-      const now = performance.now()
-      if (now - lastWheelZoomTime < 16) return
-      lastWheelZoomTime = now
-
-      const deltaY = pendingWheelDelta
-      pendingWheelDelta = 0
-      if (!Number.isFinite(deltaY) || deltaY === 0 || !mapRef.value || !map) return
-
-      const currentZoom = map.getZoom()
-      const nextZoom = deltaY < 0 ? currentZoom + 1 : currentZoom - 1
-      const limitedZoom = map._limitZoom ? map._limitZoom(nextZoom) : nextZoom
-      if (limitedZoom === currentZoom) return
-
-      const containerPoint = L.point(event.clientX - rect.left, event.clientY - rect.top)
-      map.setZoomAround(containerPoint, limitedZoom, { animate: false })
+function startSpinBillboardLoop() {
+  if (spinBillboardRaf) return
+  function tick() {
+    spinBillboardRaf = 0
+    if (!viewer || !spinningBillboards3D.length) return
+    const seconds = performance.now() / 1000
+    spinningBillboards3D.forEach(({ entity }) => {
+      if (entity?.billboard) {
+        entity.billboard.rotation = -seconds * (Math.PI / 2)
+      }
     })
+    viewer.scene.requestRender()
+    spinBillboardRaf = requestAnimationFrame(tick)
   }
-
-  mapAreaRef.value.addEventListener('wheel', mapWheelCaptureHandler, { passive: false, capture: true })
+  spinBillboardRaf = requestAnimationFrame(tick)
 }
 
-function unbindLeafletWheelCapture() {
-  if (!mapAreaRef.value || !mapWheelCaptureHandler) return
-  mapAreaRef.value.removeEventListener('wheel', mapWheelCaptureHandler, { capture: true })
-  mapWheelCaptureHandler = null
-  pendingWheelDelta = 0
-  if (wheelZoomRaf) cancelAnimationFrame(wheelZoomRaf)
-  wheelZoomRaf = 0
+function stopSpinBillboardLoop() {
+  if (spinBillboardRaf) {
+    cancelAnimationFrame(spinBillboardRaf)
+    spinBillboardRaf = 0
+  }
 }
 
 function switchBasemap(basemapId) {
@@ -1567,7 +1754,7 @@ function handleExternalWheel(deltaY, clientX = null, clientY = null) {
   externalWheelRaf = requestAnimationFrame(() => {
     externalWheelRaf = 0
     const now = performance.now()
-    // 与内部 wheel 捕获对齐（约60fps）
+    // 与内部 wheel 捕获对齐锛堢害60fps锛?
     if (now - lastExternalWheelTime < 16) return
     lastExternalWheelTime = now
 
@@ -1576,16 +1763,18 @@ function handleExternalWheel(deltaY, clientX = null, clientY = null) {
     if (!Number.isFinite(delta) || delta === 0) return
 
     if (is3DMode.value && viewer) {
-      // 3D 动态步进：按滚轮幅度调整，避免“跳格”
+      // 3D 鍔ㄦ€佹杩涳細鎸夋 yu杞幅搴﹁皟鏁达紝閬垮厤鈥滆烦鏍尖€?
       const step = Math.min(260000, Math.max(45000, Math.abs(delta) * 900))
       if (delta < 0) {
         viewer.camera.zoomIn(step)
       } else {
         viewer.camera.zoomOut(step)
       }
+      viewer.scene.requestRender()
     } else if (is2DMode.value && map) {
       const currentZoom = map.getZoom()
-      const nextZoom = delta < 0 ? currentZoom + 1 : currentZoom - 1
+      const step = 0.25
+      const nextZoom = delta < 0 ? currentZoom + step : currentZoom - step
       const limitedZoom = map._limitZoom ? map._limitZoom(nextZoom) : nextZoom
       if (limitedZoom === currentZoom) return
       if (
@@ -1601,11 +1790,11 @@ function handleExternalWheel(deltaY, clientX = null, clientY = null) {
           clientY <= rect.bottom
         if (insideMap) {
           const containerPoint = L.point(clientX - rect.left, clientY - rect.top)
-          map.setZoomAround(containerPoint, limitedZoom, { animate: false })
+          map.setZoomAround(containerPoint, limitedZoom, { animate: true, duration: 0.15 })
           return
         }
       }
-      map.setZoom(limitedZoom, { animate: false })
+      map.setZoom(limitedZoom, { animate: true, duration: 0.15 })
     }
   })
 }
@@ -1625,7 +1814,7 @@ function flyToDevice(deviceId) {
   }
 }
 
-watch(() => store.devices, () => renderDevices())
+watch(() => store.devices, () => renderDevices(), { deep: true })
 watch(() => store.alerts, () => {
   renderCityWarningBoundaries2D()
   renderCityWarningBoundaries3D()
@@ -1633,6 +1822,10 @@ watch(() => store.alerts, () => {
 watch(() => props.currentBasemap, (nb) => switchBasemap(nb))
 watch(() => currentMapMode.value, (m) => {
     applyCesiumMapMode(m)
+    if (m !== '3D') {
+      resetCesiumHoverOverlay()
+      closeCesiumPopup()
+    }
     if (m === '3D' && windAnimationFrame) {
       cancelAnimationFrame(windAnimationFrame); windAnimationFrame = null
       if (windCanvas.value) windCanvas.value.getContext('2d').clearRect(0, 0, windCanvas.value.width, windCanvas.value.height)
@@ -1642,6 +1835,8 @@ watch(() => currentMapMode.value, (m) => {
 
 watch([() => layerVisibility.value.typhoon, () => layerVisibility.value.typhoon_history_track, () => layerVisibility.value.typhoon_forecast_track, () => layerVisibility.value.typhoon_probability_range, () => layerVisibility.value.typhoon_wind_circle, () => layerVisibility.value.typhoon_marker], () => renderTyphoon())
 watch(() => layerVisibility.value.vessels, () => renderVessels())
+watch(() => typhoonData.value, () => renderTyphoon(), { deep: true })
+watch(() => vesselData.value, () => renderVessels(), { deep: true })
 watch(() => layerVisibility.value.wind_particle, (nv) => {
   if (nv && is2DMode.value) startWindAnimation()
   else if (windAnimationFrame) {
@@ -1679,7 +1874,6 @@ defineExpose({
 
 onMounted(() => {
   initMap(); initCesium()
-  bindLeafletWheelCapture()
   if (store.devices.length > 0) renderDevices()
   renderTyphoon(); renderVessels()
   nextTick(() => { resizeCanvas(); if (is2DMode.value) { startWindAnimation(); renderWaveHeatmap(); } })
@@ -1687,13 +1881,18 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  unbindLeafletWheelCapture()
+  stopSpinBillboardLoop()
   if (windAnimationFrame) cancelAnimationFrame(windAnimationFrame)
+  if (cesiumHoverPickRaf) cancelAnimationFrame(cesiumHoverPickRaf)
+  cesiumHoverPickRaf = 0
+  pendingCesiumHoverPosition = null
   window.removeEventListener('resize', resizeCanvas)
   if (map && mapZoomLevelHandler) map.off('zoomend', mapZoomLevelHandler)
   mapZoomLevelHandler = null
   if (viewer?.camera && viewerCameraMoveEndHandler) viewer.camera.moveEnd.removeEventListener(viewerCameraMoveEndHandler)
   viewerCameraMoveEndHandler = null
+  if (viewer?.scene && viewerScenePostRenderHandler) viewer.scene.postRender.removeEventListener(viewerScenePostRenderHandler)
+  viewerScenePostRenderHandler = null
   if (waveHeatmapLayer && map) map.removeLayer(waveHeatmapLayer)
   if (provinceBoundaryLayer2D && map) map.removeLayer(provinceBoundaryLayer2D)
   if (cityWarningBoundaryLayer2D && map) map.removeLayer(cityWarningBoundaryLayer2D)
@@ -1709,6 +1908,15 @@ onUnmounted(() => {
   if (viewer && coastalCityLabelEntities3D.length) {
     coastalCityLabelEntities3D.forEach(entity => viewer.entities.remove(entity))
   }
+  if (viewer && deviceEntities3D.length) {
+    deviceEntities3D.forEach(entity => viewer.entities.remove(entity))
+  }
+  if (viewer && typhoonEntities3D.length) {
+    typhoonEntities3D.forEach(entity => viewer.entities.remove(entity))
+  }
+  if (viewer && vesselEntities3D.length) {
+    vesselEntities3D.forEach(entity => viewer.entities.remove(entity))
+  }
   if (viewer && countyBoundaryEntities3D.length) {
     countyBoundaryEntities3D.forEach(entity => viewer.entities.remove(entity))
   }
@@ -1718,8 +1926,14 @@ onUnmounted(() => {
   provinceBoundaryEntities3D = []
   cityWarningBoundaryEntities3D = []
   coastalCityLabelEntities3D = []
+  deviceEntities3D = []
+  typhoonEntities3D = []
+  vesselEntities3D = []
+  spinningBillboards3D = []
   countyBoundaryEntities3D = []
   countyLabelEntities3D = []
+  resetCesiumHoverOverlay()
+  closeCesiumPopup()
   Object.values(markerLayers).forEach(l => l.clearLayers())
   if (map) map.remove(); if (viewer) viewer.destroy()
 })
@@ -1728,7 +1942,7 @@ onUnmounted(() => {
 <style scoped>
 .map-area { flex: 1; position: relative; min-width: 0; }
 .map-area.fullscreen { width: 100vw; height: 100vh; }
-.map-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: #061629; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+.map-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: transparent; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
 .map-container.active { opacity: 1; pointer-events: auto; }
 .cesium-stage { z-index: 20; }
 .leaflet-stage { z-index: 30; }
@@ -1743,6 +1957,49 @@ onUnmounted(() => {
 
 .wind-canvas, .wave-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 400; }
 .wave-canvas { z-index: 399; opacity: 0.6; }
+.cesium-floating-tooltip,
+.cesium-floating-popup {
+  position: absolute;
+  z-index: 460;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+.cesium-floating-tooltip {
+  max-width: 220px;
+  padding: 6px 10px;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+  white-space: nowrap;
+}
+.cesium-floating-popup {
+  min-width: 180px;
+  max-width: 240px;
+  padding: 12px 16px 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.24);
+}
+.cesium-floating-popup__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
 .map-ui-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 500; }
 .map-ui-overlay > * { pointer-events: auto; }
 
@@ -1750,6 +2007,7 @@ onUnmounted(() => {
 :global(.typhoon-svg-wrapper) { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; animation: typhoon-spin 4s linear infinite; filter: drop-shadow(0 0 8px rgba(216, 30, 6, 0.6)); }
 @keyframes typhoon-spin { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
 :global(.custom-div-icon) { background: transparent !important; border: none !important; }
+:global(.shared-map-icon) { background: transparent !important; border: none !important; }
 :global(.coastal-city-label) { background: transparent !important; border: none !important; }
 :global(.coastal-city-label span) {
   display: inline-block;

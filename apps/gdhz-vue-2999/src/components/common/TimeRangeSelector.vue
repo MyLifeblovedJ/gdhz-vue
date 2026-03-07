@@ -1,9 +1,8 @@
 <template>
-  <div class="time-range-selector">
-    <!-- 快捷按钮 -->
-    <div class="quick-buttons">
-      <button 
-        v-for="option in quickOptions" 
+  <div class="time-range-shell">
+    <div class="quick-range-row">
+      <button
+        v-for="option in quickOptions"
         :key="option.value"
         class="quick-btn"
         :class="{ active: selectedRange === option.value }"
@@ -11,61 +10,31 @@
       >
         {{ option.label }}
       </button>
-    </div>
-    
-    <!-- 自定义日期范围 -->
-    <div class="custom-range" v-if="selectedRange === 'custom'">
-      <div class="date-input-group">
-        <label>开始时间</label>
-        <input 
-          type="datetime-local" 
+
+      <template v-if="selectedRange === 'custom'">
+        <input
+          type="datetime-local"
+          class="date-input"
           v-model="customStart"
           @change="handleCustomChange"
         >
-      </div>
-      <div class="date-input-group">
-        <label>结束时间</label>
-        <input 
-          type="datetime-local" 
+        <span class="date-sep">–</span>
+        <input
+          type="datetime-local"
+          class="date-input"
           v-model="customEnd"
           @change="handleCustomChange"
         >
-      </div>
-      <button class="apply-btn" @click="applyCustomRange">
-        <i class="fa-solid fa-check"></i>
-        应用
-      </button>
-    </div>
-    
-    <!-- 时间轴 -->
-    <div class="timeline-container" ref="timelineRef">
-      <div 
-        class="timeline-track"
-        @mousedown="startDrag"
-        @wheel="handleWheel"
-      >
-        <div class="timeline-range" :style="rangeStyle"></div>
-        <div 
-          class="timeline-handle start" 
-          :style="{ left: startHandlePos + '%' }"
-          @mousedown.stop="startHandleDrag('start', $event)"
-        ></div>
-        <div 
-          class="timeline-handle end" 
-          :style="{ left: endHandlePos + '%' }"
-          @mousedown.stop="startHandleDrag('end', $event)"
-        ></div>
-      </div>
-      <div class="timeline-labels">
-        <span>{{ formatDate(rangeStart) }}</span>
-        <span>{{ formatDate(rangeEnd) }}</span>
-      </div>
+        <button class="apply-btn" @click="applyCustomRange">
+          <i class="fa-solid fa-check"></i>
+        </button>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -73,26 +42,26 @@ const props = defineProps({
     default: () => ({
       start: new Date(Date.now() - 24 * 3600000),
       end: new Date(),
-    })
-  }
+    }),
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const quickOptions = [
+  { label: '实时', value: 'realtime' },
   { label: '今日', value: 'today' },
   { label: '近7天', value: '7d' },
   { label: '近30天', value: '30d' },
   { label: '自定义', value: 'custom' },
 ]
 
-const selectedRange = ref('today')
+const selectedRange = ref('realtime')
 const customStart = ref('')
 const customEnd = ref('')
 const rangeStart = ref(new Date(Date.now() - 24 * 3600000))
 const rangeEnd = ref(new Date())
 
-// 时间轴拖拽
 const startHandlePos = ref(0)
 const endHandlePos = ref(100)
 const isDragging = ref(false)
@@ -104,11 +73,29 @@ const rangeStyle = computed(() => ({
   width: (endHandlePos.value - startHandlePos.value) + '%',
 }))
 
+function syncFromModel(value) {
+  const start = value?.start ? new Date(value.start) : new Date(Date.now() - 24 * 3600000)
+  const end = value?.end ? new Date(value.end) : new Date()
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return
+  }
+
+  rangeStart.value = start
+  rangeEnd.value = end
+  customStart.value = formatForInput(start)
+  customEnd.value = formatForInput(end)
+}
+
 function selectQuickRange(range) {
   selectedRange.value = range
   const now = new Date()
-  
+
   switch (range) {
+    case 'realtime':
+      rangeStart.value = new Date(Date.now() - 2 * 3600000)
+      rangeEnd.value = new Date()
+      break
     case 'today':
       rangeStart.value = new Date(now.setHours(0, 0, 0, 0))
       rangeEnd.value = new Date()
@@ -126,13 +113,13 @@ function selectQuickRange(range) {
       customEnd.value = formatForInput(rangeEnd.value)
       return
   }
-  
+
   emitChange()
   resetHandles()
 }
 
 function handleCustomChange() {
-  // 验证输入
+  // 保留现有交互入口
 }
 
 function applyCustomRange() {
@@ -149,7 +136,15 @@ function resetHandles() {
   endHandlePos.value = 100
 }
 
-function startHandleDrag(type, event) {
+function startDrag(event) {
+  if (!timelineRef.value) return
+  const rect = timelineRef.value.getBoundingClientRect()
+  const pos = ((event.clientX - rect.left) / rect.width) * 100
+  const midpoint = (startHandlePos.value + endHandlePos.value) / 2
+  startHandleDrag(pos <= midpoint ? 'start' : 'end')
+}
+
+function startHandleDrag(type) {
   isDragging.value = true
   dragType.value = type
   document.addEventListener('mousemove', handleDrag)
@@ -158,17 +153,17 @@ function startHandleDrag(type, event) {
 
 function handleDrag(event) {
   if (!isDragging.value || !timelineRef.value) return
-  
+
   const rect = timelineRef.value.getBoundingClientRect()
   let pos = ((event.clientX - rect.left) / rect.width) * 100
   pos = Math.max(0, Math.min(100, pos))
-  
+
   if (dragType.value === 'start') {
     startHandlePos.value = Math.min(pos, endHandlePos.value - 5)
   } else {
     endHandlePos.value = Math.max(pos, startHandlePos.value + 5)
   }
-  
+
   updateRangeFromHandles()
 }
 
@@ -183,25 +178,20 @@ function stopDrag() {
 function handleWheel(event) {
   event.preventDefault()
   const delta = event.deltaY > 0 ? 5 : -5
-  
-  // 缩放时间轴
-  const newStart = Math.max(0, startHandlePos.value + delta)
-  const newEnd = Math.min(100, endHandlePos.value - delta)
-  
-  if (newEnd - newStart >= 10) {
-    startHandlePos.value = newStart
-    endHandlePos.value = newEnd
+
+  const nextStart = Math.max(0, startHandlePos.value + delta)
+  const nextEnd = Math.min(100, endHandlePos.value - delta)
+
+  if (nextEnd - nextStart >= 10) {
+    startHandlePos.value = nextStart
+    endHandlePos.value = nextEnd
     updateRangeFromHandles()
     emitChange()
   }
 }
 
 function updateRangeFromHandles() {
-  const totalRange = rangeEnd.value - rangeStart.value
-  const fullStart = rangeStart.value.getTime()
-  
-  // 根据手柄位置计算实际时间范围
-  // 这里简化处理，实际应用中需要更复杂的逻辑
+  // 保留现有逻辑接口，当前仅用于时间窗口视觉提示
 }
 
 function emitChange() {
@@ -211,11 +201,11 @@ function emitChange() {
 }
 
 function formatDate(date) {
-  return date.toLocaleString('zh-CN', { 
-    month: '2-digit', 
+  return date.toLocaleString('zh-CN', {
+    month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -224,139 +214,100 @@ function formatForInput(date) {
 }
 
 onMounted(() => {
-  selectQuickRange('today')
+  syncFromModel(props.modelValue)
+})
+
+watch(
+  () => props.modelValue,
+  (value) => {
+    syncFromModel(value)
+  },
+  { deep: true }
+)
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousemove', handleDrag)
+  document.removeEventListener('mouseup', stopDrag)
 })
 </script>
 
 <style scoped>
-.time-range-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.time-range-shell {
+  width: 100%;
 }
 
-.quick-buttons {
+.quick-range-row {
   display: flex;
+  align-items: center;
   gap: 6px;
-}
-
-.quick-btn {
-  flex: 1;
-  padding: 6px 10px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-btn:hover {
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-
-.quick-btn.active {
-  background: rgba(0, 180, 230, 0.2);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-
-.custom-range {
-  display: flex;
-  gap: 8px;
-  align-items: flex-end;
   flex-wrap: wrap;
 }
 
-.date-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.quick-btn {
+  min-width: 64px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.quick-btn:hover {
+  border-color: rgba(14, 165, 233, 0.3);
+  color: #0369a1;
+  background: rgba(240, 249, 255, 0.96);
+}
+
+.quick-btn.active {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.28);
+  color: #075985;
+}
+
+
+.date-input {
   flex: 1;
-  min-width: 140px;
-}
-
-.date-input-group label {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.date-input-group input {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  color: var(--text-primary);
-  padding: 6px 8px;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  color: #0f172a;
+  padding: 5px 6px;
   font-size: 11px;
+  font-weight: 600;
+  transition: border-color 0.18s ease;
 }
 
-.date-input-group input:focus {
+.date-input:focus {
   outline: none;
-  border-color: var(--accent-cyan);
+  border-color: rgba(14, 165, 233, 0.42);
+}
+
+.date-sep {
+  color: #94a3b8;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .apply-btn {
-  padding: 6px 12px;
-  background: var(--accent-cyan);
+  padding: 5px 10px;
+  background: #0284c7;
   border: none;
-  border-radius: 4px;
-  color: var(--bg-deepest);
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s;
+  flex-shrink: 0;
+  transition: background 0.18s ease;
 }
 
 .apply-btn:hover {
-  filter: brightness(1.1);
+  background: #0369a1;
 }
 
-.timeline-container {
-  padding: 5px 0;
-}
-
-.timeline-track {
-  position: relative;
-  height: 20px;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.timeline-range {
-  position: absolute;
-  top: 4px;
-  height: 12px;
-  background: linear-gradient(90deg, rgba(0, 180, 230, 0.5), rgba(0, 180, 230, 0.8));
-  border-radius: 6px;
-}
-
-.timeline-handle {
-  position: absolute;
-  top: 0;
-  width: 16px;
-  height: 20px;
-  background: var(--accent-cyan);
-  border-radius: 4px;
-  transform: translateX(-50%);
-  cursor: ew-resize;
-  transition: transform 0.1s;
-}
-
-.timeline-handle:hover {
-  transform: translateX(-50%) scale(1.1);
-}
-
-.timeline-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 4px;
-  font-size: 9px;
-  color: var(--text-muted);
-}
 </style>

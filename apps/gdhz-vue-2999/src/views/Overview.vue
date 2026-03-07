@@ -154,6 +154,7 @@ onMounted(() => {
   --overlay-panel-right-width: 360px;
   --overlay-panel-side-offset: 12px;
   --map-safe-left: calc(var(--overlay-panel-left-width) + var(--overlay-panel-side-offset) + 10px);
+  --map-safe-bottom: 210px;
   --toolbar-safe-left: calc(var(--overlay-panel-left-width) + var(--overlay-panel-side-offset) + 10px);
 }
 
@@ -163,6 +164,14 @@ onMounted(() => {
 }
 
 .overlay-banner {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: auto;
+  min-width: 600px;
+  max-width: 90vw;
   pointer-events: auto;
 }
 
@@ -187,13 +196,18 @@ onMounted(() => {
 .overlay-panel :deep(.data-panel-sidebar) {
   height: 100%;
   pointer-events: auto;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px) saturate(1.02);
+  -webkit-backdrop-filter: blur(18px) saturate(1.02);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.overlay-panel :deep(.decision-sidebar) {
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .overlay-panel :deep(.data-panel-sidebar) {
-  border-left: 1px solid rgba(79, 179, 216, 0.34);
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-.overview-map :deep(.map-legend-wrapper) {
-  bottom: 210px;
-}
 </style>

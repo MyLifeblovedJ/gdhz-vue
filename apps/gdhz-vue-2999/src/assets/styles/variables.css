@@ -1,5 +1,5 @@
 /* ========================================
-   广东省海洋灾害综合决策系统 - 设计令牌
+   广东省海洋灾害综合决策系统 - 设计令牌（亮色清晰版）
    ======================================== */
 
 /* Google Fonts 引入 */
@@ -8,69 +8,45 @@
 :root {
     /* ===== 字体系统 ===== */
     --font-display: 'Rajdhani', sans-serif;
-    /* 数字/标题 - 科技感 */
     --font-body: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-    /* 正文 */
 
     /* ===== 布局阈值 ===== */
     --dock-height: 220px;
-    --min-content-height: 900px; /* 侧栏完全展开所需的最小安全高度 */
+    --min-content-height: 900px;
 
-    /* ===== 背景层级 ===== */
-    --bg-deepest: #050b12;
-    /* 最深层背景 */
-    --bg-deep: #0a1522;
-    /* 深层背景 */
-    --bg-panel: rgba(14, 28, 43, 0.94);
-    /* 面板背景 */
-    --bg-card: rgba(18, 34, 50, 0.88);
-    /* 卡片背景 */
-    --bg-hover: rgba(79, 179, 216, 0.12);
-    /* 悬停态 */
-    --bg-active: rgba(79, 179, 216, 0.2);
-    /* 激活态 */
+    /* ===== 背景层级（明亮、中性、轻玻璃） ===== */
+    --bg-deepest: #f2f7fb;
+    --bg-deep: #e8f0f7;
+    --bg-panel: rgba(255, 255, 255, 0.76);
+    --bg-card: rgba(247, 250, 252, 0.9);
+    --bg-hover: rgba(15, 23, 42, 0.04);
+    --bg-active: rgba(13, 116, 144, 0.1);
 
     /* ===== 边框系统 ===== */
-    --border-subtle: rgba(111, 150, 184, 0.22);
-    /* 细微边框 */
-    --border-normal: rgba(111, 150, 184, 0.35);
-    /* 普通边框 */
-    --border-accent: #4fb3d8;
-    /* 强调边框 */
+    --border-subtle: rgba(15, 23, 42, 0.08);
+    --border-normal: rgba(15, 23, 42, 0.14);
+    --border-accent: #0d7490;
 
-    /* ===== 文字层级 ===== */
-    --text-primary: #ffffff;
-    /* 主标题 */
-    --text-secondary: #d7e3ef;
-    /* 副标题/重要内容 */
-    --text-tertiary: #a7bbcf;
-    /* 次要文字/标签 */
-    --text-muted: #7a8fa5;
-    /* 提示/辅助 */
+    /* ===== 文字层级（中性墨色） ===== */
+    --text-primary: #102033;
+    --text-secondary: #334155;
+    --text-tertiary: #5b6b7c;
+    --text-muted: #7b8794;
 
     /* ===== 功能色 ===== */
-    --accent-cyan: #4fb3d8;
-    /* 主强调色 */
-    --accent-blue: #4a8fc4;
-    /* 链接/可交互 */
+    --accent-cyan: #0d7490;
+    --accent-blue: #155e75;
     --alert-red: #ff4757;
-    /* I级预警 */
     --alert-orange: #ffa502;
-    /* II级预警 */
     --alert-yellow: #ffd43b;
-    /* III级预警 */
     --alert-blue: #00a8ff;
-    /* IV级预警 */
-    --status-online: #53b07e;
-    /* 在线/正常 */
+    --status-online: #16a34a;
     --status-offline: #6d7780;
-    /* 离线/故障 */
-    --status-warn: #ffa502;
-    /* 警告 */
+    --status-warn: #ea580c;
 
     /* ===== 特效色 ===== */
-    --glow-cyan: rgba(79, 179, 216, 0.22);
-    --glow-red: rgba(255, 71, 87, 0.35);
+    --glow-cyan: rgba(13, 116, 144, 0.12);
+    --glow-red: rgba(255, 71, 87, 0.25);
 
     /* ===== 过渡时间 ===== */
     --transition-fast: 150ms ease-out;
@@ -82,21 +58,16 @@
     --border-radius-sm: 4px;
     --border-radius-lg: 12px;
 
-    /* ===== 阴影 ===== */
-    --shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 14px rgba(79, 179, 216, 0.06);
+    /* ===== 阴影（更中性、更克制） ===== */
+    --shadow-panel: 0 12px 32px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+    --shadow-glow: 0 0 12px rgba(13, 116, 144, 0.1);
 
     /* ===== 间距系统 ===== */
     --space-1: 4px;
-    /* 微间距：图标-文字间 */
     --space-2: 8px;
-    /* 组件内部 */
     --space-3: 12px;
-    /* 卡片/面板内 */
     --space-4: 16px;
-    /* 区块间 */
     --space-6: 24px;
-    /* 主区域间 */
 }
 
 /* ===== 全局重置 ===== */
@@ -132,7 +103,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(15, 23, 42, 0.04);
     border-radius: 3px;
 }
 
@@ -147,6 +118,6 @@ body {
 
 /* ===== 选择样式 ===== */
 ::selection {
-    background: rgba(79, 179, 216, 0.3);
-    color: #fff;
+    background: rgba(13, 116, 144, 0.16);
+    color: var(--text-primary);
 }

@@ -1,0 +1,18 @@
+﻿:root {
+  --marine-bg-base: #061629;
+  --marine-panel-bg: rgba(10, 30, 50, 0.75);
+  --marine-accent: #2a82e4;
+  --marine-highlight: #46d4ff;
+  --marine-success: #27c38e;
+  --marine-warning: #eab308;
+  --marine-danger: #ef4444;
+  --marine-text-primary: #ffffff;
+  --marine-text-regular: #d1d5db;
+  --marine-text-muted: #9ca3af;
+  --marine-border-light: rgba(255, 255, 255, 0.15);
+  --marine-border-accent: rgba(70, 212, 255, 0.4);
+  --marine-blur: blur(12px);
+  --marine-radius-sm: 4px;
+  --marine-radius-lg: 8px;
+  --marine-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -374,7 +374,7 @@ function handleEvacuationNotice() {
 
 /* 决策要点 */
 .decision-points {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 8px;
   padding: 10px;
 }
@@ -433,12 +433,12 @@ function handleEvacuationNotice() {
   gap: 6px;
   transition: all 0.2s;
   border: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   color: var(--text-secondary);
 }
 
 .action-btn:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(14, 116, 144, 0.08);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }

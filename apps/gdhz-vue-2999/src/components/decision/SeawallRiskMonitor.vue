@@ -182,7 +182,7 @@ function handleViewAll() {
 .seawall-stats {
   display: flex;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 8px;
   padding: 10px;
 }
@@ -214,7 +214,7 @@ function handleViewAll() {
 
 /* 海堤列表 */
 .seawall-list {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 8px;
   padding: 10px;
 }
@@ -357,7 +357,7 @@ function handleViewAll() {
   gap: 6px;
   transition: all 0.2s;
   border: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   color: var(--text-muted);
 }
 

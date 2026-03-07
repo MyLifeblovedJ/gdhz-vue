@@ -166,20 +166,20 @@ function getLegendIdForLayer(layerId) {
 
 <style scoped>
 .map-legend-wrapper {
-  position: absolute;
-  left: var(--map-safe-left, 382px);
-  bottom: 70px;
+  position: fixed;
+  left: var(--map-safe-left, 18px);
+  top: var(--map-safe-top, 200px);
   z-index: 1000;
   pointer-events: auto;
 }
 
 .legend-container {
-  width: 150px;
+  width: 168px;
   max-height: 300px;
-  background: var(--bg-panel);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-normal);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -191,17 +191,16 @@ function getLegendIdForLayer(layerId) {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: rgba(5, 11, 18, 0.42);
+  background: #ffffff;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .legend-title-bar i {
-  font-size: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .legend-scroll {
@@ -215,12 +214,12 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-scroll::-webkit-scrollbar-track {
-  background: rgba(6, 12, 20, 0.35);
+  background: rgba(15, 23, 42, 0.04);
   border-radius: 2px;
 }
 
 .legend-scroll::-webkit-scrollbar-thumb {
-  background: var(--accent-cyan);
+  background: var(--border-normal);
   border-radius: 2px;
 }
 
@@ -236,19 +235,19 @@ function getLegendIdForLayer(layerId) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
+  padding: 9px 10px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .legend-header:hover {
-  background: var(--bg-hover);
+  background: rgba(15, 23, 42, 0.03);
 }
 
 .legend-name {
   font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .legend-header i {
@@ -262,7 +261,7 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-content {
-  padding: 6px 10px 10px;
+  padding: 7px 10px 10px;
   border-top: 1px solid var(--border-subtle);
 }
 
@@ -270,7 +269,7 @@ function getLegendIdForLayer(layerId) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  padding: 4px 0;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -331,6 +330,7 @@ function getLegendIdForLayer(layerId) {
 
 .legend-label {
   flex: 1;
+  line-height: 1.35;
 }
 </style>
 

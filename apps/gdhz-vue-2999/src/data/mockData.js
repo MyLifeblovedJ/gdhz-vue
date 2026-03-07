@@ -15,6 +15,8 @@ function generateDevices(type, count, baseLocations) {
     for (let i = 0; i < count; i++) {
         const baseLoc = baseLocations[i % baseLocations.length]
         const status = getRandomStatus()
+        const valueText = getRandomValue(type, status)
+        const { thresholdValue, thresholdUnit } = getThresholdMeta(type, status)
         const device = {
             id: `${type}_${String(i + 1).padStart(3, '0')}`,
             name: `${config.name}${i + 1}`,
@@ -24,8 +26,12 @@ function generateDevices(type, count, baseLocations) {
             color: config.color,
             lat: baseLoc.lat + (Math.random() - 0.5) * 0.5,
             lng: baseLoc.lng + (Math.random() - 0.5) * 0.5,
+            city: baseLoc.name,
             status: status,
-            val: getRandomValue(type, status),
+            val: valueText,
+            currentReading: parseNumericReading(valueText),
+            thresholdValue,
+            thresholdUnit,
             lastUpdate: new Date(Date.now() - Math.random() * 3600000).toISOString(),
         }
         devices.push(device)
@@ -62,6 +68,34 @@ function getRandomValue(type, status) {
     if (status === 'warn') return typeValues.warn
     if (status === 'offline') return '--'
     return typeValues.normal
+}
+
+function parseNumericReading(raw) {
+    const match = String(raw ?? '').match(/-?\d+(\.\d+)?/)
+    if (!match) return null
+    return Number(match[0])
+}
+
+function getThresholdMeta(type, status) {
+    const thresholdMap = {
+        [DEVICE_TYPES.SURGE_STATION]: { warn: 100, alarm: 150, unit: 'cm' },
+        [DEVICE_TYPES.COASTAL_BASE]: { warn: 17.2, alarm: 24.5, unit: 'm/s' },
+        [DEVICE_TYPES.TIDE_STATION]: { warn: 2.5, alarm: 3.0, unit: 'm' },
+        [DEVICE_TYPES.WAVE_BUOY]: { warn: 4.0, alarm: 6.0, unit: 'm' },
+        [DEVICE_TYPES.EROSION_MONITOR]: { warn: 1.0, alarm: 2.0, unit: 'm/年' },
+        [DEVICE_TYPES.SMART_MARKER]: { warn: 0.3, alarm: 1.0, unit: 'm' },
+    }
+
+    const threshold = thresholdMap[type]
+    if (!threshold) {
+        return { thresholdValue: null, thresholdUnit: '' }
+    }
+
+    if (status === 'alarm') {
+        return { thresholdValue: threshold.alarm, thresholdUnit: threshold.unit }
+    }
+
+    return { thresholdValue: threshold.warn, thresholdUnit: threshold.unit }
 }
 
 // 广东沿海主要观测点位置
@@ -225,36 +259,9 @@ export const mockRiskDecisions = {
     },
 }
 
-// ===== 台风数据 =====
-export const mockTyphoonData = {
-    id: 'RAGASA',
-    name: '桦加沙',
-    enName: 'RAGASA',
-    status: 'active',
-    category: '超强台风',
-    movement: {
-        direction: '西北西',
-        speedKmh: 20
-    },
-    landfallPrediction: null, // 注：早期阶段可能暂无预计登陆点
-    track: [
-        { time: '2025-09-23T10:00:00', lat: 20.1, lng: 117.4, pressure: 942, windSpeed: 52 },
-        { time: '2025-09-23T16:00:00', lat: 20.5, lng: 116.4, pressure: 936, windSpeed: 54 },
-        { time: '2025-09-23T22:00:00', lat: 20.9, lng: 115.6, pressure: 930, windSpeed: 55 },
-    ],
-    forecast: [
-        { time: '2025-09-24T04:00:00', lat: 21.2, lng: 114.8, probability: 0.78 },
-        { time: '2025-09-24T10:00:00', lat: 21.6, lng: 114.0, probability: 0.62 },
-        { time: '2025-09-24T16:00:00', lat: 22.0, lng: 113.1, probability: 0.45 },
-    ],
-    windCircle: {
-        center: { lat: 20.9, lng: 115.6 },
-        radius7: 380,
-        radius7Range: '320-380',
-        radius10: 150,
-        radius12: 90,
-    },
-}
+// ===== 台风数据（真实数据 — 桦加沙 202518）=====
+import { typhoonParsedData } from './typhoonDataParser'
+export const mockTyphoonData = typhoonParsedData
 
 // ===== 历史灾害匹配数据 =====
 export const mockHistoricalMatches = {

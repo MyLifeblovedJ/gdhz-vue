@@ -124,7 +124,7 @@ function handleViewHistory() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 280px;  /* 约3条预警的高度 */
+  max-height: var(--home-warning-body-max-height, 280px);
   overflow-y: auto;
   padding-right: 4px;
   /* 启用 GPU 加速，优化滚动性能 */

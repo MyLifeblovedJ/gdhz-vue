@@ -225,7 +225,7 @@ function handleRiskClick(risk) {
 
 /* 模拟信息头部 */
 .sim-header {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
   padding: 8px 10px;
 }
@@ -286,7 +286,7 @@ function handleRiskClick(risk) {
 }
 
 .metric-item {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
   padding: 8px 10px;
   display: flex;
@@ -326,7 +326,7 @@ function handleRiskClick(risk) {
 
 /* 并发风险 */
 .concurrent-risks {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 8px;
   padding: 10px;
 }
@@ -417,12 +417,12 @@ function handleRiskClick(risk) {
   gap: 6px;
   transition: all 0.2s;
   border: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(14, 116, 144, 0.06);
   color: var(--text-secondary);
 }
 
 .action-btn:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(14, 116, 144, 0.08);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }

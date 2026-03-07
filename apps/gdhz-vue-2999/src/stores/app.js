@@ -67,8 +67,8 @@ export const useAppStore = defineStore('app', () => {
         usv: true,
         // 实时态势
         typhoon: true, // 总开关
-        typhoon_wind_circle: false, // 各级风圈
-        typhoon_forecast_track: false, // 预测路径
+        typhoon_wind_circle: true, // 各级风圈
+        typhoon_forecast_track: true, // 预测路径
         typhoon_probability_range: true, // 台风中心概率范围 (默认开启)
         typhoon_history_track: true, // 历史路径 (默认开启)
         typhoon_marker: true, // 台风标志 (默认开启)

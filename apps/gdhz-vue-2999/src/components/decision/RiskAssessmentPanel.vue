@@ -317,7 +317,7 @@ function handleEvacuationAction(item, event) {
 /* 模式切换 */
 .mode-switch {
   display: flex;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(14, 116, 144, 0.08);
   padding: 3px;
   border-radius: 6px;
   gap: 4px;
@@ -382,7 +382,7 @@ function handleEvacuationAction(item, event) {
 }
 
 .metric-box {
-  background: rgba(0,0,0,0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
   padding: 10px 12px;
   display: flex;
@@ -395,8 +395,8 @@ function handleEvacuationAction(item, event) {
 .box-blue { border-left-color: #3b82f6; }
 
 .metric-row { display: flex; justify-content: space-between; align-items: baseline; }
-.metric-val { font-size: 18px; font-weight: 700; color: #fff; font-family: var(--font-display); }
-.metric-val .unit { font-size: 11px; font-weight: 400; color: rgba(255,255,255,0.6); margin-left: 2px; }
+.metric-val { font-size: 18px; font-weight: 700; color: #1a3a5c; font-family: var(--font-display); }
+.metric-val .unit { font-size: 11px; font-weight: 400; color: rgba(26,58,92,0.5); margin-left: 2px; }
 .metric-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
 /* 风险列表 */
@@ -441,7 +441,7 @@ function handleEvacuationAction(item, event) {
   align-items: center;
   gap: 10px;
   padding: 8px;
-  background: rgba(0,0,0,0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 6px;
   transition: background 0.2s;
   position: relative;
@@ -453,7 +453,7 @@ function handleEvacuationAction(item, event) {
 .vuln-icon { width: 24px; height: 24px; background: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); font-size: 10px; }
 .vuln-info { flex: 1; }
 .vuln-info .name { font-size: 12px; color: var(--text-secondary); }
-.vuln-info .count { font-size: 13px; font-weight: 600; color: #fff; }
+.vuln-info .count { font-size: 13px; font-weight: 600; color: #1a3a5c; }
 .vuln-info .unit { font-size: 10px; font-weight: 400; color: var(--text-muted); }
 
 .vuln-actions { display: flex; gap: 4px; }

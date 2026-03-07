@@ -1,5 +1,5 @@
-﻿<template>
-  <div class="coastal-panel">
+<template>
+  <div class="coastal-panel" :style="panelStyle">
     <div class="station-grid">
       <div
         v-for="item in stations"
@@ -23,24 +23,40 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   stations: {
     type: Array,
     default: () => [],
   },
+  visibleRows: {
+    type: Number,
+    default: 4,
+  },
 })
+
+const panelStyle = computed(() => ({
+  '--coastal-visible-rows': String(Math.max(2, props.visibleRows)),
+}))
 </script>
 
 <style scoped>
 .coastal-panel {
+  --coastal-card-height: 96px;
+  --coastal-grid-gap: 8px;
   height: 100%;
 }
 
 .station-grid {
-  height: 100%;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-auto-rows: var(--coastal-card-height);
+  gap: var(--coastal-grid-gap);
+  max-height: calc(
+    var(--coastal-visible-rows) * var(--coastal-card-height) +
+    (var(--coastal-visible-rows) - 1) * var(--coastal-grid-gap)
+  );
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -48,7 +64,7 @@ defineProps({
 .station-card {
   border: none;
   background: transparent;
-  min-height: 96px;
+  min-height: var(--coastal-card-height);
 }
 
 .station-card.offline {
@@ -56,7 +72,7 @@ defineProps({
 }
 
 .mini-video {
-  height: 96px;
+  height: var(--coastal-card-height);
   border-radius: 6px;
   position: relative;
   display: flex;

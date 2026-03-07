@@ -1,7 +1,15 @@
-﻿<template>
+<template>
   <div class="tool-rail">
+    <button
+      class="tool-btn"
+      :class="{ active: layerPanelOpen }"
+      title="图层控制"
+      @click="$emit('toggle-layer-panel')"
+    >
+      <i class="fa-solid fa-layer-group"></i>
+    </button>
     <button class="tool-btn mode" @click="$emit('toggle-map-mode')">{{ mapMode }}</button>
-    <button class="tool-btn" :class="{ active: cameraActive }" @click="$emit('toggle-camera')" title="海岸观测视频叠加">
+    <button class="tool-btn" :class="{ active: cameraActive }" title="海岸观测视频叠加" @click="$emit('toggle-camera')">
       <i class="fa-solid fa-camera"></i>
     </button>
     <button class="tool-btn" @click="$emit('zoom-in')"><i class="fa-solid fa-plus"></i></button>
@@ -15,12 +23,13 @@
 <script setup>
 import { ref } from 'vue'
 
-const props = defineProps({
+defineProps({
   mapMode: { type: String, default: '3D' },
-  cameraActive: { type: Boolean, default: false }
+  cameraActive: { type: Boolean, default: false },
+  layerPanelOpen: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'toggle-map-mode', 'basemap-change', 'toggle-camera'])
+const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'toggle-map-mode', 'basemap-change', 'toggle-camera', 'toggle-layer-panel'])
 
 const basemaps = ['satellite', 'dark', 'street']
 const index = ref(0)
@@ -33,36 +42,57 @@ function switchBasemap() {
 
 <style scoped>
 .tool-rail {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
+  position: fixed;
+  right: 24px;
+  top: 150px;
   z-index: 900;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   pointer-events: auto;
+  padding: 10px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(244, 247, 250, 0.56));
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
 }
+
 .tool-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(110, 156, 196, 0.4);
-  background: rgba(7, 23, 44, 0.86);
-  color: #c9e8ff;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(237, 241, 245, 0.82));
+  color: #526071;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
-.tool-btn.mode {
-  width: 46px;
-  font-weight: 700;
-}
+
 .tool-btn:hover {
-  border-color: rgba(82, 195, 255, 0.75);
-  background: rgba(23, 72, 111, 0.86);
+  transform: translateY(-1px);
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(244, 247, 251, 0.9));
+  color: #1f2937;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .tool-btn.active {
-  border-color: rgba(82, 195, 255, 0.85);
-  background: rgba(35, 105, 158, 0.88);
+  border-color: rgba(196, 134, 28, 0.24);
+  background: linear-gradient(180deg, rgba(255, 248, 236, 0.98), rgba(248, 237, 214, 0.9));
+  color: #8a5a00;
+  box-shadow: 0 12px 24px rgba(196, 134, 28, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.tool-btn i {
+  font-size: 14px;
 }
 </style>

@@ -126,17 +126,17 @@ onMounted(() => {
 <style scoped>
 .ai-summary-panel {
   /* Panel Container */
-  background: rgba(17, 24, 39, 0.85); /* Slightly darker for better readability */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(225, 240, 252, 0.78);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(14, 116, 144, 0.12);
   border-radius: 12px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: auto;
-  max-height: 100%; /* Adapt to parent */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-height: 100%;
+  box-shadow: 0 8px 32px rgba(14, 116, 144, 0.08);
   transition: all 0.3s ease;
 }
 
@@ -147,8 +147,8 @@ onMounted(() => {
 /* Header */
 .panel-header {
   padding: 10px 14px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, transparent 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(90deg, rgba(14, 116, 144, 0.04) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(14, 116, 144, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -162,7 +162,7 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; color: white;
 }
-.panel-title { font-weight: 600; font-size: 14px; color: #f8fafc; letter-spacing: 0.5px; }
+.panel-title { font-weight: 600; font-size: 14px; color: #1a3a5c; letter-spacing: 0.5px; }
 
 .risk-badge {
   font-size: 11px; font-weight: 700;
@@ -181,12 +181,12 @@ onMounted(() => {
   gap: 16px;
 }
 .custom-scroll::-webkit-scrollbar { width: 4px; }
-.custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgba(14, 116, 144, 0.1); border-radius: 2px; }
 
 /* Logic Sections */
 .logic-section { display: flex; flex-direction: column; gap: 8px; }
 .section-title {
-  font-size: 12px; font-weight: 600; color: #94a3b8;
+  font-size: 12px; font-weight: 600; color: #3d6a8e;
   display: flex; align-items: center; gap: 6px;
   text-transform: uppercase; letter-spacing: 0.5px;
 }
@@ -199,21 +199,21 @@ onMounted(() => {
   border-left: 3px solid #3b82f6;
 }
 .typhoon-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-.typhoon-name { font-weight: 700; color: #fff; font-size: 13px; }
-.typhoon-id { font-family: monospace; color: #93c5fd; background: rgba(0,0,0,0.2); padding: 0 4px; border-radius: 2px; }
-.typhoon-detail { font-size: 11px; color: #cbd5e1; display: flex; flex-direction: column; gap: 4px; }
+.typhoon-name { font-weight: 700; color: #1a3a5c; font-size: 13px; }
+.typhoon-id { font-family: monospace; color: #2563eb; background: rgba(14, 116, 144, 0.06); padding: 0 4px; border-radius: 2px; }
+.typhoon-detail { font-size: 11px; color: #3d6a8e; display: flex; flex-direction: column; gap: 4px; }
 .landfall-predict { color: #fca5a5; margin-top: 2px; font-weight: 500; }
 
 /* 2. Trend */
 .trend-analysis {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(14, 116, 144, 0.04);
   border-radius: 8px; padding: 10px;
 }
 .tide-status { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
-.tide-status .tag { color: #94a3b8; }
+.tide-status .tag { color: #3d6a8e; }
 .tide-status .value { color: #fcd34d; font-weight: 600; }
 .overlay-warning {
-  font-size: 11px; line-height: 1.4; color: #e2e8f0;
+  font-size: 11px; line-height: 1.4; color: #1a3a5c;
   display: flex; gap: 6px;
 }
 .overlay-warning i { color: #f59e0b; margin-top: 2px; }
@@ -221,14 +221,14 @@ onMounted(() => {
 /* 3. Impact Grid */
 .impact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .impact-item {
-  background: rgba(0,0,0,0.2);
+  background: rgba(14, 116, 144, 0.06);
   border-radius: 8px; padding: 8px;
   display: flex; flex-direction: column; align-items: center; text-align: center;
 }
-.impact-label { font-size: 10px; color: #94a3b8; margin-bottom: 4px; }
-.impact-val { font-size: 16px; font-weight: 700; color: #fff; font-family: 'Bahnschrift', sans-serif; }
-.impact-val small { font-size: 10px; font-weight: 400; color: #94a3b8; margin-left: 2px; }
-.impact-loc { font-size: 10px; color: #cbd5e1; margin-top: 2px; display: flex; align-items: center; gap: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.impact-label { font-size: 10px; color: #3d6a8e; margin-bottom: 4px; }
+.impact-val { font-size: 16px; font-weight: 700; color: #1a3a5c; font-family: 'Bahnschrift', sans-serif; }
+.impact-val small { font-size: 10px; font-weight: 400; color: #3d6a8e; margin-left: 2px; }
+.impact-loc { font-size: 10px; color: #3d6a8e; margin-top: 2px; display: flex; align-items: center; gap: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .impact-sub { font-size: 9px; margin-top: 2px; opacity: 0.8; }
 .impact-item.surge .impact-val { color: #fca5a5; }
 .impact-item.surge .impact-sub { color: #fca5a5; }
@@ -238,13 +238,13 @@ onMounted(() => {
 /* 4. Vulnerable Objects */
 .vulnerable-list { display: flex; flex-direction: column; gap: 6px; }
 .vulnerable-item {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(220, 238, 248, 0.65);
   border-radius: 6px; padding: 8px;
 }
 .obj-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.obj-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+.obj-name { font-size: 12px; font-weight: 600; color: #1a3a5c; }
 .obj-risk-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
-.obj-detail { font-size: 11px; color: #94a3b8; line-height: 1.3; }
+.obj-detail { font-size: 11px; color: #3d6a8e; line-height: 1.3; }
 
 @keyframes pulse {
   0% { opacity: 1; }
