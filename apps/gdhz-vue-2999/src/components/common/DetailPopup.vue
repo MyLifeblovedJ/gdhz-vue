@@ -43,8 +43,8 @@
           </section>
 
           <section class="col col-center">
-            <div class="center-toolbar">
-              <div class="element-tabs" v-if="deviceElements.length > 1">
+            <div class="center-toolbar" v-if="deviceElements.length > 1">
+              <div class="element-tabs">
                 <button
                   v-for="el in deviceElements"
                   :key="el.key"
@@ -54,8 +54,14 @@
                   {{ el.name }}
                 </button>
               </div>
+            </div>
 
-              <!-- 时间范围选择器 -->
+            <!-- 潮位/波浪装饰动画条（内含时间范围选择器） -->
+            <div
+              class="wave-anim-strip"
+              :class="animationType || 'neutral'"
+              :key="animationType || 'neutral'"
+            >
               <TimeRangeSelector
                 v-model="timeRange"
                 @change="handleTimeRangeChange"
@@ -137,6 +143,15 @@ const deviceColor = computed(() => deviceConfig.value.color || '#0ea5e9')
 const selectedElementConfig = computed(() => deviceElements.value.find((e) => e.key === selectedElement.value))
 const currentThresholds = computed(() => deviceConfig.value.thresholds?.[selectedElement.value] || {})
 const hasThresholds = computed(() => Object.keys(currentThresholds.value).length > 0)
+
+const TIDE_KEYS = new Set(['tideLevel', 'tideChange', 'surge'])
+const WAVE_KEYS = new Set(['waveHeight', 'wavePeriod'])
+const animationType = computed(() => {
+  const key = selectedElement.value
+  if (TIDE_KEYS.has(key)) return 'tide'
+  if (WAVE_KEYS.has(key)) return 'wave'
+  return null
+})
 const sortedThresholdEntries = computed(() =>
   thresholdOrder
     .filter((level) => currentThresholds.value[level] !== undefined)
@@ -574,6 +589,92 @@ watch(selectedElement, () => {
   font-size: 11px;
   color: #94a3b8;
   font-weight: 600;
+}
+
+/* ===== 潮位/波浪装饰动画条 ===== */
+.wave-anim-strip {
+  position: relative;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(14, 165, 233, 0.04);
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wave-anim-strip.neutral {
+  background: rgba(148, 163, 184, 0.06);
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+/* 内部按钮可点击，波浪覆盖在按钮之上但不拦截事件 */
+.wave-anim-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.wave-anim-strip::before,
+.wave-anim-strip::after {
+  content: '';
+  position: absolute;
+  left: -100%;
+  bottom: 0;
+  width: 300%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* --- 潮位：缓慢平滑的正弦水面 --- */
+.wave-anim-strip.tide::before {
+  height: 38px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 28 Q150 12 300 28 T600 28 T900 28 T1200 28 L1200 40 L0 40Z' fill='rgba(14%2C165%2C233%2C0.28)'/%3E%3C/svg%3E") repeat-x;
+  background-size: 500px 38px;
+  animation: dp-tideSlide 8s linear infinite;
+}
+.wave-anim-strip.tide::after {
+  height: 28px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 22 Q200 8 400 22 T800 22 T1200 22 L1200 40 L0 40Z' fill='rgba(14%2C165%2C233%2C0.18)'/%3E%3C/svg%3E") repeat-x;
+  background-size: 400px 28px;
+  animation: dp-tideSlide 12s linear infinite reverse;
+}
+
+/* --- 海浪：快速激烈的尖锐浪花 --- */
+.wave-anim-strip.wave::before {
+  height: 40px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 30 Q50 5 100 25 Q130 35 180 10 Q220 30 280 18 Q320 5 380 28 Q420 35 480 8 Q530 30 580 20 Q620 5 680 28 Q720 35 780 10 Q830 30 880 18 Q920 5 980 28 Q1020 35 1080 10 Q1140 30 1200 18 L1200 40 L0 40Z' fill='rgba(14%2C165%2C233%2C0.32)'/%3E%3C/svg%3E") repeat-x;
+  background-size: 350px 40px;
+  animation: dp-chopWave 3.5s linear infinite;
+}
+.wave-anim-strip.wave::after {
+  height: 30px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 40'%3E%3Cpath d='M0 25 Q60 8 120 22 Q160 32 220 12 Q280 28 340 15 Q400 5 460 25 Q520 32 580 12 Q640 28 700 15 Q760 5 820 25 Q880 32 940 12 Q1000 28 1060 15 Q1120 5 1200 25 L1200 40 L0 40Z' fill='rgba(14%2C165%2C233%2C0.22)'/%3E%3C/svg%3E") repeat-x;
+  background-size: 280px 30px;
+  animation: dp-chopWave 5s linear infinite reverse;
+}
+
+.wave-anim-strip.tide {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.02), rgba(14, 165, 233, 0.08));
+}
+
+.wave-anim-strip.wave {
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.02), rgba(14, 165, 233, 0.1));
+}
+
+@keyframes dp-tideSlide {
+  0%   { transform: translateX(0) translateY(0); }
+  50%  { transform: translateX(16.5%) translateY(-3px); }
+  100% { transform: translateX(33.33%) translateY(0); }
+}
+
+@keyframes dp-chopWave {
+  0%   { transform: translateX(0) translateY(0); }
+  25%  { transform: translateX(8.3%) translateY(-4px); }
+  50%  { transform: translateX(16.6%) translateY(1px); }
+  75%  { transform: translateX(25%) translateY(-3px); }
+  100% { transform: translateX(33.33%) translateY(0); }
 }
 
 .popup-enter-active,

@@ -125,6 +125,7 @@ let cesiumHoverPickRaf = 0
 let pendingCesiumHoverPosition = null
 let lastCesiumFrameUpdate = 0
 const CITY_WARNING_PANE = 'city-warning-pane'
+const COASTAL_CITY_LABEL_PANE = 'coastal-city-label-pane'
 const PROVINCE_BOUNDARY_PANE = 'province-boundary-pane'
 const COUNTY_BOUNDARY_PANE = 'county-boundary-pane'
 const COUNTY_LABEL_PANE = 'county-label-pane'
@@ -402,6 +403,7 @@ function renderCoastalCityLabels2D() {
   labels.forEach((item) => {
     const marker = L.marker([item.lat, item.lng], {
       interactive: false,
+      pane: COASTAL_CITY_LABEL_PANE,
       icon: L.divIcon({
         className: 'coastal-city-label',
         html: `<span>${item.displayName}</span>`,
@@ -1056,6 +1058,10 @@ function initMap() {
   const cityWarningPane = map.createPane(CITY_WARNING_PANE)
   cityWarningPane.style.zIndex = 805
   cityWarningPane.style.pointerEvents = 'none'
+
+  const coastalCityLabelPane = map.createPane(COASTAL_CITY_LABEL_PANE)
+  coastalCityLabelPane.style.zIndex = 825
+  coastalCityLabelPane.style.pointerEvents = 'none'
 
   const provinceBoundaryPane = map.createPane(PROVINCE_BOUNDARY_PANE)
   provinceBoundaryPane.style.zIndex = 820
