@@ -12,15 +12,19 @@ export function getHomeBannerBounds({ viewportWidth = 0, columnWidth = 0 } = {})
   }
 }
 
-export function getHomeLegendAnchor({ rootRect, deviceRect, viewportHeight, leftOffset = 18 } = {}) {
-  if (!rootRect || !deviceRect) {
-    return { left: 0, bottom: 0 }
+export function getHomeLegendAnchor({ rootRect, leftColumnRect, decisionRect, legendRect, leftOffset = 18 } = {}) {
+  if (!rootRect || !leftColumnRect) {
+    return { left: 0, top: 0 }
   }
 
-  const safeViewportHeight = viewportHeight || rootRect.height || window.innerHeight
+  const legendHeight = legendRect?.height || 0
+  const decisionBottom = decisionRect?.bottom
+  const top = decisionBottom && legendHeight
+    ? Math.max(rootRect.top, Math.round(decisionBottom - legendHeight))
+    : Math.round(decisionRect?.top ?? rootRect.top)
 
   return {
-    left: Math.round(deviceRect.right - rootRect.left + leftOffset),
-    bottom: Math.round(safeViewportHeight - deviceRect.bottom),
+    left: Math.round(leftColumnRect.right - rootRect.left + leftOffset),
+    top,
   }
 }

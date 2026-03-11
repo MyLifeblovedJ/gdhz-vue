@@ -34,29 +34,39 @@ const props = defineProps({
     type: Number,
     default: 4,
   },
+  cardHeight: {
+    type: Number,
+    default: 96,
+  },
+  gridGap: {
+    type: Number,
+    default: 8,
+  },
 })
 
 const panelStyle = computed(() => ({
   '--coastal-visible-rows': String(Math.max(2, props.visibleRows)),
+  '--coastal-card-height': `${Math.max(84, props.cardHeight)}px`,
+  '--coastal-grid-gap': `${Math.max(4, props.gridGap)}px`,
 }))
 </script>
 
 <style scoped>
 .coastal-panel {
-  --coastal-card-height: 96px;
-  --coastal-grid-gap: 8px;
   height: 100%;
+  min-height: 0;
 }
 
 .station-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: var(--coastal-card-height);
+  grid-auto-rows: minmax(var(--coastal-card-height), 1fr);
   gap: var(--coastal-grid-gap);
-  max-height: calc(
+  min-height: calc(
     var(--coastal-visible-rows) * var(--coastal-card-height) +
     (var(--coastal-visible-rows) - 1) * var(--coastal-grid-gap)
   );
+  height: 100%;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -72,7 +82,8 @@ const panelStyle = computed(() => ({
 }
 
 .mini-video {
-  height: var(--coastal-card-height);
+  height: 100%;
+  min-height: var(--coastal-card-height);
   border-radius: 6px;
   position: relative;
   display: flex;

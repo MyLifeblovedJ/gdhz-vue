@@ -6,12 +6,13 @@
           <i class="fa-solid fa-hurricane fa-spin-slow"></i>
         </div>
         <div class="header-info">
-          <div class="typhoon-id">{{ typhoon.id }}</div>
+          <div class="typhoon-id">
+            <span class="typhoon-id-meta">更新时间 {{ formatTime(currentPoint?.time) }}</span>
+          </div>
           <div class="typhoon-name-row">
             <span class="typhoon-name">{{ typhoon.name }} ({{ typhoon.enName }})</span>
             <span class="typhoon-category tag-red">{{ typhoon.category }}</span>
           </div>
-          <div v-if="embedded" class="header-meta">更新时间 {{ formatTime(currentPoint?.time) }}</div>
         </div>
       </div>
 
@@ -38,22 +39,28 @@
         <div class="divider"></div>
 
         <div class="summary-grid">
-          <div class="moving-info">
-            <div class="label">移速移向</div>
-            <div class="value">
-              <i class="fa-solid fa-arrow-up-long" :style="{ transform: 'rotate(-67deg)' }"></i>
-              <span>{{ movementDirection }}</span>
-              <span class="speed number-font">{{ movementSpeedText }}</span>
+          <div
+            v-for="card in summaryCards"
+            :key="card.id"
+            class="summary-card"
+            :class="[`summary-card--${card.accent}`, `summary-card--${card.id}`]"
+          >
+            <div class="summary-card-header">
+              <i class="fa-solid fa-stopwatch"></i>
+              <span>{{ card.title }}</span>
             </div>
-          </div>
-
-          <div class="landing-forecast">
-            <div class="forecast-header"><i class="fa-solid fa-stopwatch"></i> 预计登陆</div>
-            <div v-if="landfallPrediction" class="landing-details">
-              <div class="landing-loc">{{ landfallPrediction.location || '--' }}</div>
-              <div class="landing-timer">预计时间：<span class="highlight number-font">{{ formatTime(landfallPrediction.time) }}</span></div>
+            <div class="summary-card-body">
+              <div
+                v-for="row in card.rows"
+                :key="`${card.id}-${row.label}`"
+                class="summary-row"
+              >
+                <span class="summary-row-label">{{ row.label }}</span>
+                <span class="summary-row-value" :class="[row.tone, { 'number-font': row.label !== '地点' }]">
+                  {{ row.value }}
+                </span>
+              </div>
             </div>
-            <div v-else class="landing-empty">暂无预计登陆点信息</div>
           </div>
         </div>
 
@@ -200,6 +207,7 @@ import { computed, ref } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { mockHistoricalMatches } from '../../data/mockData'
 import { mockAISummaryData } from '../../data/aiSummaryData'
+import { buildTyphoonSummaryCards } from '../../utils/typhoonPanel'
 
 const props = defineProps({
   embedded: {
@@ -243,12 +251,6 @@ const currentPoint = computed(() => {
   return typhoon.value.track[typhoon.value.track.length - 1]
 })
 
-const movementDirection = computed(() => typhoon.value?.movement?.direction || '--')
-const movementSpeedText = computed(() => {
-  const speed = typhoon.value?.movement?.speedKmh
-  return Number.isFinite(speed) ? `${speed} km/h` : '--'
-})
-
 const landfallPrediction = computed(() => typhoon.value?.landfallPrediction || null)
 
 function formatTime(timeStr) {
@@ -261,6 +263,11 @@ function formatTime(timeStr) {
     minute: '2-digit'
   })
 }
+
+const summaryCards = computed(() => buildTyphoonSummaryCards({
+  landfallPrediction: landfallPrediction.value,
+  formatTime,
+}))
 
 function formatCoord(value) {
   if (!Number.isFinite(value)) return '--'
@@ -345,6 +352,15 @@ function formatCoord(value) {
   font-size: 12px;
   color: var(--text-tertiary);
   margin-bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.typhoon-id-meta {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .typhoon-name-row {
@@ -441,26 +457,32 @@ function formatCoord(value) {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   margin-bottom: 12px;
 }
 
-.moving-info {
+.summary-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  align-items: flex-start;
-  min-height: 92px;
-  background: rgba(15, 23, 42, 0.03);
+  min-height: 96px;
   border: 1px solid var(--typhoon-border);
-  padding: 11px 12px;
+  padding: 12px 14px;
   border-radius: 10px;
-  gap: 10px;
+  gap: 12px;
 }
 
-.moving-info .label,
-.forecast-header {
+.summary-card--neutral {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.summary-card--danger {
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.1), rgba(255, 255, 255, 0.72));
+  border-color: rgba(220, 38, 38, 0.18);
+}
+
+.summary-card-header {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -469,67 +491,58 @@ function formatCoord(value) {
   letter-spacing: 0.02em;
 }
 
-.moving-info .label {
+.summary-card--neutral .summary-card-header {
   color: var(--text-secondary);
 }
 
-.moving-info .value {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-weight: 600;
-  color: var(--text-primary);
+.summary-card--danger .summary-card-header {
+  color: #dc2626;
 }
 
-.speed {
+.summary-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.summary-row-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+
+.summary-row-value {
+  min-width: 0;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.summary-row-value.warn {
   color: #b45309;
 }
 
-.landing-forecast {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 92px;
-  background: linear-gradient(90deg, rgba(220, 38, 38, 0.1), rgba(255, 255, 255, 0.72));
-  border: 1px solid rgba(220, 38, 38, 0.18);
-  border-radius: 10px;
-  padding: 11px 12px;
-  gap: 10px;
-}
-
-.forecast-header {
+.summary-row-value.danger {
   color: #dc2626;
 }
 
-.landing-details {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.landing-loc {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.landing-timer {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.landing-timer .highlight {
-  color: #dc2626;
-  font-size: 13px;
-  font-weight: 700;
-  margin: 0 1px;
-}
-
-.landing-empty {
-  font-size: 12px;
+.summary-row-value.muted {
   color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.summary-card--landfall .summary-row:first-child .summary-row-value {
+  font-size: 14px;
 }
 
 .history-reference {
@@ -1001,38 +1014,32 @@ function formatCoord(value) {
 }
 
 .embedded .summary-grid {
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 10px;
 }
 
-.embedded .moving-info {
+.embedded .summary-card {
   border-radius: 10px;
-  padding: 10px 12px;
-  min-height: 88px;
-  gap: 8px;
+  padding: 11px 12px;
+  min-height: 84px;
+  gap: 10px;
 }
 
-.embedded .moving-info .label {
+.embedded .summary-card-header {
   font-size: 11px;
 }
 
-.embedded .moving-info .value {
+.embedded .summary-row {
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.embedded .summary-row-value {
+  font-size: 13px;
+}
+
+.embedded .summary-card--landfall .summary-row:first-child .summary-row-value {
   font-size: 14px;
-}
-
-.embedded .landing-forecast {
-  border-radius: 10px;
-  padding: 10px 12px;
-  min-height: 88px;
-  gap: 8px;
-}
-
-.embedded .forecast-header {
-  font-size: 11px;
-}
-
-.embedded .landing-loc {
-  font-size: 15px;
 }
 
 .embedded .history-ref-header {
@@ -1185,6 +1192,3 @@ function formatCoord(value) {
   padding-top: 8px;
 }
 </style>
-
-
-

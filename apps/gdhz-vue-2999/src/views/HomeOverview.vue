@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page" :style="homeChromeStyle">
+  <div ref="pageRootRef" class="home-page" :style="homeChromeStyle">
     <MapContainer
       ref="mapRef"
       class="home-map"
@@ -20,6 +20,7 @@
       :map-mode="store.mapMode"
       :camera-active="showCameraOverlay"
       :layer-panel-open="showLayerPanel"
+      :typhoon-panel-open="showTyphoonPanel"
       @zoom-in="handleZoomIn"
       @zoom-out="handleZoomOut"
       @reset-view="handleResetView"
@@ -28,6 +29,7 @@
       @basemap-change="handleBasemapChange"
       @toggle-camera="toggleCameraOverlay"
       @toggle-layer-panel="toggleLayerPanel"
+      @toggle-typhoon="toggleTyphoonPanel"
     />
 
     <Transition name="tool-rail-panel">
@@ -49,15 +51,50 @@
       </aside>
     </Transition>
 
+    <Transition name="tool-rail-panel">
+      <aside v-if="showTyphoonPanel" class="tool-rail-typhoon-shell">
+        <div class="tool-rail-typhoon-panel">
+          <div class="tool-rail-typhoon-header">
+            <div class="tool-rail-typhoon-title">
+              <i class="fa-solid fa-hurricane"></i>
+              台风专题
+            </div>
+            <button class="tool-rail-typhoon-close" type="button" @click="closeTyphoonPanel">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="tool-rail-typhoon-content">
+            <TyphoonInfo embedded />
+          </div>
+        </div>
+      </aside>
+    </Transition>
+
     <div class="home-overlay">
       <div class="two-column-layout">
-        <section class="column left-column">
+        <section ref="leftColumnRef" class="column left-column">
           <div class="column-block warning-block">
             <div class="block-body warning-body">
               <SituationAlerts :alerts="store.alerts" />
             </div>
           </div>
 
+          <div ref="aiDecisionBlockRef" class="column-block ai-decision-block">
+            <div class="block-title"><i class="fa-solid fa-wand-magic-sparkles"></i> 智能决策</div>
+            <div class="block-body ai-decision-body">
+              <AIDecisionPanel />
+            </div>
+          </div>
+
+          <div class="column-block seawall-block">
+            <div class="block-title"><i class="fa-solid fa-shield-halved"></i> 海堤风险</div>
+            <div class="block-body seawall-body">
+              <SeawallRiskPanel />
+            </div>
+          </div>
+        </section>
+
+        <section class="column right-column">
           <div ref="deviceBlockRef" class="column-block device-block">
             <div class="block-title"><i class="fa-solid fa-satellite-dish"></i> 设备与数据</div>
             <div class="stats-row">
@@ -82,27 +119,16 @@
               <DeviceExplorer @device-click="handleDeviceClick" />
             </div>
           </div>
-        </section>
-
-        <section class="column right-column">
-          <div class="column-block typhoon-block">
-            <div class="block-title"><i class="fa-solid fa-wind"></i> 台风专题</div>
-            <div class="block-body typhoon-body">
-              <TyphoonInfo embedded />
-            </div>
-          </div>
-
-          <div class="column-block ai-decision-block">
-            <div class="block-title"><i class="fa-solid fa-wand-magic-sparkles"></i> 智能决策</div>
-            <div class="block-body ai-decision-body">
-              <AIDecisionPanel />
-            </div>
-          </div>
 
           <div class="column-block coast-block">
             <div class="block-title"><i class="fa-solid fa-video"></i> 海岸观测（12站点）</div>
             <div class="block-body coast-body">
-              <CoastalObservationPanel :stations="coastalStations" />
+              <CoastalObservationPanel
+                :stations="coastalStations"
+                :visible-rows="viewportMetrics.coastalVisibleRows"
+                :card-height="viewportMetrics.coastalCardHeight"
+                :grid-gap="viewportMetrics.coastalGridGap"
+              />
             </div>
           </div>
         </section>
@@ -134,12 +160,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useWindowSize } from '@vueuse/core'
 import { useAppStore } from '../stores/app'
 import { HOME_DEFAULT_MAP_MODE } from '../utils/homeMapMode'
-import { getHomeBannerBounds } from '../utils/homeChromeLayout'
+import { getHomeBannerBounds, getHomeLegendAnchor } from '../utils/homeChromeLayout'
+import { getHomeViewportMetrics } from '../utils/homeViewportProfile'
 import SituationAlerts from '../components/common/SituationAlerts.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
 import CoastalCameraOverlay from '../components/layout/CoastalCameraOverlay.vue'
 import CoastalObservationPanel from '../components/layout/CoastalObservationPanel.vue'
 import AIDecisionPanel from '../components/decision/AIDecisionPanel.vue'
+import SeawallRiskPanel from '../components/layout/SeawallRiskPanel.vue'
 import MapToolRail from '../components/layout/MapToolRail.vue'
 import LayerControl from '../components/map/LayerControl.vue'
 import DeviceExplorer from '../components/device/DeviceExplorer.vue'
@@ -150,18 +178,23 @@ import DetailPopup from '../components/common/DetailPopup.vue'
 import StationGlassPopup from '../components/map/StationGlassPopup.vue'
 
 const store = useAppStore()
+const pageRootRef = ref(null)
+const leftColumnRef = ref(null)
 const mapRef = ref(null)
+const aiDecisionBlockRef = ref(null)
 const deviceBlockRef = ref(null)
 const currentBasemap = ref('satellite')
 const showCameraOverlay = ref(false)
 const showLayerPanel = ref(false)
+const showTyphoonPanel = ref(true)
 const isBannerHidden = ref(false)
+const legendLeft = ref(0)
 const legendTop = ref(82)
 const selectedDevice = ref(null)
 let previousHomeVesselVisibility = true
 let legendResizeObserver = null
 
-const { width: viewportWidth } = useWindowSize()
+const { width: viewportWidth, height: viewportHeight } = useWindowSize()
 
 const coastalStations = [
   { id: 'C01', stationName: '湛江东海站', status: 'online', mapX: 29.8, mapY: 74.5 },
@@ -192,6 +225,7 @@ function resolveHomeColumnWidth(width) {
 }
 
 const currentColumnWidth = computed(() => Math.round(resolveHomeColumnWidth(viewportWidth.value)))
+const viewportMetrics = computed(() => getHomeViewportMetrics(viewportHeight.value))
 const homeBannerBounds = computed(() =>
   getHomeBannerBounds({
     viewportWidth: viewportWidth.value,
@@ -204,13 +238,33 @@ const homeChromeStyle = computed(() => ({
   '--home-banner-width': `${homeBannerBounds.value.width}px`,
   '--home-banner-max-width': `${homeBannerBounds.value.maxWidth}px`,
   '--home-banner-min-width': `${homeBannerBounds.value.minWidth}px`,
-  '--map-safe-left': `${currentColumnWidth.value + 26}px`,
+  '--home-warning-visible-rows': viewportMetrics.value.warningVisibleRows,
+  '--home-warning-body-max-height': `${viewportMetrics.value.warningBodyMaxHeight}px`,
+  '--home-device-body-max-height': `${viewportMetrics.value.deviceListMaxHeight}px`,
+  '--home-seawall-panel-min-height': `${viewportMetrics.value.seawallPanelMinHeight}px`,
+  '--map-safe-left': `${legendLeft.value || (currentColumnWidth.value + 26)}px`,
   '--map-safe-top': `${legendTop.value}px`,
+  '--map-safe-bottom': 'auto',
 }))
 
-function updateLegendTop() {
-  if (!deviceBlockRef.value) return
-  legendTop.value = Math.round(deviceBlockRef.value.getBoundingClientRect().top)
+function updateLegendAnchor() {
+  if (!leftColumnRef.value) return
+  const rootRect = pageRootRef.value?.getBoundingClientRect() || {
+    left: 0,
+    top: 0,
+    height: viewportHeight.value,
+  }
+  const legendRect = pageRootRef.value?.querySelector('.map-legend-wrapper')?.getBoundingClientRect()
+  const anchor = getHomeLegendAnchor({
+    rootRect,
+    leftColumnRect: leftColumnRef.value.getBoundingClientRect(),
+    decisionRect: aiDecisionBlockRef.value?.getBoundingClientRect(),
+    legendRect,
+    leftOffset: 18,
+  })
+
+  legendLeft.value = anchor.left
+  legendTop.value = anchor.top
 }
 
 const glassVisible = ref(false)
@@ -315,6 +369,14 @@ function closeLayerPanel() {
   showLayerPanel.value = false
 }
 
+function toggleTyphoonPanel() {
+  showTyphoonPanel.value = !showTyphoonPanel.value
+}
+
+function closeTyphoonPanel() {
+  showTyphoonPanel.value = false
+}
+
 function handleScroll() {
   const scrollTop = window.scrollY || document.documentElement.scrollTop || 0
   isBannerHidden.value = scrollTop > 12
@@ -329,9 +391,15 @@ onMounted(() => {
     store.setLayerVisibility('vessels', false)
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
-    nextTick(updateLegendTop)
+    nextTick(updateLegendAnchor)
 
-    legendResizeObserver = new ResizeObserver(() => updateLegendTop())
+    legendResizeObserver = new ResizeObserver(() => updateLegendAnchor())
+    if (leftColumnRef.value) {
+      legendResizeObserver.observe(leftColumnRef.value)
+    }
+    if (aiDecisionBlockRef.value) {
+      legendResizeObserver.observe(aiDecisionBlockRef.value)
+    }
     if (deviceBlockRef.value) {
       legendResizeObserver.observe(deviceBlockRef.value)
     }
@@ -350,8 +418,8 @@ onBeforeUnmount(() => {
   legendResizeObserver = null
 })
 
-watch(viewportWidth, () => {
-  nextTick(updateLegendTop)
+watch([viewportWidth, viewportHeight], () => {
+  nextTick(updateLegendAnchor)
 })
 </script>
 
@@ -470,21 +538,29 @@ watch(viewportWidth, () => {
 }
 
 .device-block {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   overflow: hidden;
   margin-bottom: 10px;
 }
 
-.typhoon-block,
-.ai-decision-block,
-.coast-block {
+.ai-decision-block {
   flex: 0 0 auto;
   min-height: 0;
+  overflow: visible;
+}
+
+.seawall-block {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-block-size: var(--home-seawall-panel-min-height);
   overflow: hidden;
 }
 
 .coast-block {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
   margin-bottom: 10px;
 }
 
@@ -530,28 +606,34 @@ watch(viewportWidth, () => {
 }
 
 .warning-body :deep(.alerts-scroll-container) {
-  max-height: 324px;
+  max-height: var(--home-warning-body-max-height);
 }
 
-.device-body,
-.typhoon-body {
+.device-body {
   display: flex;
   min-height: 0;
   overflow-y: auto;
+  max-height: var(--home-device-body-max-height);
 }
 
 .device-body {
   padding-top: 0;
 }
 
-.device-body :deep(.device-explorer),
-.typhoon-body :deep(.typhoon-info-panel.embedded) {
+.device-body :deep(.device-explorer) {
   flex: 1;
   min-height: 0;
 }
 
-.typhoon-body {
-  max-height: 380px;
+.seawall-body {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.seawall-body :deep(.seawall-risk-panel) {
+  flex: 1;
+  min-height: 0;
 }
 
 .stats-row {
@@ -595,22 +677,18 @@ watch(viewportWidth, () => {
   color: #2563eb;
 }
 
-.typhoon-body :deep(.typhoon-info-panel.embedded) {
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
+
 
 .coast-body {
   display: flex;
+  min-height: 0;
   overflow: hidden;
 }
 
 .coast-body :deep(.coastal-panel) {
   flex: 1;
+  height: 100%;
   min-height: 0;
-  --coastal-card-height: 108px;
 }
 
 .home-map :deep(.map-legend-wrapper) {
@@ -659,9 +737,7 @@ watch(viewportWidth, () => {
   background: rgba(15, 23, 42, 0.06);
 }
 
-.typhoon-body :deep(.history-ref-header .header-left i) {
-  color: var(--text-secondary);
-}
+
 
 .home-page :deep(.tool-rail) {
   right: var(--tool-rail-safe-right);
@@ -780,6 +856,100 @@ watch(viewportWidth, () => {
 .tool-rail-layer-leave-to {
   opacity: 0;
   transform: translateX(14px);
+}
+
+.tool-rail-typhoon-shell {
+  position: fixed;
+  top: 150px;
+  right: calc(var(--tool-rail-safe-right) + 68px);
+  z-index: 1240;
+  pointer-events: auto;
+}
+
+.tool-rail-typhoon-panel {
+  width: 300px;
+  max-height: min(72vh, 680px);
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 246, 250, 0.62));
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.tool-rail-typhoon-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.72), transparent);
+  opacity: 0.96;
+}
+
+.tool-rail-typhoon-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tool-rail-typhoon-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tool-rail-typhoon-title i {
+  color: #ef4444;
+}
+
+.tool-rail-typhoon-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.tool-rail-typhoon-close:hover {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(254, 242, 242, 0.92);
+  color: #dc2626;
+}
+
+.tool-rail-typhoon-content {
+  padding: 10px 14px 14px;
+  overflow-y: auto;
+  max-height: min(62vh, 600px);
+}
+
+.tool-rail-typhoon-content :deep(.typhoon-info-panel.embedded) {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: 100%;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 @media (max-width: 1680px) {

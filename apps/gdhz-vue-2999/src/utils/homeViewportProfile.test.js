@@ -25,7 +25,29 @@ describe('home viewport profile', () => {
     expect(getHomeViewportMetrics(1100).typhoonBodyMaxHeight).toBe(340)
     expect(getHomeViewportMetrics(979).typhoonBodyMaxHeight).toBe(260)
     expect(getHomeViewportMetrics(1280).coastalCardHeight).toBe(112)
-    expect(getHomeViewportMetrics(979).coastalCardHeight).toBe(104)
+    expect(getHomeViewportMetrics(1100).coastalCardHeight).toBe(104)
+    expect(getHomeViewportMetrics(979).coastalCardHeight).toBe(96)
+    expect(getHomeViewportMetrics(1280).coastalGridGap).toBe(8)
+    expect(getHomeViewportMetrics(1100).coastalGridGap).toBe(6)
+    expect(getHomeViewportMetrics(979).coastalGridGap).toBe(4)
+  })
+
+  it('returns homepage panel balance metrics per profile', () => {
+    expect(getHomeViewportMetrics(1280).warningVisibleRows).toBe(4)
+    expect(getHomeViewportMetrics(1100).warningVisibleRows).toBe(3)
+    expect(getHomeViewportMetrics(979).warningVisibleRows).toBe(2)
+
+    expect(getHomeViewportMetrics(1280).warningBodyMaxHeight).toBe(252)
+    expect(getHomeViewportMetrics(1100).warningBodyMaxHeight).toBe(196)
+    expect(getHomeViewportMetrics(979).warningBodyMaxHeight).toBe(148)
+
+    expect(getHomeViewportMetrics(1280).deviceListMaxHeight).toBe(468)
+    expect(getHomeViewportMetrics(1100).deviceListMaxHeight).toBe(388)
+    expect(getHomeViewportMetrics(979).deviceListMaxHeight).toBe(320)
+
+    expect(getHomeViewportMetrics(1280).seawallPanelMinHeight).toBe(340)
+    expect(getHomeViewportMetrics(1100).seawallPanelMinHeight).toBe(280)
+    expect(getHomeViewportMetrics(979).seawallPanelMinHeight).toBe(224)
   })
 
   it('returns legend offsets for the device-side note position', () => {

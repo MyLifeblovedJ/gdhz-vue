@@ -1,6 +1,5 @@
 <template>
   <div class="ai-decision-panel">
-    <!-- 标题区域 -->
     <div class="ai-hero-row">
       <div class="loader-wrap">
         <div class="loader">
@@ -23,9 +22,8 @@
       <div class="ai-hero-title">我是您的智能防灾助手</div>
     </div>
 
-    <!-- 摘要区域 -->
     <div class="ai-summary-section">
-      <div class="summary-messages" ref="summaryRef">
+      <div class="summary-messages">
         <div
           v-for="(item, idx) in summaryItems"
           :key="idx"
@@ -40,23 +38,11 @@
       </div>
       <div class="ai-disclaimer">
         <i class="fa-solid fa-circle-info"></i>
-        以上摘要由 AI 根据实时监测数据自动生成，仅供参考，请以官方发布为准
+        以上摘要由 AI 根据实时监测数据自动生成，仅供参考，请以官方发布为准。
       </div>
     </div>
 
-    <!-- 对话输入区域 -->
     <div class="ai-chat-section">
-      <div class="chat-suggestions">
-        <button class="suggestion-chip" @click="fillInput('生成当前态势研判报告')">
-          <i class="fa-solid fa-file-lines"></i> 态势研判
-        </button>
-        <button class="suggestion-chip" @click="fillInput('启动应急响应流程')">
-          <i class="fa-solid fa-bolt"></i> 应急响应
-        </button>
-        <button class="suggestion-chip" @click="fillInput('查询所有站点异常数据')">
-          <i class="fa-solid fa-chart-line"></i> 数据巡检
-        </button>
-      </div>
       <div class="chat-input-wrapper">
         <input
           v-model="userInput"
@@ -74,7 +60,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const userInput = ref('')
 const displayPlaceholder = ref('')
@@ -108,26 +94,26 @@ const summaryItems = ref([
     icon: 'fa-hurricane',
     tag: '台风',
     tagColor: '#ef4444',
-    text: '台风"桦加沙"(2518) 正向粤西沿海靠近，预计48小时内影响湛江、茂名、阳江沿海。'
+    text: '台风“榕加澜”(2518) 正向粤西沿海靠近，预计 8 小时内影响湛江、茂名、阳江沿海。',
   },
   {
     icon: 'fa-water',
     tag: '风暴潮',
     tagColor: '#f59e0b',
-    text: '珠江口存在0.5-1.2m增水风险，珠海、中山沿岸需关注天文大潮叠加效应。'
+    text: '珠江口存在 0.5-1.2m 增水风险，珠海、中山沿岸需关注天文大潮叠加效应。',
   },
   {
     icon: 'fa-wave-square',
     tag: '海浪',
     tagColor: '#3b82f6',
-    text: '粤东海域浪高3.5-5.0m，全省沿海已发布海浪黄色预警，近岸作业船舶注意避风。'
+    text: '粤东海域浪高 3.5-5.0m，全省沿海已发布海浪黄色预警，近岸作业船舶注意避风。',
   },
   {
     icon: 'fa-triangle-exclamation',
     tag: '综合研判',
     tagColor: '#8b5cf6',
-    text: '建议启动Ⅲ级应急响应，重点关注汕头-惠州沿岸低洼地区防潮设施运行状态。'
-  }
+    text: '建议启动 III 级应急响应，重点关注汕头至惠州沿岸低洼地区防潮设施运行状态。',
+  },
 ])
 
 function startTypewriter() {
@@ -144,10 +130,6 @@ function startTypewriter() {
       typewriterTimer = null
     }
   }, 60)
-}
-
-function fillInput(text) {
-  userInput.value = text
 }
 
 function handleSend() {
@@ -177,24 +159,22 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
-/* 标题区域 */
 .ai-hero-row {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 12px 14px 10px;
 }
 
 .ai-hero-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.3px;
   color: var(--text-primary, #0f172a);
   line-height: 1.3;
 }
 
-/* Loader wrapper - exactly 48px to match typhoon icon */
 .loader-wrap {
   width: 48px;
   height: 48px;
@@ -202,7 +182,6 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-/* Loader */
 .loader {
   --color-one: #ffbf48;
   --color-two: #be4a1d;
@@ -225,7 +204,7 @@ onBeforeUnmount(() => {
 }
 
 .loader::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
@@ -321,13 +300,11 @@ onBeforeUnmount(() => {
   100% { filter: hue-rotate(0deg); }
 }
 
-
-
 .ai-summary-section {
   flex: 0 0 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px 14px 8px;
+  padding: 4px 14px 6px;
 }
 
 .ai-summary-section::-webkit-scrollbar {
@@ -342,14 +319,14 @@ onBeforeUnmount(() => {
 .summary-messages {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .summary-bubble {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.025);
   border: 1px solid rgba(15, 23, 42, 0.04);
@@ -392,12 +369,11 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-/* AI 免责声明 */
 .ai-disclaimer {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-top: 14px;
+  margin-top: 10px;
   padding: 0 4px;
   font-size: 11px;
   color: var(--text-muted, #94a3b8);
@@ -409,45 +385,10 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-/* 输入区域 */
 .ai-chat-section {
   flex-shrink: 0;
   margin-top: auto;
-  padding: 14px 14px 14px;
-}
-
-.chat-suggestions {
-  display: flex;
-  gap: 8px;
-  padding: 0 0 12px;
-  flex-wrap: wrap;
-}
-
-.suggestion-chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(15, 23, 42, 0.03);
-  color: var(--text-secondary, #475569);
-  font-size: 11.5px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.suggestion-chip i {
-  font-size: 10px;
-  color: var(--accent-cyan, #0d7490);
-}
-
-.suggestion-chip:hover {
-  background: rgba(13, 116, 144, 0.08);
-  border-color: rgba(13, 116, 144, 0.2);
-  color: var(--accent-cyan, #0d7490);
+  padding: 10px 14px 12px;
 }
 
 .chat-input-wrapper {

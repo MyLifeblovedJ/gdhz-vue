@@ -8,6 +8,14 @@
     >
       <i class="fa-solid fa-layer-group"></i>
     </button>
+    <button
+      class="tool-btn"
+      :class="{ active: typhoonPanelOpen }"
+      title="台风专题"
+      @click="$emit('toggle-typhoon')"
+    >
+      <i class="fa-solid fa-hurricane"></i>
+    </button>
     <button class="tool-btn mode" @click="$emit('toggle-map-mode')">{{ mapMode }}</button>
     <button class="tool-btn" :class="{ active: cameraActive }" title="海岸观测视频叠加" @click="$emit('toggle-camera')">
       <i class="fa-solid fa-camera"></i>
@@ -27,9 +35,10 @@ defineProps({
   mapMode: { type: String, default: '3D' },
   cameraActive: { type: Boolean, default: false },
   layerPanelOpen: { type: Boolean, default: false },
+  typhoonPanelOpen: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'toggle-map-mode', 'basemap-change', 'toggle-camera', 'toggle-layer-panel'])
+const emit = defineEmits(['zoom-in', 'zoom-out', 'reset-view', 'locate', 'toggle-map-mode', 'basemap-change', 'toggle-camera', 'toggle-layer-panel', 'toggle-typhoon'])
 
 const basemaps = ['satellite', 'dark', 'street']
 const index = ref(0)
