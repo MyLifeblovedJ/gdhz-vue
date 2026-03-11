@@ -46,7 +46,7 @@ describe('home viewport profile', () => {
     expect(getHomeViewportMetrics(979).deviceListMaxHeight).toBe(320)
 
     expect(getHomeViewportMetrics(1280).seawallPanelMinHeight).toBe(340)
-    expect(getHomeViewportMetrics(1100).seawallPanelMinHeight).toBe(280)
+    expect(getHomeViewportMetrics(1100).seawallPanelMinHeight).toBe(420)
     expect(getHomeViewportMetrics(979).seawallPanelMinHeight).toBe(224)
   })
 

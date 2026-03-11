@@ -20,4 +20,9 @@ describe('HomeOverview structure', () => {
     expect(source).toMatch(/class="tool-rail-layer-shell"/)
     expect(source).toMatch(/<LayerControl @layer-toggle="handleLayerToggle" \/>/)
   })
+
+  it('gives the seawall block an explicit flex basis from the viewport metrics', () => {
+    expect(source).toMatch(/--home-seawall-panel-min-height/)
+    expect(source).toMatch(/flex:\s*1 0 var\(--home-seawall-panel-min-height\)/)
+  })
 })

@@ -31,7 +31,7 @@ const HOME_PROFILE_METRICS = {
     warningVisibleRows: 3,
     warningBodyMaxHeight: 196,
     deviceListMaxHeight: 388,
-    seawallPanelMinHeight: 280,
+    seawallPanelMinHeight: 420,
     typhoonBodyMaxHeight: 340,
     dockHeight: 148,
     dockBottomSafeArea: 24,

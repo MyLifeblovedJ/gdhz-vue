@@ -551,7 +551,7 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .seawall-block {
-  flex: 1 1 auto;
+  flex: 1 0 var(--home-seawall-panel-min-height);
   min-height: 0;
   min-block-size: var(--home-seawall-panel-min-height);
   overflow: hidden;

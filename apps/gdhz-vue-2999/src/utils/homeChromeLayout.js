@@ -17,11 +17,7 @@ export function getHomeLegendAnchor({ rootRect, leftColumnRect, decisionRect, le
     return { left: 0, top: 0 }
   }
 
-  const legendHeight = legendRect?.height || 0
-  const decisionBottom = decisionRect?.bottom
-  const top = decisionBottom && legendHeight
-    ? Math.max(rootRect.top, Math.round(decisionBottom - legendHeight))
-    : Math.round(decisionRect?.top ?? rootRect.top)
+  const top = Math.max(rootRect.top, Math.round(decisionRect?.top ?? rootRect.top))
 
   return {
     left: Math.round(leftColumnRect.right - rootRect.left + leftOffset),

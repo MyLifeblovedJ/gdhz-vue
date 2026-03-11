@@ -25,7 +25,7 @@ describe('homeChromeLayout', () => {
     })
   })
 
-  test('anchors legend beside the device block using measured rectangles', () => {
+  test('anchors legend beside the left column and aligns its top edge with the decision block top', () => {
     expect(
       getHomeLegendAnchor({
         rootRect: { left: 0, top: 0, height: 900 },
@@ -36,22 +36,21 @@ describe('homeChromeLayout', () => {
       })
     ).toEqual({
       left: 414,
-      top: 282,
+      top: 82,
     })
   })
 
-  test('anchors legend bottom to the decision block bottom edge when provided', () => {
+  test('falls back to the decision block top edge when the legend height is unavailable', () => {
     expect(
       getHomeLegendAnchor({
         rootRect: { left: 0, top: 0, height: 900 },
         leftColumnRect: { right: 420 },
-        decisionRect: { bottom: 462 },
-        legendRect: { height: 180 },
+        decisionRect: { top: 118, bottom: 462 },
         leftOffset: 18,
       })
     ).toEqual({
       left: 438,
-      top: 282,
+      top: 118,
     })
   })
 })
