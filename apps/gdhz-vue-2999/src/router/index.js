@@ -7,7 +7,7 @@ import { useAppStore } from '../stores/app'
 
 // 页面组件 (懒加载)
 const HomeOverview = () => import('../views/HomeOverview.vue')
-const Overview = () => import('../views/Overview.vue')
+
 const Placeholder = () => import('../views/Placeholder.vue')
 
 const routes = [
@@ -26,17 +26,7 @@ const routes = [
             bannerDefaultCollapsed: false,
         }
     },
-    {
-        path: '/overview',
-        name: 'Overview',
-        component: Overview,
-        meta: {
-            title: '态势感知',
-            pageKey: 'overview',
-            showBanner: true,
-            bannerDefaultCollapsed: false,  // 主页横幅默认展开
-        }
-    },
+
     {
         path: '/sea-condition',
         name: 'SeaCondition',
