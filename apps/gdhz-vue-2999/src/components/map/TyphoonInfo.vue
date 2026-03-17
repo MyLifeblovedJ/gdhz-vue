@@ -282,7 +282,7 @@ function formatCoord(value) {
   --typhoon-border: rgba(15, 23, 42, 0.1);
   --typhoon-divider: rgba(15, 23, 42, 0.08);
   position: absolute;
-  top: 82px;
+  top: 100px;
   right: 388px;
   width: 320px;
   background: var(--typhoon-surface);

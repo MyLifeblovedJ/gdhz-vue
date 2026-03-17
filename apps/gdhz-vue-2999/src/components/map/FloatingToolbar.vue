@@ -2566,7 +2566,7 @@ function formatAssistantContent(text) {
   position: absolute;
   left: var(--toolbar-safe-left, 16px);
   right: auto;
-  top: 82px;
+  top: 100px;
   z-index: 1100;  /* 高于图例的 1000 */
   display: flex;
   flex-direction: row;

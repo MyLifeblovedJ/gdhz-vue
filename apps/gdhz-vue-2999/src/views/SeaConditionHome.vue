@@ -534,7 +534,7 @@ watch([viewportWidth, viewportHeight], () => {
   position: relative;
   width: 100vw;
   min-height: 100vh;
-  --home-chrome-top: 82px;
+  --home-chrome-top: 100px;
   --home-banner-side-gutter: 24px;
   --toolbar-gap: 10px;
   --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));

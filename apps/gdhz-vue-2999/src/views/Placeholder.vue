@@ -32,7 +32,7 @@
         <!-- 开发中提示浮层 -->
         <div class="dev-notice">
           <i class="fa-solid fa-hammer"></i>
-          <span>{{ pageTitle }} 模块开发中</span>
+          <span>{{ noticeTitle }}</span>
         </div>
       </MapContainer>
     </div>
@@ -46,6 +46,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
+import { findSubmenuItem } from '../data/navigation'
 import LeftSidebar from '../components/layout/LeftSidebar.vue'
 import MapContainer from '../components/map/MapContainer.vue'
 import MapLegend from '../components/map/MapLegend.vue'
@@ -61,6 +62,15 @@ const selectedDevice = ref(null)
 
 const pageTitle = computed(() => route.meta.title || '页面')
 const pageKey = computed(() => route.meta.pageKey || '')
+const currentSubKey = computed(() => typeof route.query.sub === 'string' ? route.query.sub : '')
+const currentSubItem = computed(() => findSubmenuItem(pageKey.value, currentSubKey.value))
+const currentSubLabel = computed(() => currentSubItem.value?.label || '')
+const noticeTitle = computed(() => {
+  if (currentSubLabel.value) {
+    return `${pageTitle.value} / ${currentSubLabel.value} 开发中`
+  }
+  return `${pageTitle.value} 模块开发中`
+})
 
 function handleDeviceClick(device) {
   selectedDevice.value = device

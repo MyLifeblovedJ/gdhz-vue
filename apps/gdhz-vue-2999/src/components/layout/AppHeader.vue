@@ -15,19 +15,52 @@
       </div>
     </div>
 
-    <nav class="header-nav" aria-label="主导航">
-      <router-link
-        v-for="item in navItems"
-        :key="item.key"
-        :to="item.path"
-        class="nav-btn"
-        :class="{ active: currentPage === item.key }"
-        :title="item.label"
-      >
-        <i v-if="item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
-        <span class="nav-text">{{ item.label }}</span>
-      </router-link>
-    </nav>
+    <div
+      class="header-nav-area"
+      @mouseenter="openMegaMenu"
+      @mouseleave="closeMegaMenu"
+    >
+      <nav class="header-nav" aria-label="主导航">
+        <router-link
+          v-for="item in navItems"
+          :key="item.key"
+          :to="item.path"
+          class="nav-btn"
+          :class="{ active: currentPage === item.key }"
+          :title="item.label"
+        >
+          <i v-if="item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
+          <span class="nav-text">{{ item.label }}</span>
+        </router-link>
+      </nav>
+
+      <Transition name="mega-menu">
+        <div v-if="isMegaMenuOpen" class="mega-menu">
+          <div class="mega-menu-grid">
+            <section
+              v-for="section in navMegaSections"
+              :key="section.key"
+              class="mega-menu-section"
+            >
+              <router-link :to="section.path" class="mega-menu-heading">
+                {{ section.label }}
+              </router-link>
+              <div class="mega-menu-links">
+                <router-link
+                  v-for="child in section.children"
+                  :key="child.key"
+                  :to="buildSubmenuLocation(section, child)"
+                  class="mega-menu-link"
+                  :class="{ active: isSubmenuActive(section, child) }"
+                >
+                  {{ child.label }}
+                </router-link>
+              </div>
+            </section>
+          </div>
+        </div>
+      </Transition>
+    </div>
 
     <div class="header-tools">
       <div class="tool-datetime">
@@ -53,11 +86,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '../../stores/app'
-import { navItems } from '../../data/mockData'
+import { navItems, navMegaSections } from '../../data/navigation'
 
+const route = useRoute()
 const store = useAppStore()
 const currentPage = computed(() => store.currentPage)
+const currentSubKey = computed(() => typeof route.query.sub === 'string' ? route.query.sub : '')
+const isMegaMenuOpen = ref(false)
 
 const now = ref(new Date())
 let timer = null
@@ -150,6 +187,26 @@ const formattedDate = computed(() => {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
 })
 
+function openMegaMenu() {
+  if (!navMegaSections.length) return
+  isMegaMenuOpen.value = true
+}
+
+function closeMegaMenu() {
+  isMegaMenuOpen.value = false
+}
+
+function buildSubmenuLocation(section, child) {
+  return {
+    path: section.path,
+    query: { sub: child.key },
+  }
+}
+
+function isSubmenuActive(section, child) {
+  return currentPage.value === section.key && currentSubKey.value === child.key
+}
+
 onMounted(() => {
   timer = setInterval(() => {
     now.value = new Date()
@@ -167,7 +224,7 @@ onUnmounted(() => {
 
 <style scoped>
 .app-header {
-  height: 68px;
+  height: 92px;
   flex-shrink: 0;
   z-index: 1300;
   background: #ffffff;
@@ -175,8 +232,8 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 28px;
-  padding: 0 24px;
+  gap: 36px;
+  padding: 0 28px;
   position: fixed;
   top: 0;
   left: 0;
@@ -186,13 +243,14 @@ onUnmounted(() => {
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 20px;
   flex-shrink: 0;
+  min-width: 0;
 }
 
 .brand-logo {
-  width: 44px;
-  height: 44px;
+  width: 60px;
+  height: 60px;
   flex-shrink: 0;
 }
 
@@ -205,13 +263,13 @@ onUnmounted(() => {
 .brand-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .brand-title {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: 0.015em;
   color: var(--text-primary);
 }
 
@@ -223,14 +281,21 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 36px;
   min-width: 0;
+}
+
+.header-nav-area {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
 }
 
 .nav-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   color: rgba(15, 23, 42, 0.82);
   text-decoration: none;
   transition: color 0.18s ease, transform 0.18s ease;
@@ -247,12 +312,12 @@ onUnmounted(() => {
 }
 
 .nav-btn.active .nav-text {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 700;
 }
 
 .nav-icon {
-  font-size: 14px;
+  font-size: 18px;
   color: currentColor;
   transition: transform 0.18s ease;
 }
@@ -262,10 +327,81 @@ onUnmounted(() => {
 }
 
 .nav-text {
-  font-size: 15px;
-  font-weight: 580;
-  letter-spacing: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
   transition: font-size 0.18s ease, font-weight 0.18s ease;
+}
+
+.mega-menu {
+  position: absolute;
+  top: calc(100% + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1120px, calc(100vw - 64px));
+  padding: 24px 28px 26px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.mega-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 24px;
+}
+
+.mega-menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mega-menu-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.mega-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mega-menu-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 560;
+  line-height: 1.4;
+  color: rgba(15, 23, 42, 0.72);
+  text-decoration: none;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.mega-menu-link:hover,
+.mega-menu-link.active {
+  color: #0f172a;
+  transform: translateX(2px);
+}
+
+.mega-menu-enter-active,
+.mega-menu-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.mega-menu-enter-from,
+.mega-menu-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
 }
 
 .header-tools {
@@ -333,23 +469,38 @@ onUnmounted(() => {
 
 @media (max-width: 1440px) {
   .app-header {
-    gap: 20px;
-    padding: 0 18px;
+    height: 84px;
+    gap: 24px;
+    padding: 0 20px;
   }
 
-  .header-nav {
-    gap: 18px;
+  .header-brand {
+    gap: 16px;
   }
 
-  .nav-text {
-    font-size: 14px;
-  }
-
-  .nav-btn.active .nav-text {
-    font-size: 15px;
+  .brand-logo {
+    width: 52px;
+    height: 52px;
   }
 
   .brand-title {
+    font-size: 24px;
+  }
+
+  .header-nav {
+    gap: 28px;
+  }
+
+  .mega-menu {
+    width: min(980px, calc(100vw - 48px));
+    padding: 20px 22px 22px;
+  }
+
+  .nav-text {
+    font-size: 18px;
+  }
+
+  .nav-btn.active .nav-text {
     font-size: 18px;
   }
 }
