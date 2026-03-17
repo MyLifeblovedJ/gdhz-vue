@@ -30,7 +30,7 @@ const routes = [
     {
         path: '/sea-condition',
         name: 'SeaCondition',
-        component: () => import('../views/SeaCondition.vue'),
+        component: () => import('../views/SeaConditionHome.vue'),
         meta: {
             title: '风浪潮',
             pageKey: 'sea-condition',
@@ -72,7 +72,7 @@ const routes = [
         path: '/erosion',
         name: 'Erosion',
         component: Placeholder,
-        meta: { title: '海岸侵蚀', pageKey: 'erosion', showBanner: false }
+        meta: { title: '海岸观测', pageKey: 'erosion', showBanner: false }
     },
     {
         path: '/oilspill',

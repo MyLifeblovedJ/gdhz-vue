@@ -5,6 +5,145 @@
 
 import { DEVICE_TYPES, deviceTypeConfig, deviceTypeTree } from './deviceConfig'
 
+// ===== 海岸观测视频监测站点真实元数据（来源：沿海岸基及海上监测站点与调查站点统计表） =====
+export const erosionStationMeta = [
+    {
+        id: 'EM001', stationName: '汕头市澳前村海岸观测视频监测站点',
+        shortName: '汕头澳前站', city: '汕头',
+        lat: 23.401444, lng: 117.105644,   // 117°6′20.32″E, 23°24′5.20″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM002', stationName: '汕头市华林村海岸观测视频监测站点',
+        shortName: '汕头华林站', city: '汕头',
+        lat: 23.113264, lng: 116.533408,   // 116°32′0.27″E, 23°6′47.75″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM003', stationName: '汕尾市长湖村海岸观测视频监测站点',
+        shortName: '汕尾长湖站', city: '汕尾',
+        lat: 22.806047, lng: 115.958728,   // 115°57′31.42″E, 22°48′21.77″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM004', stationName: '汕尾市草寮村海岸观测视频监测站点',
+        shortName: '汕尾草寮站', city: '汕尾',
+        lat: 22.848825, lng: 115.744792,   // 115°44′41.25″E, 22°50′55.77″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM005', stationName: '惠州市巽寮湾海岸观测视频监测站点',
+        shortName: '惠州巽寮湾站', city: '惠州',
+        lat: 22.651883, lng: 114.730861,   // 114°43′51.10″E, 22°39′6.78″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM006', stationName: '阳江市三丫村海岸观测视频监测站点',
+        shortName: '阳江三丫站', city: '阳江',
+        lat: 21.804381, lng: 112.185450,   // 112°11′7.62″E, 21°48′15.77″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM007', stationName: '茂名市沙北村海岸观测视频监测站点',
+        shortName: '茂名沙北站', city: '茂名',
+        lat: 21.500800, lng: 111.368564,   // 111°22′6.83″E, 21°30′2.88″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM008', stationName: '茂名市海后村海岸观测视频监测站点',
+        shortName: '茂名海后站', city: '茂名',
+        lat: 21.476767, lng: 111.345103,   // 111°20′42.37″E, 21°28′36.36″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM009', stationName: '湛江市吴阳镇海岸观测视频监测站点',
+        shortName: '湛江吴阳站', city: '湛江',
+        lat: 21.342522, lng: 110.704703,   // 110°42′16.93″E, 21°20′33.08″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM010', stationName: '湛江市后海北海岸观测视频监测站点',
+        shortName: '湛江后海北站', city: '湛江',
+        lat: 21.037139, lng: 110.545633,   // 110°32′44.28″E, 21°02′13.70″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM011', stationName: '湛江市博赊村海岸观测视频监测站点',
+        shortName: '湛江博赊站', city: '湛江',
+        lat: 20.300167, lng: 110.363178,   // 110°21′47.44″E, 20°18′0.60″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+    {
+        id: 'EM012', stationName: '湛江市石九村海岸观测视频监测站点',
+        shortName: '湛江石九站', city: '湛江',
+        lat: 21.286925, lng: 109.773422,   // 109°46′24.32″E, 21°17′12.93″N
+        buildYear: 2025, manager: '广东省自然资源厅',
+        params: '海岸带视频和影像', device: '自然资源部第三海洋研究所/集成设备',
+        frequency: '实时视频', platform: 'EZStation 3.0',
+        maintainer: '自然资源部第三海洋研究所', serviceLife: 3,
+    },
+]
+
+// 基于真实元数据生成海岸观测设备列表
+function generateErosionDevices() {
+    const config = deviceTypeConfig[DEVICE_TYPES.EROSION_MONITOR]
+    return erosionStationMeta.map((meta, i) => {
+        const status = i === 11 ? 'offline' : (Math.random() < 0.85 ? 'online' : 'warn')
+        const valueText = status === 'online' ? '0.3m/年' : status === 'warn' ? '1.2m/年' : '--'
+        const { thresholdValue, thresholdUnit } = getThresholdMeta(DEVICE_TYPES.EROSION_MONITOR, status)
+        return {
+            id: meta.id,
+            name: meta.shortName,
+            type: DEVICE_TYPES.EROSION_MONITOR,
+            typeName: config.name,
+            icon: config.icon,
+            color: config.color,
+            lat: meta.lat,
+            lng: meta.lng,
+            city: meta.city,
+            status,
+            val: valueText,
+            currentReading: parseNumericReading(valueText),
+            thresholdValue,
+            thresholdUnit,
+            lastUpdate: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+        }
+    })
+}
+
 // ===== 生成设备数据的辅助函数 =====
 function generateDevices(type, count, baseLocations) {
     const config = deviceTypeConfig[type]
@@ -123,7 +262,7 @@ export const mockDevices = [
     ...generateDevices(DEVICE_TYPES.DISPOSABLE_BUOY, 18, guangdongCoastalLocations),
     ...generateDevices(DEVICE_TYPES.ARGO_BUOY, 10, guangdongCoastalLocations),
     // 其他类型
-    ...generateDevices(DEVICE_TYPES.EROSION_MONITOR, 12, guangdongCoastalLocations),
+    ...generateErosionDevices(),
     ...generateDevices(DEVICE_TYPES.SMART_MARKER, 10, guangdongCoastalLocations),
     ...generateDevices(DEVICE_TYPES.UAV, 20, guangdongCoastalLocations),
     ...generateDevices(DEVICE_TYPES.USV, 12, guangdongCoastalLocations),
@@ -226,7 +365,7 @@ export const mockRiskDecisions = {
             id: 'R004',
             type: 'coastal_erosion',
             level: 'medium',
-            title: '海岸侵蚀加剧',
+            title: '海岸观测异常加剧',
             location: '阳江海陵岛',
             description: '受持续大浪冲刷，海滩侵蚀速率加快，部分临海建筑地基受损风险增加。',
             affectedArea: '约5公里岸线',
@@ -371,7 +510,7 @@ export const navItems = [
     { key: 'saltwater', label: '咸潮入侵', path: '/saltwater' },
     { key: 'seawater', label: '海水入侵', path: '/seawater' },
     { key: 'sealevel', label: '海平面上升', path: '/sealevel' },
-    { key: 'erosion', label: '海岸侵蚀', path: '/erosion' },
+    { key: 'erosion', label: '海岸观测', path: '/erosion' },
     { key: 'oilspill', label: '溢油', path: '/oilspill' },
 ]
 
@@ -701,57 +840,37 @@ export function generateHistoryData(deviceId, elementKey, startTime, endTime, in
     return data
 }
 
-// ===== 海岸侵蚀视频监测数据 =====
-export const mockErosionVideoStreams = [
-    {
-        id: 'EV001',
-        stationName: '海陵岛大角湾',
+// ===== 海岸观测视频监测数据（基于真实站点元数据） =====
+export const mockErosionVideoStreams = erosionStationMeta.map((meta, i) => {
+    const riskLevels = ['low', 'low', 'medium', 'low', 'medium', 'high', 'medium', 'high', 'medium', 'high', 'low', 'medium']
+    const erosionRates = [0.4, 0.6, 0.8, 0.5, 1.1, 1.8, 1.3, 2.1, 0.9, 2.3, 0.3, 1.5]
+    const coastChanges = [-2.1, -3.2, -5.4, -2.8, -6.8, -12.5, -8.2, -15.3, -4.6, -18.7, -1.5, -9.8]
+    return {
+        id: meta.id,
+        stationName: meta.shortName,
         streamUrl: '',
-        snapshotUrl: '',
-        status: 'online',
-        erosionRate: 1.8,
-        coastlineChange: -12.5,
-        riskLevel: 'high',
-        lastUpdate: '2026-02-14T10:30:00+08:00',
-        location: { lat: 21.5731, lng: 111.9284 }
-    },
-    {
-        id: 'EV002',
-        stationName: '汕头南澳岛',
-        streamUrl: '',
-        snapshotUrl: '',
-        status: 'online',
-        erosionRate: 0.6,
-        coastlineChange: -3.2,
-        riskLevel: 'low',
-        lastUpdate: '2026-02-14T10:28:00+08:00',
-        location: { lat: 23.4215, lng: 117.0235 }
-    },
-    {
-        id: 'EV003',
-        stationName: '湛江东海岛',
-        streamUrl: '',
-        snapshotUrl: '',
-        status: 'offline',
-        erosionRate: 2.3,
-        coastlineChange: -18.7,
-        riskLevel: 'high',
-        lastUpdate: '2026-02-14T08:15:00+08:00',
-        location: { lat: 20.9056, lng: 110.5617 }
-    },
-    {
-        id: 'EV004',
-        stationName: '惠州双月湾',
-        streamUrl: '',
-        snapshotUrl: '',
-        status: 'online',
-        erosionRate: 1.1,
-        coastlineChange: -6.8,
-        riskLevel: 'medium',
-        lastUpdate: '2026-02-14T10:25:00+08:00',
-        location: { lat: 22.5867, lng: 114.8932 }
+        snapshotUrl: `/images/coastal/${meta.id}.png`,
+        status: i === 11 ? 'offline' : 'online',
+        erosionRate: erosionRates[i],
+        coastlineChange: coastChanges[i],
+        riskLevel: riskLevels[i],
+        lastUpdate: new Date(Date.now() - Math.random() * 7200000).toISOString(),
+        location: { lat: meta.lat, lng: meta.lng },
+        // 扩展元数据
+        meta: {
+            fullName: meta.stationName,
+            city: meta.city,
+            buildYear: meta.buildYear,
+            manager: meta.manager,
+            params: meta.params,
+            device: meta.device,
+            frequency: meta.frequency,
+            platform: meta.platform,
+            maintainer: meta.maintainer,
+            serviceLife: meta.serviceLife,
+        },
     }
-]
+})
 
 // ===== 咸潮入侵数据 =====
 export const mockSaltwaterData = {

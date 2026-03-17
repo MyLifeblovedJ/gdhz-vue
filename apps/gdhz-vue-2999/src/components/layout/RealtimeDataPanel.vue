@@ -279,14 +279,17 @@
         <!-- 视频直播区域 -->
         <div class="video-container">
           <div class="video-player">
-            <!-- Mock阶段显示占位 -->
-            <div class="video-placeholder">
-              <i class="fa-solid fa-video"></i>
-              <span class="video-station-name">{{ activeErosionStation.stationName }}</span>
-              <span class="video-status" :class="activeErosionStation.status">
-                <i class="fa-solid fa-circle"></i>
-                {{ activeErosionStation.status === 'online' ? '直播中' : '离线' }}
-              </span>
+            <div
+              class="video-placeholder"
+              :style="{ backgroundImage: `url(${activeErosionStation.snapshotUrl || `/images/coastal/${activeErosionStation.id}.png`})` }"
+            >
+              <div class="video-meta">
+                <div class="video-station-row">
+                  <span class="video-status-dot" :class="activeErosionStation.status"></span>
+                  <span class="video-station-name">{{ activeErosionStation.stationName }}</span>
+                </div>
+                <span class="video-update-time">{{ formatRelativeTime(activeErosionStation.lastUpdate) }}</span>
+              </div>
             </div>
           </div>
           <!-- 站点切换 -->
@@ -301,17 +304,6 @@
               <i class="fa-solid fa-circle" :class="stream.status"></i>
               {{ stream.stationName.slice(0, 4) }}
             </button>
-          </div>
-        </div>
-        <!-- 海岸关键指标 -->
-        <div class="mini-indicators">
-          <div class="mini-card" :class="activeErosionStation.riskLevel === 'high' ? 'alarm' : activeErosionStation.riskLevel === 'medium' ? 'warn' : 'normal'">
-            <div class="mini-label">侵蚀速率</div>
-            <div class="mini-value">{{ activeErosionStation.erosionRate }}<span class="unit">m/年</span></div>
-          </div>
-          <div class="mini-card" :class="Math.abs(activeErosionStation.coastlineChange) > 10 ? 'alarm' : Math.abs(activeErosionStation.coastlineChange) > 5 ? 'warn' : 'normal'">
-            <div class="mini-label">岸线变化</div>
-            <div class="mini-value">{{ activeErosionStation.coastlineChange }}<span class="unit">m</span></div>
           </div>
         </div>
       </div>
@@ -476,6 +468,7 @@ import { useAppStore } from '../../stores/app'
 import { mockRealtimeData, mockErosionVideoStreams, mockSaltwaterData, mockSeawaterData } from '../../data/mockData'
 import { mockAISummaryData } from '../../data/aiSummaryData'
 import { mockTideForecastStations, mockWaveForecastStations } from '../../data/seaConditionData'
+import { formatRelativeTime } from '../../utils/relativeTime'
 
 const store = useAppStore()
 
@@ -892,7 +885,7 @@ const currentSurgeMax = computed(() => {
   return Math.max(...surgeData.map(d => d.value)).toFixed(2)
 })
 
-// ===== 海岸侵蚀数据 =====
+// ===== 海岸观测数据 =====
 const erosionStreams = computed(() => mockErosionVideoStreams)
 const activeErosionId = ref(mockErosionVideoStreams[0]?.id || '')
 const activeErosionStation = computed(() => {
@@ -909,8 +902,12 @@ const erosionSummary = computed(() => {
   const streams = erosionStreams.value || []
   const onlineCount = streams.filter(s => s.status === 'online').length
   const warningCount = streams.filter(s => riskLevelToPanelState(s.riskLevel) !== 'normal').length
-  const maxRate = streams.reduce((max, s) => Math.max(max, Number(s.erosionRate) || 0), 0)
-  return `摘要：<strong>${onlineCount}/${streams.length}</strong>路视频在线，<strong>${warningCount}</strong>处岸段预警，最大侵蚀速率<strong>${maxRate.toFixed(1)}m/年</strong>。`
+  const latestUpdate = streams
+    .map(stream => new Date(stream.lastUpdate).getTime())
+    .filter(Number.isFinite)
+    .sort((a, b) => b - a)[0]
+  const latestUpdateText = latestUpdate ? formatRelativeTime(latestUpdate) : '--'
+  return `摘要：<strong>${onlineCount}/${streams.length}</strong>路在线，<strong>${warningCount}</strong>处岸段预警，最近更新<strong>${latestUpdateText}</strong>。`
 })
 
 // ===== 咸潮入侵数据 =====
@@ -2530,7 +2527,7 @@ onUnmounted(() => {
 .area-tag:hover { background: rgba(251, 146, 60, 0.25); }
 .area-tag i { font-size: 12px; opacity: 0.8; }
 
-/* ===== 海岸侵蚀 - 视频区域 ===== */
+/* ===== 海岸观测 - 视频区域 ===== */
 .video-container {
   margin-bottom: 10px;
 }
@@ -2548,49 +2545,70 @@ onUnmounted(() => {
 .video-placeholder {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #0a1628, #162a4a);
+  background-size: cover;
+  background-position: center;
+  background-color: #0a1628;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-end;
   position: relative;
 }
 
-.video-placeholder > i {
-  font-size: 32px;
-  color: rgba(251, 146, 60, 0.4);
+.video-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 15, 29, 0.08), rgba(8, 15, 29, 0.64));
+}
+
+.video-meta {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.video-station-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.video-status-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.video-status-dot.online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.72);
+}
+
+.video-status-dot.offline {
+  background: #94a3b8;
 }
 
 .video-station-name {
+  min-width: 0;
   font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.video-status {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 10px;
+  color: #f8fafc;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.video-status.online {
-  background: rgba(83, 176, 126, 0.2);
-  color: #53b07e;
-  border: 1px solid rgba(83, 176, 126, 0.3);
-}
-
-.video-status.offline {
-  background: rgba(107, 114, 128, 0.2);
-  color: #9ca3af;
-  border: 1px solid rgba(107, 114, 128, 0.3);
+.video-update-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.9);
 }
 
 .video-station-bar {

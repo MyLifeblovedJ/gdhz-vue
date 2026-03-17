@@ -19,78 +19,6 @@
         </div>
       </div>
 
-      <!-- 观测网络（树形结构） -->
-      <div class="layer-group" :class="{ collapsed: collapsedGroups['observe'] }">
-        <div class="layer-group-header" @click="toggleLayerGroup('observe')">
-          <i class="fa-solid fa-chevron-down"></i>
-          <span>观测网络</span>
-        </div>
-        <div class="layer-group-content">
-          <!-- 岸基观测站 -->
-          <div class="layer-tree-node">
-            <label class="layer-item parent">
-              <input type="checkbox" :checked="layerVisibility.coastal_stations" @change="toggleLayer('coastal_stations', $event.target.checked)">
-              岸基观测站
-            </label>
-            <div class="layer-children">
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.coastal_base" @change="toggleLayer('coastal_base', $event.target.checked)">
-                岸基观测站
-              </label>
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.tide_stations" @change="toggleLayer('tide_stations', $event.target.checked)">
-                潮位站
-              </label>
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.surge_stations" @change="toggleLayer('surge_stations', $event.target.checked)">
-                风暴潮核定站
-              </label>
-            </div>
-          </div>
-          <!-- 浮标 -->
-          <div class="layer-tree-node">
-            <label class="layer-item parent">
-              <input type="checkbox" :checked="layerVisibility.buoys" @change="toggleLayer('buoys', $event.target.checked)">
-              浮标
-            </label>
-            <div class="layer-children">
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.wave_buoy" @change="toggleLayer('wave_buoy', $event.target.checked)">
-                波浪谱浮标
-              </label>
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.anchor_buoy" @change="toggleLayer('anchor_buoy', $event.target.checked)">
-                锚定浮标
-              </label>
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.disposable_buoy" @change="toggleLayer('disposable_buoy', $event.target.checked)">
-                抛弃式浮标
-              </label>
-              <label class="layer-item child">
-                <input type="checkbox" :checked="layerVisibility.argo_buoy" @change="toggleLayer('argo_buoy', $event.target.checked)">
-                Argo浮标
-              </label>
-            </div>
-          </div>
-          <!-- 其他设备 -->
-          <label class="layer-item">
-            <input type="checkbox" :checked="layerVisibility.erosion_monitor" @change="toggleLayer('erosion_monitor', $event.target.checked)">
-            海岸侵蚀
-          </label>
-          <label class="layer-item">
-            <input type="checkbox" :checked="layerVisibility.smart_marker" @change="toggleLayer('smart_marker', $event.target.checked)">
-            智能标识物
-          </label>
-          <label class="layer-item">
-            <input type="checkbox" :checked="layerVisibility.uav" @change="toggleLayer('uav', $event.target.checked)">
-            无人机
-          </label>
-          <label class="layer-item">
-            <input type="checkbox" :checked="layerVisibility.usv" @change="toggleLayer('usv', $event.target.checked)">
-            无人艇
-          </label>
-        </div>
-      </div>
 
       <!-- 实时态势 -->
       <div class="layer-group" :class="{ collapsed: collapsedGroups['realtime'] }">
@@ -179,7 +107,6 @@ const store = useAppStore()
 // 状态
 const collapsedGroups = ref({
   base: true,
-  observe: false,
   realtime: false,
   sim: true
 })

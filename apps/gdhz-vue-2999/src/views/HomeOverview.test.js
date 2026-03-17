@@ -11,9 +11,22 @@ describe('HomeOverview structure', () => {
     expect(source).not.toMatch(/import FloatingToolbar/)
   })
 
-  it('passes layer panel state into the map tool rail', () => {
-    expect(source).toMatch(/:layer-panel-open="showLayerPanel"/)
-    expect(source).toMatch(/@toggle-layer-panel="toggleLayerPanel"/)
+  it('restores the original home-only map tool rail and avoids the sea-condition dock', () => {
+    expect(source).toMatch(/import HomeMapToolRail from '\.\.\/components\/layout\/HomeMapToolRail\.vue'/)
+    expect(source).toMatch(/<HomeMapToolRail\b/)
+    expect(source).not.toMatch(/import MapActionDock/)
+    expect(source).not.toMatch(/<MapActionDock\b/)
+  })
+
+  it('keeps the original home map tool handlers wired on the vertical rail', () => {
+    expect(source).toMatch(/:map-mode="store\.mapMode"/)
+    expect(source).toMatch(/:camera-active="showCameraOverlay"/)
+    expect(source).toMatch(/:typhoon-panel-open="showTyphoonPanel"/)
+    expect(source).toMatch(/@zoom-in="handleZoomIn"/)
+    expect(source).toMatch(/@zoom-out="handleZoomOut"/)
+    expect(source).toMatch(/@toggle-map-mode="handleToggleMapMode"/)
+    expect(source).toMatch(/@basemap-change="handleBasemapChange"/)
+    expect(source).toMatch(/@toggle-typhoon="toggleTyphoonPanel"/)
   })
 
   it('renders a dedicated right-side layer panel with LayerControl', () => {

@@ -56,11 +56,11 @@ import gdProvinceLineGeo from '../../data/广东省line.json'
 const props = defineProps({
   center: {
     type: Array,
-    default: () => [22.0, 114.0]
+    default: () => [22.0, 114.5]
   },
   zoom: {
     type: Number,
-    default: 8
+    default: 7
   },
   currentBasemap: {
     type: String,
@@ -73,6 +73,10 @@ const props = defineProps({
   fullscreen: {
     type: Boolean,
     default: false
+  },
+  initialDestination: {
+    type: Object,
+    default: null
   }
 })
 
@@ -139,7 +143,7 @@ const THREE_D_VIEW_PRESETS = {
   decision: {
     key: 'decision',
     label: '当前视角',
-    destination: { lng: 112.3, lat: 11.9, height: 1080000 },
+    destination: { lng: 113.0, lat: 11.9, height: 1080000 },
     orientation: {
       heading: CesiumMath.toRadians(4),
       pitch: CesiumMath.toRadians(-46),
@@ -245,14 +249,14 @@ function getLinePaths(geojson) {
 }
 
 const GD_PROVINCE_LINE_PATHS = getLinePaths(gdProvinceLineGeo)
+const PROVINCE_BOUNDARY_COLOR = '#CFE8FF'
 
 const WARNING_LEVEL_STYLE = {
-  red: { fill: '#FF4D4F', fillOpacity: 0.55 },
-  orange: { fill: '#FF9C6E', fillOpacity: 0.55 },
-  yellow: { fill: '#FADB14', fillOpacity: 0.55 },
-  blue: { fill: '#1677FF', fillOpacity: 0.55 }
+  red: { color: '#FF4D4F', glowOpacity: 0.24, lineOpacity: 0.96, glowWeight: 10, lineWeight: 2.8, glowWidth: 8, lineWidth: 2.2 },
+  orange: { color: '#FF8A3D', glowOpacity: 0.22, lineOpacity: 0.94, glowWeight: 9, lineWeight: 2.5, glowWidth: 7, lineWidth: 2.0 },
+  yellow: { color: '#FFD84A', glowOpacity: 0.16, lineOpacity: 0.88, glowWeight: 8, lineWeight: 2.2, glowWidth: 6, lineWidth: 1.8 },
+  blue: { color: '#1677FF', glowOpacity: 0.2, lineOpacity: 0.92, glowWeight: 8, lineWeight: 2.2, glowWidth: 6, lineWidth: 1.8 }
 }
-const WARNING_CITY_BORDER_COLOR = '#777777'
 
 const WARNING_LEVEL_WEIGHT = {
   red: 4,
@@ -578,11 +582,11 @@ function applyCityWarningVisibility2D() {
   if (!map || !cityWarningBoundaryLayer2D) return
   const zoom = map.getZoom()
   if (zoom >= CITY_WARNING_MAX_ZOOM) {
-    cityWarningBoundaryLayer2D.eachLayer(l => l.setStyle({ opacity: 0, fillOpacity: 0 }))
+    cityWarningBoundaryLayer2D.eachLayer(l => l.setStyle({ opacity: 0 }))
   } else {
     cityWarningBoundaryLayer2D.eachLayer(l => {
       const style = l.options._originalStyle
-      if (style) l.setStyle({ opacity: style.opacity ?? 1, fillOpacity: style.fillOpacity ?? 0.55 })
+      if (style) l.setStyle({ opacity: style.opacity ?? 1 })
     })
   }
 }
@@ -675,7 +679,7 @@ function renderProvinceBoundary2D() {
   GD_PROVINCE_LINE_PATHS.forEach((path) => {
     const latlngs = path.map(([lng, lat]) => [lat, lng])
     L.polyline(latlngs, {
-      color: '#ffea00',
+      color: PROVINCE_BOUNDARY_COLOR,
       weight: 2.5,
       opacity: 1,
       interactive: false,
@@ -702,7 +706,7 @@ function renderProvinceBoundary3D() {
       polyline: {
         positions: Cartesian3.fromDegreesArray(degArray),
         width: 2.5,
-        material: Color.fromCssColorString('#ffea00')
+        material: Color.fromCssColorString(PROVINCE_BOUNDARY_COLOR)
       }
     })
     provinceBoundaryEntities3D.push(entity)
@@ -725,29 +729,26 @@ function renderCityWarningBoundaries2D() {
     const polygons = getGeometryPolygons(feature.geometry)
     polygons.forEach((polygonCoords) => {
       const rings = polygonCoords.map(ring => ring.map(([lng, lat]) => [lat, lng]))
-      const poly = L.polygon(rings, {
-        color: 'transparent',
-        weight: 0,
-        opacity: 0,
-        fillColor: style.fill,
-        fillOpacity: style.fillOpacity,
-        interactive: false,
-        bubblingMouseEvents: false,
-        pane: CITY_WARNING_PANE,
-        _originalStyle: { opacity: 0, fillOpacity: style.fillOpacity }
-      }).addTo(cityWarningBoundaryLayer2D)
-
-      // 统一单色细边界：避免多色/双层描边造成视觉噪音
       const outerRing = rings[0]
       if (outerRing?.length > 2) {
         L.polyline(outerRing, {
-          color: WARNING_CITY_BORDER_COLOR,
-          weight: 0.8,
-          opacity: 1,
+          color: style.color,
+          weight: style.glowWeight,
+          opacity: style.glowOpacity,
           interactive: false,
           bubblingMouseEvents: false,
           pane: CITY_WARNING_PANE,
-          _originalStyle: { opacity: 1, fillOpacity: 0 }
+          _originalStyle: { opacity: style.glowOpacity }
+        }).addTo(cityWarningBoundaryLayer2D)
+
+        L.polyline(outerRing, {
+          color: style.color,
+          weight: style.lineWeight,
+          opacity: style.lineOpacity,
+          interactive: false,
+          bubblingMouseEvents: false,
+          pane: CITY_WARNING_PANE,
+          _originalStyle: { opacity: style.lineOpacity }
         }).addTo(cityWarningBoundaryLayer2D)
       }
     })
@@ -778,21 +779,20 @@ function renderCityWarningBoundaries3D() {
         degArray.push(lng, lat)
       })
       if (degArray.length < 6) return
-      const fillColor = Color.fromCssColorString(style.fill)
-      const entity = viewer.entities.add({
-        polygon: {
-          hierarchy: Cartesian3.fromDegreesArray(degArray),
-          material: fillColor.withAlpha(style.fillOpacity),
-          outline: false
+      const glowEntity = viewer.entities.add({
+        polyline: {
+          positions: Cartesian3.fromDegreesArray(degArray),
+          width: style.glowWidth,
+          material: Color.fromCssColorString(style.color).withAlpha(style.glowOpacity)
         }
       })
-      cityWarningBoundaryEntities3D.push(entity)
+      cityWarningBoundaryEntities3D.push(glowEntity)
 
       const edgeEntity = viewer.entities.add({
         polyline: {
           positions: Cartesian3.fromDegreesArray(degArray),
-          width: 1.2,
-          material: Color.fromCssColorString(WARNING_CITY_BORDER_COLOR).withAlpha(0.9)
+          width: style.lineWidth,
+          material: Color.fromCssColorString(style.color).withAlpha(style.lineOpacity)
         }
       })
       cityWarningBoundaryEntities3D.push(edgeEntity)
@@ -861,15 +861,33 @@ function applyCesiumMapMode(mode) {
 
   if (mode === '3D') {
     if (viewer.scene.mode !== SceneMode.SCENE3D) {
-      // 先切回 3D，再重复一次 welcome-5173 的飞入动画
       viewer.scene.morphTo3D(0.6)
       setTimeout(() => {
         if (currentMapMode.value !== '3D' || !viewer) return
-        flyTo3DViewPreset(active3DViewPresetKey.value, 1.8)
+        flyToInitialOrPreset(1.8)
       }, 680)
     } else {
-      flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
+      flyToInitialOrPreset(1.2)
     }
+  }
+}
+
+function flyToInitialOrPreset(duration = 1.2) {
+  if (!viewer) return
+  const preset = resolve3DViewPreset(active3DViewPresetKey.value)
+  if (props.initialDestination) {
+    const dest = props.initialDestination
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(
+        dest.lng ?? preset.destination.lng,
+        dest.lat ?? preset.destination.lat,
+        dest.height ?? preset.destination.height
+      ),
+      orientation: preset.orientation || undefined,
+      duration
+    })
+  } else {
+    flyTo3DViewPreset(active3DViewPresetKey.value, duration)
   }
 }
 
@@ -1021,7 +1039,7 @@ async function initCesium() {
     }
     viewer.scene.postRender.addEventListener(viewerScenePostRenderHandler)
     applyCesiumMapMode(currentMapMode.value)
-    flyTo3DViewPreset(active3DViewPresetKey.value, 1.2)
+    flyToInitialOrPreset(1.2)
     renderDevices3D()
     renderTyphoon()
     startSpinBillboardLoop()
@@ -1519,6 +1537,38 @@ function renderDevices3D() {
 function renderDevices() {
   renderDevices2D()
   renderDevices3D()
+  applyDeviceLayerVisibility()
+}
+
+// layerVisibility key → markerLayers device type keys
+const LAYER_TO_DEVICE_TYPES = {
+  surge_stations: ['surge_station'],
+  coastal_base: ['coastal_base'],
+  tide_stations: ['tide_station'],
+  wave_buoy: ['wave_buoy'],
+  disposable_buoy: ['disposable_buoy'],
+  argo_buoy: ['argo_buoy'],
+  erosion_monitor: ['erosion_monitor'],
+  smart_marker: ['smart_marker'],
+  uav: ['uav'],
+  usv: ['usv'],
+}
+
+function applyDeviceLayerVisibility() {
+  if (!map) return
+  const lv = layerVisibility.value
+  for (const [layerKey, deviceTypes] of Object.entries(LAYER_TO_DEVICE_TYPES)) {
+    const visible = lv[layerKey] !== false
+    for (const deviceType of deviceTypes) {
+      const layer = markerLayers[deviceType]
+      if (!layer) continue
+      if (visible && !map.hasLayer(layer)) {
+        map.addLayer(layer)
+      } else if (!visible && map.hasLayer(layer)) {
+        map.removeLayer(layer)
+      }
+    }
+  }
 }
 
 function renderTyphoon() {
@@ -1941,6 +1991,22 @@ watch([() => layerVisibility.value.typhoon, () => layerVisibility.value.typhoon_
 watch(() => layerVisibility.value.vessels, () => renderVessels())
 watch(() => typhoonData.value, () => renderTyphoon(), { deep: true })
 watch(() => vesselData.value, () => renderVessels(), { deep: true })
+
+// Device layer visibility watchers
+watch([
+  () => layerVisibility.value.coastal_stations,
+  () => layerVisibility.value.coastal_base,
+  () => layerVisibility.value.tide_stations,
+  () => layerVisibility.value.surge_stations,
+  () => layerVisibility.value.buoys,
+  () => layerVisibility.value.wave_buoy,
+  () => layerVisibility.value.disposable_buoy,
+  () => layerVisibility.value.argo_buoy,
+  () => layerVisibility.value.erosion_monitor,
+  () => layerVisibility.value.smart_marker,
+  () => layerVisibility.value.uav,
+  () => layerVisibility.value.usv,
+], () => applyDeviceLayerVisibility())
 watch(() => layerVisibility.value.wind_particle, (nv) => {
   if (nv && is2DMode.value) startWindAnimation()
   else if (windAnimationFrame) {

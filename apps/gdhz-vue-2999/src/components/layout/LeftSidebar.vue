@@ -77,7 +77,7 @@
             <!-- 其他设备 -->
             <label class="layer-item">
               <input type="checkbox" :checked="layerVisibility.erosion_monitor" @change="toggleLayer('erosion_monitor', $event.target.checked)">
-              海岸侵蚀
+              海岸观测
             </label>
             <label class="layer-item">
               <input type="checkbox" :checked="layerVisibility.smart_marker" @change="toggleLayer('smart_marker', $event.target.checked)">

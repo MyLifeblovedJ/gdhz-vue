@@ -9,7 +9,7 @@ export const DEVICE_TYPES = {
     // 一级分类
     COASTAL_STATION: 'coastal_station',     // 岸基观测站（父类）
     BUOY: 'buoy',                           // 浮标（父类）
-    EROSION_MONITOR: 'erosion_monitor',     // 海岸侵蚀
+    EROSION_MONITOR: 'erosion_monitor',     // 海岸观测
     SMART_MARKER: 'smart_marker',           // 智能标识物
     UAV: 'uav',                             // 无人机
     USV: 'usv',                             // 无人艇
@@ -51,7 +51,7 @@ export const deviceTypeTree = [
     },
     {
         id: DEVICE_TYPES.EROSION_MONITOR,
-        name: '海岸侵蚀',
+        name: '海岸观测',
         icon: 'fa-video',
         color: '#5F9FB9',
         count: 12,
@@ -173,7 +173,7 @@ export const deviceTypeConfig = {
         thresholds: {}
     },
     [DEVICE_TYPES.EROSION_MONITOR]: {
-        name: '海岸侵蚀',
+        name: '海岸观测',
         icon: 'fa-video',
         color: '#5F9FB9',
         count: 12,

@@ -6,6 +6,8 @@
       :current-basemap="currentBasemap"
       :map-mode="store.mapMode"
       :fullscreen="true"
+      :center="[22.0, 112.5]"
+      :zoom="7.5"
       @device-click="handleDeviceClick"
     />
 
@@ -14,22 +16,36 @@
     </div>
 
     <MapLegend />
-    <CoastalCameraOverlay :visible="showCameraOverlay" :stations="coastalStations" />
+    <CoastalCameraOverlay :visible="showCameraOverlay" :stations="erosionVideoData" :map-ref="mapRef" />
 
-    <HomeMapToolRail
+    <MapToolRail
+      :layer-panel-open="showLayerPanel"
+      :device-panel-open="showDevicePanel"
+      :show-device-btn="true"
+      :ai-panel-open="showAIPanel"
+      :show-a-i-btn="true"
+      @toggle-layer-panel="toggleLayerPanel"
+      @toggle-device-panel="toggleDevicePanel"
+      @toggle-ai-panel="toggleAIPanel"
+    />
+
+    <MapActionDock
       :map-mode="store.mapMode"
       :camera-active="showCameraOverlay"
-      :layer-panel-open="showLayerPanel"
-      :typhoon-panel-open="showTyphoonPanel"
+      :typhoon-active="showTyphoonPanel"
+      :vessel-active="Boolean(store.layerVisibility.vessels)"
+      :wind-active="Boolean(store.layerVisibility.wind_particle)"
+      :fullscreen-active="isBrowserFullscreen"
       @zoom-in="handleZoomIn"
       @zoom-out="handleZoomOut"
-      @reset-view="handleResetView"
-      @locate="handleLocate"
       @toggle-map-mode="handleToggleMapMode"
-      @basemap-change="handleBasemapChange"
-      @toggle-camera="toggleCameraOverlay"
-      @toggle-layer-panel="toggleLayerPanel"
+      @reset-view="handleResetView"
+      @toggle-basemap="handleToggleBasemap"
       @toggle-typhoon="toggleTyphoonPanel"
+      @toggle-fullscreen="handleToggleFullscreen"
+      @toggle-camera="toggleCameraOverlay"
+      @toggle-vessels="() => toggleLayerFlag('vessels')"
+      @toggle-wind="() => toggleLayerFlag('wind_particle')"
     />
 
     <Transition name="tool-rail-panel">
@@ -70,33 +86,19 @@
       </aside>
     </Transition>
 
-    <div class="home-overlay">
-      <div class="two-column-layout">
-        <section ref="leftColumnRef" class="column left-column">
-          <div class="column-block warning-block">
-            <div class="block-body warning-body">
-              <SituationAlerts :alerts="store.alerts" />
+    <Transition name="tool-rail-panel">
+      <aside v-if="showDevicePanel" class="tool-rail-device-shell">
+        <div class="tool-rail-device-panel">
+          <div class="tool-rail-device-header">
+            <div class="tool-rail-device-title">
+              <i class="fa-solid fa-satellite-dish"></i>
+              设备与数据
             </div>
+            <button class="tool-rail-device-close" type="button" @click="closeDevicePanel">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
-
-          <div ref="aiDecisionBlockRef" class="column-block ai-decision-block">
-            <div class="block-title"><i class="fa-solid fa-wand-magic-sparkles"></i> 智能决策</div>
-            <div class="block-body ai-decision-body">
-              <AIDecisionPanel />
-            </div>
-          </div>
-
-          <div class="column-block seawall-block">
-            <div class="block-title"><i class="fa-solid fa-shield-halved"></i> 海堤风险</div>
-            <div class="block-body seawall-body">
-              <SeawallRiskPanel />
-            </div>
-          </div>
-        </section>
-
-        <section class="column right-column">
-          <div ref="deviceBlockRef" class="column-block device-block">
-            <div class="block-title"><i class="fa-solid fa-satellite-dish"></i> 设备与数据</div>
+          <div class="tool-rail-device-stats">
             <div class="stats-row">
               <div class="stat-card">
                 <span class="label">总设备</span>
@@ -115,20 +117,46 @@
                 <span class="value completeness">{{ dataCompletenessRate }}</span>
               </div>
             </div>
-            <div class="block-body device-body">
-              <DeviceExplorer @device-click="handleDeviceClick" />
+          </div>
+          <div class="tool-rail-device-content">
+            <DeviceExplorer @device-click="handleDeviceClick" />
+          </div>
+        </div>
+      </aside>
+    </Transition>
+
+    <Transition name="tool-rail-panel">
+      <aside v-if="showAIPanel" class="tool-rail-ai-shell">
+        <div class="tool-rail-ai-panel">
+          <div class="tool-rail-ai-header">
+            <div class="tool-rail-ai-title">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              智能决策
+            </div>
+            <button class="tool-rail-ai-close" type="button" @click="closeAIPanel">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="tool-rail-ai-content">
+            <AIDecisionPanel />
+          </div>
+        </div>
+      </aside>
+    </Transition>
+
+    <div class="home-overlay">
+      <div class="two-column-layout">
+        <section ref="leftColumnRef" class="column left-column">
+          <div class="column-block warning-block">
+            <div class="block-body warning-body">
+              <SituationAlerts :alerts="store.alerts" />
             </div>
           </div>
 
-          <div class="column-block coast-block">
-            <div class="block-title"><i class="fa-solid fa-video"></i> 海岸观测（12站点）</div>
-            <div class="block-body coast-body">
-              <CoastalObservationPanel
-                :stations="coastalStations"
-                :visible-rows="viewportMetrics.coastalVisibleRows"
-                :card-height="viewportMetrics.coastalCardHeight"
-                :grid-gap="viewportMetrics.coastalGridGap"
-              />
+          <div ref="seawallBlockRef" class="column-block seawall-block">
+            <div class="block-title"><i class="fa-solid fa-shield-halved"></i> 海堤风险</div>
+            <div class="block-body seawall-body">
+              <SeawallRiskPanel />
             </div>
           </div>
         </section>
@@ -165,10 +193,11 @@ import { getHomeViewportMetrics } from '../utils/homeViewportProfile'
 import SituationAlerts from '../components/common/SituationAlerts.vue'
 import AlertBanner from '../components/layout/AlertBanner.vue'
 import CoastalCameraOverlay from '../components/layout/CoastalCameraOverlay.vue'
-import CoastalObservationPanel from '../components/layout/CoastalObservationPanel.vue'
+import { mockErosionVideoStreams } from '../data/mockData'
 import AIDecisionPanel from '../components/decision/AIDecisionPanel.vue'
+import MapActionDock from '../components/layout/MapActionDock.vue'
 import SeawallRiskPanel from '../components/layout/SeawallRiskPanel.vue'
-import HomeMapToolRail from '../components/layout/HomeMapToolRail.vue'
+import MapToolRail from '../components/layout/MapToolRail.vue'
 import LayerControl from '../components/map/LayerControl.vue'
 import DeviceExplorer from '../components/device/DeviceExplorer.vue'
 import MapContainer from '../components/map/MapContainer.vue'
@@ -182,34 +211,40 @@ const pageRootRef = ref(null)
 const leftColumnRef = ref(null)
 const mapRef = ref(null)
 const aiDecisionBlockRef = ref(null)
+const seawallBlockRef = ref(null)
 const deviceBlockRef = ref(null)
 const currentBasemap = ref('satellite')
-const showCameraOverlay = ref(false)
+const showCameraOverlay = ref(true)
 const showLayerPanel = ref(false)
-const showTyphoonPanel = ref(true)
+const showTyphoonPanel = ref(false)
+const showDevicePanel = ref(false)
+const showAIPanel = ref(true)
+const isBrowserFullscreen = ref(false)
 const isBannerHidden = ref(false)
 const legendLeft = ref(0)
 const legendTop = ref(82)
 const selectedDevice = ref(null)
 let previousHomeVesselVisibility = true
+let previousLayerSnapshot = null
 let legendResizeObserver = null
+const basemaps = ['satellite', 'dark', 'street']
 
 const { width: viewportWidth, height: viewportHeight } = useWindowSize()
 
-const coastalStations = [
-  { id: 'C01', stationName: '湛江东海站', status: 'online', mapX: 29.8, mapY: 74.5 },
-  { id: 'C02', stationName: '茂名水东站', status: 'online', mapX: 32.8, mapY: 71.8 },
-  { id: 'C03', stationName: '阳江闸坡站', status: 'online', mapX: 34.8, mapY: 69.2 },
-  { id: 'C04', stationName: '江门台山站', status: 'online', mapX: 36.9, mapY: 66.2 },
-  { id: 'C05', stationName: '珠海香洲站', status: 'online', mapX: 39.1, mapY: 63.7 },
-  { id: 'C06', stationName: '中山横门站', status: 'online', mapX: 40.4, mapY: 62.2 },
-  { id: 'C07', stationName: '深圳蛇口站', status: 'online', mapX: 43.1, mapY: 59.6 },
-  { id: 'C08', stationName: '惠州双月湾站', status: 'online', mapX: 46.7, mapY: 55.4 },
-  { id: 'C09', stationName: '汕尾红海湾站', status: 'online', mapX: 49.8, mapY: 51.3 },
-  { id: 'C10', stationName: '揭阳惠来站', status: 'online', mapX: 52.5, mapY: 46.7 },
-  { id: 'C11', stationName: '潮州柘林站', status: 'online', mapX: 54.2, mapY: 42.5 },
-  { id: 'C12', stationName: '汕头南澳站', status: 'offline', mapX: 56.0, mapY: 39.8 },
-]
+// 海岸观测视频数据（含风险等级、侵蚀速率等）
+const erosionVideoData = mockErosionVideoStreams.map(s => ({
+  id: s.id,
+  stationName: s.stationName,
+  status: s.status,
+  snapshotUrl: s.snapshotUrl,
+  lastUpdate: s.lastUpdate,
+  lat: s.location.lat,
+  lng: s.location.lng,
+  city: s.meta.city,
+  riskLevel: s.riskLevel,
+  erosionRate: s.erosionRate,
+  coastlineChange: s.coastlineChange,
+}))
 
 const dataCompletenessRate = computed(() => {
   const total = store.devices.length
@@ -217,14 +252,14 @@ const dataCompletenessRate = computed(() => {
   return `${Math.round((store.onlineDevices.length / total) * 100)}%`
 })
 
-function resolveHomeColumnWidth(width) {
+function resolveSeaConditionColumnWidth(width) {
   const safeWidth = Number(width) || 0
-  if (safeWidth <= 1440) return Math.min(360, Math.max(300, safeWidth * 0.28))
-  if (safeWidth <= 1680) return Math.min(420, Math.max(320, safeWidth * 0.26))
-  return Math.min(500, Math.max(360, safeWidth * 0.28))
+  if (safeWidth <= 1440) return Math.min(500, Math.max(420, safeWidth * 0.35))
+  if (safeWidth <= 1680) return Math.min(580, Math.max(460, safeWidth * 0.35))
+  return Math.min(680, Math.max(520, safeWidth * 0.35))
 }
 
-const currentColumnWidth = computed(() => Math.round(resolveHomeColumnWidth(viewportWidth.value)))
+const currentColumnWidth = computed(() => Math.round(resolveSeaConditionColumnWidth(viewportWidth.value)))
 const viewportMetrics = computed(() => getHomeViewportMetrics(viewportHeight.value))
 const homeBannerBounds = computed(() =>
   getHomeBannerBounds({
@@ -258,7 +293,7 @@ function updateLegendAnchor() {
   const anchor = getHomeLegendAnchor({
     rootRect,
     leftColumnRect: leftColumnRef.value.getBoundingClientRect(),
-    decisionRect: aiDecisionBlockRef.value?.getBoundingClientRect(),
+    decisionRect: seawallBlockRef.value?.getBoundingClientRect(),
     legendRect,
     leftOffset: 18,
   })
@@ -346,11 +381,17 @@ function handleResetView() {
 }
 
 function handleLocate() {
-  alert('定位功能需要 GPS 接入')
+  return
 }
 
 function handleBasemapChange(basemapId) {
   currentBasemap.value = basemapId
+}
+
+function handleToggleBasemap() {
+  const currentIndex = basemaps.indexOf(currentBasemap.value)
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % basemaps.length : 0
+  handleBasemapChange(basemaps[nextIndex])
 }
 
 function handleToggleMapMode() {
@@ -377,6 +418,44 @@ function closeTyphoonPanel() {
   showTyphoonPanel.value = false
 }
 
+function toggleDevicePanel() {
+  showDevicePanel.value = !showDevicePanel.value
+}
+
+function closeDevicePanel() {
+  showDevicePanel.value = false
+}
+
+function toggleAIPanel() {
+  showAIPanel.value = !showAIPanel.value
+}
+
+function closeAIPanel() {
+  showAIPanel.value = false
+}
+
+function toggleLayerFlag(layerId) {
+  store.setLayerVisibility(layerId, !store.layerVisibility[layerId])
+}
+
+function syncFullscreenState() {
+  isBrowserFullscreen.value = document.fullscreenElement === pageRootRef.value
+}
+
+async function handleToggleFullscreen() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+      return
+    }
+    await pageRootRef.value?.requestFullscreen?.()
+  } catch (error) {
+    console.error('Failed to toggle fullscreen:', error)
+  } finally {
+    syncFullscreenState()
+  }
+}
+
 function handleScroll() {
   const scrollTop = window.scrollY || document.documentElement.scrollTop || 0
   isBannerHidden.value = scrollTop > 12
@@ -388,32 +467,59 @@ onMounted(() => {
 
     store.setMapMode(HOME_DEFAULT_MAP_MODE)
     previousHomeVesselVisibility = Boolean(store.layerVisibility.vessels)
-    store.setLayerVisibility('vessels', false)
+
+    // 保存进入页面前的图层状态快照
+    previousLayerSnapshot = { ...store.layerVisibility }
+
+    // 风浪潮页面默认只显示风暴潮核定站 + 海岸观测站点
+    const seaConditionLayers = {
+      // 保持开启
+      coastal_stations: false,
+      coastal_base: false,
+      tide_stations: false,
+      surge_stations: true,
+      erosion_monitor: true,
+      // 关闭
+      buoys: false,
+      wave_buoy: false,
+      anchor_buoy: false,
+      disposable_buoy: false,
+      argo_buoy: false,
+      smart_marker: false,
+      uav: false,
+      usv: false,
+      vessels: false,
+    }
+    Object.entries(seaConditionLayers).forEach(([key, val]) => {
+      store.setLayerVisibility(key, val)
+    })
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
+    document.addEventListener('fullscreenchange', syncFullscreenState)
+    syncFullscreenState()
     nextTick(updateLegendAnchor)
 
     legendResizeObserver = new ResizeObserver(() => updateLegendAnchor())
     if (leftColumnRef.value) {
       legendResizeObserver.observe(leftColumnRef.value)
     }
-    if (aiDecisionBlockRef.value) {
-      legendResizeObserver.observe(aiDecisionBlockRef.value)
-    }
-    if (deviceBlockRef.value) {
-      legendResizeObserver.observe(deviceBlockRef.value)
+    if (seawallBlockRef.value) {
+      legendResizeObserver.observe(seawallBlockRef.value)
     }
 
-    // Auto-select first device
-    if (store.devices.length > 0) {
-      selectedDevice.value = store.devices[0]
-    }
+    // Do not auto-select device on 风浪潮 page
   })()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll)
-  store.setLayerVisibility('vessels', previousHomeVesselVisibility)
+  document.removeEventListener('fullscreenchange', syncFullscreenState)
+  // 恢复图层状态
+  if (previousLayerSnapshot) {
+    Object.entries(previousLayerSnapshot).forEach(([key, val]) => {
+      store.setLayerVisibility(key, val)
+    })
+  }
   legendResizeObserver?.disconnect()
   legendResizeObserver = null
 })
@@ -432,7 +538,7 @@ watch([viewportWidth, viewportHeight], () => {
   --home-banner-side-gutter: 24px;
   --toolbar-gap: 10px;
   --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));
-  --tool-rail-safe-right: calc(12px + var(--home-column-width) + var(--toolbar-gap));
+  --tool-rail-safe-right: 12px;
   --map-safe-bottom: auto;
 }
 
@@ -506,6 +612,10 @@ watch([viewportWidth, viewportHeight], () => {
   overflow-x: hidden;
 }
 
+.left-column {
+  width: var(--home-column-width);
+}
+
 .column::-webkit-scrollbar {
   width: 4px;
 }
@@ -533,6 +643,11 @@ watch([viewportWidth, viewportHeight], () => {
   min-height: 0;
 }
 
+.left-column .column-block {
+  margin: 10px 12px 12px;
+  border-radius: 12px;
+}
+
 .warning-block {
   flex: 0 0 auto;
 }
@@ -555,13 +670,6 @@ watch([viewportWidth, viewportHeight], () => {
   min-height: 0;
   min-block-size: var(--home-seawall-panel-min-height);
   overflow: hidden;
-}
-
-.coast-block {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  margin-bottom: 10px;
 }
 
 .ai-decision-body {
@@ -588,11 +696,22 @@ watch([viewportWidth, viewportHeight], () => {
   flex-shrink: 0;
 }
 
+.left-column .block-title {
+  height: 44px;
+  gap: 8px;
+  padding: 0 14px;
+  font-size: 18px;
+}
+
 .block-body {
   flex: 1 1 auto;
   min-height: 0;
   padding: 8px;
   overflow: hidden;
+}
+
+.left-column .block-body {
+  padding: 12px;
 }
 
 .warning-body {
@@ -634,6 +753,88 @@ watch([viewportWidth, viewportHeight], () => {
 .seawall-body :deep(.seawall-risk-panel) {
   flex: 1;
   min-height: 0;
+}
+
+.seawall-body :deep(.risk-stats) {
+  gap: 10px;
+}
+
+.seawall-body :deep(.stat) {
+  gap: 4px;
+  padding: 10px 8px;
+}
+
+.seawall-body :deep(.stat-value) {
+  font-size: 24px;
+}
+
+.seawall-body :deep(.stat-label) {
+  font-size: 15px;
+}
+
+.seawall-body :deep(.filter-bar) {
+  gap: 10px;
+}
+
+.seawall-body :deep(.filter-select) {
+  height: 34px;
+  padding-left: 10px;
+  padding-right: 24px;
+  font-size: 14px;
+}
+
+.seawall-body :deep(.pill) {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.seawall-body :deep(.breakpoint-list) {
+  gap: 10px;
+}
+
+.seawall-body :deep(.bp-row) {
+  padding: 14px;
+  gap: 10px;
+}
+
+.seawall-body :deep(.bp-name) {
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.seawall-body :deep(.bp-city) {
+  font-size: 14px;
+}
+
+.seawall-body :deep(.bp-city i) {
+  font-size: 13px;
+}
+
+.seawall-body :deep(.bp-risk-tag) {
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+.seawall-body :deep(.bp-metrics) {
+  gap: 10px;
+}
+
+.seawall-body :deep(.metric) {
+  gap: 4px;
+}
+
+.seawall-body :deep(.metric-label) {
+  font-size: 14px;
+}
+
+.seawall-body :deep(.metric-value) {
+  font-size: 18px;
+}
+
+.seawall-body :deep(.empty-hint) {
+  padding: 28px 0;
+  font-size: 15px;
 }
 
 .stats-row {
@@ -679,18 +880,6 @@ watch([viewportWidth, viewportHeight], () => {
 
 
 
-.coast-body {
-  display: flex;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.coast-body :deep(.coastal-panel) {
-  flex: 1;
-  height: 100%;
-  min-height: 0;
-}
-
 .home-map :deep(.map-legend-wrapper) {
   z-index: 1150;
 }
@@ -701,13 +890,59 @@ watch([viewportWidth, viewportHeight], () => {
 
 .warning-body :deep(.panel-title) {
   font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
   color: var(--text-primary);
 }
 
+.warning-body :deep(.panel-header) {
+  padding: 16px 16px 10px;
+}
+
+.warning-body :deep(.panel-content) {
+  padding: 0 16px 16px 16px;
+}
+
+.warning-body :deep(.alert-card) {
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.warning-body :deep(.alert-icon) {
+  width: 52px;
+  height: 52px;
+}
+
+.warning-body :deep(.alert-title) {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.warning-body :deep(.alert-time-row) {
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.warning-body :deep(.alert-time) {
+  font-size: 14px;
+}
+
 .warning-body :deep(.alert-valid) {
+  font-size: 14px;
   color: var(--text-secondary);
+}
+
+.warning-body :deep(.alerts-more) {
+  font-size: 13px;
+  padding-top: 10px;
+}
+
+.warning-body :deep(.history-entry) {
+  padding: 12px 14px;
+  font-size: 14px;
 }
 
 .device-body :deep(.reset-btn) {
@@ -753,8 +988,8 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-layer-panel {
-  width: 320px;
-  max-height: min(72vh, 680px);
+  width: 400px;
+  max-height: min(78vh, 760px);
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.58);
@@ -783,16 +1018,16 @@ watch([viewportWidth, viewportHeight], () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 12px;
+  padding: 18px 20px 16px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .tool-rail-layer-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #0f172a;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -802,10 +1037,10 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-layer-close {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 9px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.7);
   color: #64748b;
   display: inline-flex;
@@ -822,25 +1057,52 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-layer-content {
-  padding: 10px 14px 14px;
+  padding: 16px 18px 18px;
   overflow-y: auto;
 }
 
 .tool-rail-layer-content :deep(.layer-tree-scroll) {
-  max-height: min(58vh, 560px);
-  padding-right: 2px;
+  max-height: min(64vh, 640px);
+  padding-right: 4px;
+}
+
+.tool-rail-layer-content :deep(.layer-group) {
+  margin-bottom: 10px;
 }
 
 .tool-rail-layer-content :deep(.layer-group-header) {
   color: #334155;
+  font-size: 16px;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.tool-rail-layer-content :deep(.layer-group-header i) {
+  font-size: 12px;
+}
+
+.tool-rail-layer-content :deep(.layer-group-content) {
+  padding-left: 18px;
 }
 
 .tool-rail-layer-content :deep(.layer-item) {
   color: #475569;
+  font-size: 15px;
+  gap: 10px;
+  padding: 8px 0;
 }
 
 .tool-rail-layer-content :deep(.layer-item.parent) {
   color: #1e293b;
+}
+
+.tool-rail-layer-content :deep(.layer-item.child) {
+  font-size: 14px;
+}
+
+.tool-rail-layer-content :deep(.layer-item input[type="checkbox"]) {
+  width: 18px;
+  height: 18px;
 }
 
 .tool-rail-layer-content :deep(.layer-item:hover) {
@@ -867,8 +1129,8 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-typhoon-panel {
-  width: 300px;
-  max-height: min(72vh, 680px);
+  width: 420px;
+  max-height: min(78vh, 760px);
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.58);
@@ -897,16 +1159,16 @@ watch([viewportWidth, viewportHeight], () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px 12px;
+  padding: 18px 20px 16px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .tool-rail-typhoon-title {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #0f172a;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -916,10 +1178,10 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-typhoon-close {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 9px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.7);
   color: #64748b;
   display: inline-flex;
@@ -936,9 +1198,9 @@ watch([viewportWidth, viewportHeight], () => {
 }
 
 .tool-rail-typhoon-content {
-  padding: 10px 14px 14px;
+  padding: 16px 18px 18px;
   overflow-y: auto;
-  max-height: min(62vh, 600px);
+  max-height: min(68vh, 680px);
 }
 
 .tool-rail-typhoon-content :deep(.typhoon-info-panel.embedded) {
@@ -952,21 +1214,401 @@ watch([viewportWidth, viewportHeight], () => {
   padding: 0;
 }
 
+.tool-rail-typhoon-content :deep(.embedded .typhoon-name) {
+  font-size: 22px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .typhoon-id) {
+  font-size: 16px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .typhoon-id-meta) {
+  font-size: 14px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .info-item .label) {
+  font-size: 14px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .info-item .value) {
+  font-size: 18px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .info-item .big) {
+  font-size: 24px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .summary-card-header) {
+  font-size: 14px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .summary-row-label) {
+  font-size: 14px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .summary-row-value) {
+  font-size: 18px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .history-ref-summary) {
+  padding: 14px 16px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .impact-item) {
+  min-height: 72px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .brief-item) {
+  font-size: 14px;
+}
+
+.tool-rail-typhoon-content :deep(.embedded .stat-row) {
+  font-size: 14px;
+}
+
+/* ── Device Panel (tool-rail popup) ── */
+.tool-rail-device-shell {
+  position: fixed;
+  top: 150px;
+  right: calc(var(--tool-rail-safe-right) + 68px);
+  z-index: 1243;
+  pointer-events: auto;
+}
+
+.tool-rail-device-panel {
+  width: 440px;
+  max-height: min(78vh, 760px);
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 246, 250, 0.62));
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.tool-rail-device-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(22, 163, 74, 0.82), transparent);
+  opacity: 0.96;
+}
+
+.tool-rail-device-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tool-rail-device-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tool-rail-device-title i {
+  color: #16a34a;
+}
+
+.tool-rail-device-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.tool-rail-device-close:hover {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(254, 242, 242, 0.92);
+  color: #dc2626;
+}
+
+.tool-rail-device-stats {
+  padding: 14px 18px 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.tool-rail-device-stats .stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+}
+
+.tool-rail-device-stats .stat-card {
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-rail-device-stats .stat-card .label {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.tool-rail-device-stats .stat-card .value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tool-rail-device-stats .stat-card .value.online { color: #16a34a; }
+.tool-rail-device-stats .stat-card .value.warn { color: #ef4444; }
+.tool-rail-device-stats .stat-card .value.completeness { color: #2563eb; }
+
+.tool-rail-device-content {
+  padding: 14px 18px 18px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  max-height: min(58vh, 560px);
+}
+
+.tool-rail-device-content :deep(.device-explorer) {
+  min-height: 0;
+}
+
+.tool-rail-device-content :deep(.reset-btn) {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.tool-rail-device-content :deep(.reset-btn:hover) {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--text-primary);
+}
+
+.tool-rail-device-content :deep(.status-btn) {
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 10px 0;
+  border-radius: 10px;
+}
+
+.tool-rail-device-content :deep(.status-btn.active) {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.tool-rail-device-content :deep(.device-item) {
+  padding: 14px 14px 14px 16px;
+  border-radius: 12px;
+}
+
+.tool-rail-device-content :deep(.device-name) {
+  font-size: 16px;
+}
+
+.tool-rail-device-content :deep(.device-type-chip) {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.tool-rail-device-content :deep(.metric-chip) {
+  padding: 6px 10px;
+}
+
+.tool-rail-device-content :deep(.metric-label) {
+  font-size: 12px;
+}
+
+.tool-rail-device-content :deep(.metric-value) {
+  font-size: 14px;
+}
+
+.tool-rail-device-content :deep(.status-dot) {
+  width: 10px;
+  height: 10px;
+}
+
+.tool-rail-device-content :deep(.empty-state) {
+  font-size: 14px;
+}
+
+.tool-rail-device-content :deep(.device-list::-webkit-scrollbar-thumb) {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.tool-rail-device-content :deep(.device-item.selected) {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+/* ── AI Decision Panel (tool-rail popup) ── */
+.tool-rail-ai-shell {
+  position: fixed;
+  top: 150px;
+  right: calc(var(--tool-rail-safe-right) + 68px);
+  z-index: 1242;
+  pointer-events: auto;
+}
+
+.tool-rail-ai-panel {
+  width: 500px;
+  max-height: min(80vh, 780px);
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(243, 246, 250, 0.62));
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.tool-rail-ai-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.82), transparent);
+  opacity: 0.96;
+}
+
+.tool-rail-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.tool-rail-ai-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tool-rail-ai-title i {
+  color: #8b5cf6;
+}
+
+.tool-rail-ai-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.tool-rail-ai-close:hover {
+  border-color: rgba(239, 68, 68, 0.18);
+  background: rgba(254, 242, 242, 0.92);
+  color: #dc2626;
+}
+
+.tool-rail-ai-content {
+  padding: 0;
+  overflow-y: auto;
+  max-height: min(72vh, 700px);
+}
+
+.tool-rail-ai-content :deep(.ai-decision-panel) {
+  height: auto;
+  min-height: 0;
+}
+
+.tool-rail-ai-content :deep(.ai-hero-row) {
+  padding: 18px 18px 14px;
+}
+
+.tool-rail-ai-content :deep(.ai-hero-title) {
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.tool-rail-ai-content :deep(.summary-messages) {
+  gap: 14px;
+}
+
+.tool-rail-ai-content :deep(.summary-bubble) {
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.tool-rail-ai-content :deep(.bubble-icon) {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+}
+
+.tool-rail-ai-content :deep(.bubble-content) {
+  font-size: 17px;
+}
+
+.tool-rail-ai-content :deep(.bubble-tag) {
+  font-size: 15px;
+}
+
+.tool-rail-ai-content :deep(.ai-disclaimer) {
+  font-size: 13px;
+}
+
+.tool-rail-ai-content :deep(.chat-input) {
+  height: 46px;
+  font-size: 15px;
+}
+
+.tool-rail-ai-content :deep(.chat-send-btn) {
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+}
+
 @media (max-width: 1680px) {
   .home-page {
     --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));
-    --tool-rail-safe-right: calc(12px + var(--home-column-width) + var(--toolbar-gap));
   }
 }
 
 @media (max-width: 1440px) {
   .home-page {
     --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));
-    --tool-rail-safe-right: calc(12px + var(--home-column-width) + var(--toolbar-gap));
   }
 
   .tool-rail-layer-panel {
-    width: 300px;
+    width: 360px;
   }
 }
 </style>

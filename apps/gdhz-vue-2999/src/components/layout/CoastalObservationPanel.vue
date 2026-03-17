@@ -11,11 +11,10 @@
           class="mini-video"
           :style="{ backgroundImage: `url(/images/coastal/${item.id}.png)` }"
         >
-          <div class="status-tag" :class="item.status">
+          <div class="name-overlay">
             <span class="state-dot" :class="item.status"></span>
-            <span>{{ item.status === 'online' ? '在线' : '离线' }}</span>
+            <span class="station-name">{{ item.stationName }}</span>
           </div>
-          <div class="name-overlay">{{ item.stationName }}</div>
         </div>
       </div>
     </div>
@@ -97,29 +96,10 @@ const panelStyle = computed(() => ({
   background-color: rgba(5, 15, 31, 0.92);
 }
 
-.status-tag {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  border-radius: 10px;
-  padding: 2px 6px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #d7f3e2;
-  background: rgba(1, 20, 11, 0.66);
-}
-
-.status-tag.offline {
-  color: #d7dce7;
-  background: rgba(16, 20, 30, 0.66);
-}
-
 .state-dot {
   width: 7px;
   height: 7px;
+  flex: 0 0 7px;
   border-radius: 50%;
 }
 
@@ -137,11 +117,17 @@ const panelStyle = computed(() => ({
   left: 0;
   right: 0;
   bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 14px 7px 4px;
   font-size: 12px;
   font-weight: 700;
   color: #e8f4ff;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75));
+}
+
+.station-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
