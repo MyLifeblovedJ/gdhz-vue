@@ -6,7 +6,8 @@ export const navItems = [
     path: '/sea-condition',
     children: [
       { key: 'overflow-risk', label: '漫堤风险' },
-      { key: 'impact-assessment', label: '影响评估' },
+      { key: 'sea-risk', label: '海上风险' },
+      { key: 'impact-assessment', label: '决策辅助' },
       { key: 'emergency-evacuation', label: '应急疏散' },
       { key: 'emergency-plan', label: '应急方案' },
     ],

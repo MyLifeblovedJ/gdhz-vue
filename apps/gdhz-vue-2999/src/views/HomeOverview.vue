@@ -89,7 +89,7 @@
           <div class="column-block seawall-block">
             <div class="block-title"><i class="fa-solid fa-shield-halved"></i> 海堤风险</div>
             <div class="block-body seawall-body">
-              <SeawallRiskPanel />
+              <SeawallRiskPanel @station-click="handleDeviceClick" />
             </div>
           </div>
         </section>

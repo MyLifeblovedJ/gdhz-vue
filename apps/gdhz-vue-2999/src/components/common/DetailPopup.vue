@@ -27,14 +27,33 @@
                 <span class="info-label">类型</span>
                 <span class="info-text">{{ device.typeName }}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">编号</span>
-                <span class="info-text">{{ device.id }}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">坐标</span>
-                <span class="info-text">{{ device.lat.toFixed(4) }}, {{ device.lng.toFixed(4) }}</span>
-              </div>
+              <!-- 风暴潮核定站：显示预计最高潮位和出现时间 -->
+              <template v-if="device.type === 'surge_station' && device.forecastPeakValue != null">
+                <div class="info-row">
+                  <span class="info-label">预计最高潮位</span>
+                  <span class="info-text">
+                    {{ device.forecastPeakValue }}{{ device.forecastPeakUnit || '' }}
+                    <span class="tide-type-tag" :class="device.tideType === 'storm' ? 'storm' : 'astro'">
+                      {{ device.tideType === 'storm' ? '风暴潮' : '天文潮' }}
+                    </span>
+                  </span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">出现时间</span>
+                  <span class="info-text">{{ device.peakTime || '--' }}</span>
+                </div>
+              </template>
+              <!-- 其他设备：显示编号和坐标 -->
+              <template v-else>
+                <div class="info-row">
+                  <span class="info-label">编号</span>
+                  <span class="info-text">{{ device.id }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">坐标</span>
+                  <span class="info-text">{{ device.lat.toFixed(4) }}, {{ device.lng.toFixed(4) }}</span>
+                </div>
+              </template>
               <div class="info-row">
                 <span class="info-label">更新</span>
                 <span class="info-text">{{ formatTime(device.lastUpdate) }}</span>
@@ -270,10 +289,10 @@ watch(selectedElement, () => {
 <style scoped>
 .detail-popup {
   position: fixed;
-  bottom: 26px;
+  bottom: var(--detail-popup-bottom, 26px);
   left: var(--toolbar-safe-left, 460px);
-  right: var(--tool-rail-safe-right, 460px);
-  z-index: 1500;
+  right: var(--detail-popup-right, var(--tool-rail-safe-right, 460px));
+  z-index: 1290;
   pointer-events: auto;
 }
 
@@ -435,6 +454,26 @@ watch(selectedElement, () => {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.tide-type-tag {
+  display: inline-flex;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.tide-type-tag.storm {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.tide-type-tag.astro {
+  color: #0369a1;
+  background: rgba(14, 165, 233, 0.12);
 }
 
 .device-status-text {

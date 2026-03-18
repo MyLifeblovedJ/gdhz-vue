@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .station-glass-wrap {
   position: fixed;
-  z-index: 1600;
+  z-index: 1280;
   transform: translate(-50%, calc(-50% - 20px));
   pointer-events: none;
 }

@@ -1,83 +1,85 @@
-﻿<template>
+<template>
   <header class="app-header">
-    <div class="header-brand">
-      <div class="brand-logo" aria-hidden="true">
-        <svg viewBox="0 0 48 48" class="logo-svg">
-          <rect x="4" y="4" width="40" height="40" rx="14" fill="#ffffff" stroke="rgba(15, 23, 42, 0.1)" />
-          <path d="M13 18h22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M13 25c3.2 0 3.2-2 6.3-2s3.2 2 6.4 2 3.2-2 6.4-2 3.2 2 6.4 2" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M13 31h14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
-        </svg>
+    <div class="header-surface" :class="{ 'is-expanded': isMegaMenuOpen }" @mouseleave="closeMegaMenu">
+      <div class="header-top-row">
+      <div class="header-brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 48 48" class="logo-svg">
+            <rect x="4" y="4" width="40" height="40" rx="14" fill="#ffffff" stroke="rgba(15, 23, 42, 0.1)" />
+            <path d="M13 18h22" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M13 25c3.2 0 3.2-2 6.3-2s3.2 2 6.4 2 3.2-2 6.4-2 3.2 2 6.4 2" fill="none" stroke="#334155" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M13 31h14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">广东省海洋灾害综合决策系统</span>
+          <span class="brand-subtitle">Ocean Disaster Decision System</span>
+        </div>
       </div>
-      <div class="brand-text">
-        <span class="brand-title">广东省海洋灾害综合决策系统</span>
-        <span class="brand-subtitle">Ocean Disaster Decision System</span>
-      </div>
-    </div>
 
-    <div
-      class="header-nav-area"
-      @mouseenter="openMegaMenu"
-      @mouseleave="closeMegaMenu"
-    >
-      <nav class="header-nav" aria-label="主导航">
-        <router-link
-          v-for="item in navItems"
-          :key="item.key"
-          :to="item.path"
-          class="nav-btn"
-          :class="{ active: currentPage === item.key }"
-          :title="item.label"
-        >
-          <i v-if="item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
-          <span class="nav-text">{{ item.label }}</span>
-        </router-link>
-      </nav>
-
-      <Transition name="mega-menu">
-        <div v-if="isMegaMenuOpen" class="mega-menu">
-          <div class="mega-menu-grid">
-            <section
-              v-for="section in navMegaSections"
-              :key="section.key"
-              class="mega-menu-section"
+      <div class="header-nav-area">
+        <div class="nav-shell">
+          <nav class="header-nav" :style="navGridStyle" aria-label="主导航">
+            <router-link
+              v-for="item in navItems"
+              :key="item.key"
+              :to="item.path"
+              class="nav-btn"
+              :class="{ active: currentPage === item.key }"
+              :title="item.label"
+              @mouseenter="openMegaMenu(item.key)"
             >
-              <router-link :to="section.path" class="mega-menu-heading">
-                {{ section.label }}
-              </router-link>
-              <div class="mega-menu-links">
-                <router-link
-                  v-for="child in section.children"
-                  :key="child.key"
-                  :to="buildSubmenuLocation(section, child)"
-                  class="mega-menu-link"
-                  :class="{ active: isSubmenuActive(section, child) }"
-                >
-                  {{ child.label }}
-                </router-link>
-              </div>
-            </section>
-          </div>
-        </div>
-      </Transition>
-    </div>
+              <i v-if="item.icon" :class="['nav-icon', item.icon]" aria-hidden="true"></i>
+              <span class="nav-text">{{ item.label }}</span>
+            </router-link>
+          </nav>
 
-    <div class="header-tools">
-      <div class="tool-datetime">
-        <div class="dt-clock">
-          <i class="fa-regular fa-clock"></i>
-          <span>{{ formattedTime }}</span>
+          <Transition name="mega-menu">
+            <div v-if="isMegaMenuOpen" class="mega-menu-band">
+              <div class="mega-menu-grid" :style="navGridStyle">
+                <section
+                  v-for="item in navItems"
+                  :key="`${item.key}-submenu`"
+                  class="mega-menu-section"
+                  :class="{ highlighted: hoveredKey === item.key }"
+                >
+                  <div v-if="item.children?.length" class="mega-menu-links">
+                    <router-link
+                      v-for="child in item.children"
+                      :key="child.key"
+                      :to="buildSubmenuLocation(item, child)"
+                      class="mega-menu-link"
+                      :class="{ active: isSubmenuActive(item, child) }"
+                    >
+                      {{ child.label }}
+                    </router-link>
+                  </div>
+                  <div v-else class="mega-menu-placeholder" aria-hidden="true"></div>
+                </section>
+              </div>
+            </div>
+          </Transition>
         </div>
-        <div class="dt-date">{{ formattedDate }}</div>
       </div>
 
-      <div class="tool-divider" aria-hidden="true"></div>
+      <div class="header-tools">
+        <div class="tool-datetime">
+          <div class="dt-clock">
+            <i class="fa-regular fa-clock"></i>
+            <span>{{ formattedTime }}</span>
+          </div>
+          <div class="dt-date">{{ formattedDate }}</div>
+        </div>
 
-      <div class="tool-weather" :title="weatherLocation">
-        <i :class="weatherIcon"></i>
-        <div class="weather-info">
-          <span class="weather-temp">{{ weatherTemp }}</span>
-          <span class="weather-desc">{{ weatherText }}</span>
+        <div class="tool-divider" aria-hidden="true"></div>
+
+        <div class="tool-weather" :title="weatherLocation">
+          <i :class="weatherIcon"></i>
+          <div class="weather-info">
+            <span class="weather-temp">{{ weatherTemp }}</span>
+            <span class="weather-desc">{{ weatherText }}</span>
+          </div>
+          </div>
         </div>
       </div>
     </div>
@@ -88,13 +90,19 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../../stores/app'
-import { navItems, navMegaSections } from '../../data/navigation'
+import { navItems } from '../../data/navigation'
+
+const emit = defineEmits(['mega-menu-toggle'])
 
 const route = useRoute()
 const store = useAppStore()
 const currentPage = computed(() => store.currentPage)
 const currentSubKey = computed(() => typeof route.query.sub === 'string' ? route.query.sub : '')
 const isMegaMenuOpen = ref(false)
+const hoveredKey = ref('')
+const navGridStyle = computed(() => ({
+  '--nav-column-count': navItems.length,
+}))
 
 const now = ref(new Date())
 let timer = null
@@ -187,24 +195,29 @@ const formattedDate = computed(() => {
   return `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
 })
 
-function openMegaMenu() {
-  if (!navMegaSections.length) return
+function openMegaMenu(key) {
+  hoveredKey.value = key
+  if (isMegaMenuOpen.value) return
   isMegaMenuOpen.value = true
+  emit('mega-menu-toggle', true)
 }
 
 function closeMegaMenu() {
+  if (!isMegaMenuOpen.value) return
   isMegaMenuOpen.value = false
+  hoveredKey.value = ''
+  emit('mega-menu-toggle', false)
 }
 
-function buildSubmenuLocation(section, child) {
+function buildSubmenuLocation(item, child) {
   return {
-    path: section.path,
+    path: item.path,
     query: { sub: child.key },
   }
 }
 
-function isSubmenuActive(section, child) {
-  return currentPage.value === section.key && currentSubKey.value === child.key
+function isSubmenuActive(item, child) {
+  return currentPage.value === item.key && currentSubKey.value === child.key
 }
 
 onMounted(() => {
@@ -224,25 +237,53 @@ onUnmounted(() => {
 
 <style scoped>
 .app-header {
-  height: 92px;
+  --header-collapsed-height: 92px;
+  --header-expanded-height: 340px;
+  height: var(--header-collapsed-height);
   flex-shrink: 0;
   z-index: 1300;
-  background: #ffffff;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 36px;
-  padding: 0 28px;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
+  overflow: visible;
+}
+
+.header-surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-collapsed-height);
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px) saturate(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(1.04);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+  transition: height 0.26s ease, box-shadow 0.26s ease, background 0.26s ease;
+}
+
+.header-surface.is-expanded {
+  height: var(--header-expanded-height);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+}
+
+.header-top-row {
+  min-height: var(--header-collapsed-height);
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 1080px) minmax(max-content, 1fr);
+  align-items: center;
+  gap: 36px;
+  padding: 0 28px;
+  flex-shrink: 0;
 }
 
 .header-brand {
   display: flex;
   align-items: center;
+  justify-self: start;
   gap: 20px;
   flex-shrink: 0;
   min-width: 0;
@@ -277,24 +318,29 @@ onUnmounted(() => {
   display: none;
 }
 
-.header-nav {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 36px;
+.header-nav-area {
   min-width: 0;
+  display: flex;
+  justify-content: center;
 }
 
-.header-nav-area {
+.nav-shell {
   position: relative;
-  min-width: 0;
-  display: flex;
-  justify-content: center;
+  width: 100%;
+}
+
+.header-nav {
+  display: grid;
+  grid-template-columns: repeat(var(--nav-column-count), minmax(0, 1fr));
+  column-gap: 20px;
+  align-items: center;
+  width: 100%;
 }
 
 .nav-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   color: rgba(15, 23, 42, 0.82);
   text-decoration: none;
@@ -333,45 +379,40 @@ onUnmounted(() => {
   transition: font-size 0.18s ease, font-weight 0.18s ease;
 }
 
-.mega-menu {
+.mega-menu-band {
   position: absolute;
-  top: calc(100% + 16px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(1120px, calc(100vw - 64px));
-  padding: 24px 28px 26px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.14);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .mega-menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(var(--nav-column-count), minmax(0, 1fr));
+  column-gap: 20px;
+  align-items: start;
+  padding-top: 4px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .mega-menu-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   min-width: 0;
-}
-
-.mega-menu-heading {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-  text-decoration: none;
+  padding-top: 2px;
+  text-align: center;
 }
 
 .mega-menu-links {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
+}
+
+.mega-menu-placeholder {
+  min-height: 1px;
 }
 
 .mega-menu-link {
@@ -387,26 +428,39 @@ onUnmounted(() => {
   transition: color 0.18s ease, transform 0.18s ease;
 }
 
-.mega-menu-link:hover,
-.mega-menu-link.active {
+.mega-menu-link:hover {
   color: #0f172a;
   transform: translateX(2px);
 }
 
-.mega-menu-enter-active,
-.mega-menu-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+.mega-menu-link.active {
+  transform: translateX(2px);
+  position: relative;
 }
 
-.mega-menu-enter-from,
-.mega-menu-leave-to {
-  opacity: 0;
-  transform: translate(-50%, -8px);
+.mega-menu-link.active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #38bdf8;
+  box-shadow: 0 0 4px rgba(56, 189, 248, 0.6);
+}
+
+/* 当前 hover 的主导航对应的子菜单加粗加黑 */
+.mega-menu-section.highlighted .mega-menu-link {
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .header-tools {
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 14px;
   flex-shrink: 0;
 }
@@ -467,9 +521,23 @@ onUnmounted(() => {
   color: var(--text-tertiary);
 }
 
+.mega-menu-enter-active,
+.mega-menu-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.mega-menu-enter-from,
+.mega-menu-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 1440px) {
   .app-header {
-    height: 84px;
+    --header-collapsed-height: 84px;
+    --header-expanded-height: 312px;
+  }
+
+  .header-top-row {
     gap: 24px;
     padding: 0 20px;
   }
@@ -488,12 +556,11 @@ onUnmounted(() => {
   }
 
   .header-nav {
-    gap: 28px;
+    column-gap: 16px;
   }
 
-  .mega-menu {
-    width: min(980px, calc(100vw - 48px));
-    padding: 20px 22px 22px;
+  .mega-menu-grid {
+    column-gap: 16px;
   }
 
   .nav-text {

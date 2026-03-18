@@ -153,10 +153,16 @@
             </div>
           </div>
 
-          <div ref="seawallBlockRef" class="column-block seawall-block">
+          <div v-if="currentSub === 'sea-risk'" ref="seawallBlockRef" class="column-block seawall-block">
+            <div class="block-title"><i class="fa-solid fa-water"></i> 海上风险</div>
+            <div class="block-body seawall-body">
+              <SeaRiskPanel />
+            </div>
+          </div>
+          <div v-else ref="seawallBlockRef" class="column-block seawall-block">
             <div class="block-title"><i class="fa-solid fa-shield-halved"></i> 海堤风险</div>
             <div class="block-body seawall-body">
-              <SeawallRiskPanel />
+              <SeawallRiskPanel @station-click="handleDeviceClick" />
             </div>
           </div>
         </section>
@@ -185,6 +191,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useWindowSize } from '@vueuse/core'
 import { useAppStore } from '../stores/app'
 import { HOME_DEFAULT_MAP_MODE } from '../utils/homeMapMode'
@@ -197,6 +204,7 @@ import { mockErosionVideoStreams } from '../data/mockData'
 import AIDecisionPanel from '../components/decision/AIDecisionPanel.vue'
 import MapActionDock from '../components/layout/MapActionDock.vue'
 import SeawallRiskPanel from '../components/layout/SeawallRiskPanel.vue'
+import SeaRiskPanel from '../components/layout/SeaRiskPanel.vue'
 import MapToolRail from '../components/layout/MapToolRail.vue'
 import LayerControl from '../components/map/LayerControl.vue'
 import DeviceExplorer from '../components/device/DeviceExplorer.vue'
@@ -207,6 +215,8 @@ import DetailPopup from '../components/common/DetailPopup.vue'
 import StationGlassPopup from '../components/map/StationGlassPopup.vue'
 
 const store = useAppStore()
+const route = useRoute()
+const currentSub = computed(() => typeof route.query.sub === 'string' ? route.query.sub : '')
 const pageRootRef = ref(null)
 const leftColumnRef = ref(null)
 const mapRef = ref(null)
@@ -539,6 +549,7 @@ watch([viewportWidth, viewportHeight], () => {
   --toolbar-gap: 10px;
   --toolbar-safe-left: calc(12px + var(--home-column-width) + var(--toolbar-gap));
   --tool-rail-safe-right: 12px;
+  --detail-popup-right: 550px;
   --map-safe-bottom: auto;
 }
 
@@ -835,6 +846,24 @@ watch([viewportWidth, viewportHeight], () => {
 .seawall-body :deep(.empty-hint) {
   padding: 28px 0;
   font-size: 15px;
+}
+
+.sea-risk-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 200px;
+  color: var(--text-tertiary, #94a3b8);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sea-risk-placeholder i {
+  font-size: 32px;
+  opacity: 0.5;
 }
 
 .stats-row {

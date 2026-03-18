@@ -1,7 +1,10 @@
 <template>
   <div class="app-container">
-    <AppHeader />
-    <!-- AlertBanner 移至各页面内部控制，实现方案B布局 -->
+    <AppHeader @mega-menu-toggle="handleMegaMenuToggle" />
+    <Transition name="app-backdrop">
+      <div v-if="isMegaMenuOpen" class="app-backdrop"></div>
+    </Transition>
+    <!-- AlertBanner 绉昏嚦鍚勯〉闈㈠唴閮ㄦ帶鍒讹紝瀹炵幇鏂规B甯冨眬 -->
     <main class="app-view">
       <router-view v-slot="{ Component, route }">
         <Transition :name="transitionName" mode="out-in">
@@ -19,12 +22,17 @@ import AppHeader from './components/layout/AppHeader.vue'
 
 const store = useAppStore()
 
-// 页面切换动画名称
+// 椤甸潰鍒囨崲鍔ㄧ敾鍚嶇О
 const transitionName = ref('page-fade')
+const isMegaMenuOpen = ref(false)
 let clockTimer = null
 
+function handleMegaMenuToggle(nextState) {
+  isMegaMenuOpen.value = Boolean(nextState)
+}
+
 onMounted(() => {
-  // 启动时钟
+  // 鍚姩鏃堕挓
   store.updateCurrentTime()
   clockTimer = setInterval(() => {
     store.updateCurrentTime()
@@ -40,7 +48,7 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* 全局样式已在 main.js 中导入 */
+/* 鍏ㄥ眬鏍峰紡宸插湪 main.js 涓鍏?*/
 
 .app-container {
   position: relative;
@@ -55,15 +63,37 @@ onUnmounted(() => {
   height: 100%;
 }
 
+.app-backdrop {
+  position: fixed;
+  top: 92px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1299;
+  background: rgba(248, 250, 252, 0.38);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
 .app-header {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 900;
+  z-index: 1300;
 }
 
-/* 页面淡入淡出动画 - 快速切换减少黑屏感知 */
+.app-backdrop-enter-active,
+.app-backdrop-leave-active {
+  transition: opacity 0.22s ease;
+}
+
+.app-backdrop-enter-from,
+.app-backdrop-leave-to {
+  opacity: 0;
+}
+
+/* 椤甸潰娣″叆娣″嚭鍔ㄧ敾 - 蹇€熷垏鎹㈠噺灏戦粦灞忔劅鐭?*/
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.1s ease-out;
@@ -74,7 +104,7 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-/* 可选：滑动切换动画 */
+/* 鍙€夛細婊戝姩鍒囨崲鍔ㄧ敾 */
 .page-slide-enter-active,
 .page-slide-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

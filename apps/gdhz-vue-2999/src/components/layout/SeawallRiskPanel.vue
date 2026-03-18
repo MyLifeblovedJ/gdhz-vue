@@ -37,10 +37,15 @@
         <div class="bp-main">
           <span class="bp-name">
             <span class="bp-title">{{ bp.seawallName }} · {{ bp.name }}</span>
-            <span class="bp-city">
-              <i class="fa-solid fa-location-dot"></i>
-              {{ bp.city }}
-            </span>
+            <button
+              v-if="bp.stationId"
+              class="bp-station-btn"
+              type="button"
+              @click.stop="handleStationClick(bp)"
+            >
+              <i class="fa-solid fa-tower-observation"></i>
+              {{ bp.stationName }}
+            </button>
           </span>
           <span class="bp-risk-tag" :class="bp.riskCls">{{ bp.riskText }}</span>
         </div>
@@ -52,6 +57,10 @@
           <div class="metric">
             <span class="metric-label">预测潮位</span>
             <span class="metric-value" :class="{ danger: bp.isOverflow }">{{ bp.forecastTideLevel }}m</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">峰值时间</span>
+            <span class="metric-value">{{ bp.peakTime }}</span>
           </div>
           <div class="metric">
             <span class="metric-label">差值</span>
@@ -73,6 +82,9 @@
 import { computed, ref, watch } from 'vue'
 import { homeMonitoringMockData } from '../../data/homeMonitoringData'
 import { buildSeawallRiskItems, buildSeawallRiskStats } from '../../utils/seawallRisk'
+import { mockDevices } from '../../data/mockData'
+
+const emit = defineEmits(['station-click'])
 
 const allItems = computed(() => buildSeawallRiskItems(homeMonitoringMockData))
 const riskStats = computed(() => buildSeawallRiskStats(allItems.value))
@@ -131,6 +143,28 @@ const filteredItems = computed(() => {
 
   return items
 })
+
+function findMatchingDevice(bp) {
+  // 尝试通过城市名 + 类型匹配 surge_station 设备
+  return mockDevices.find(d =>
+    d.type === 'surge_station' &&
+    d.name?.includes(bp.city?.replace('市', ''))
+  ) || mockDevices.find(d => d.type === 'surge_station') || null
+}
+
+function handleStationClick(bp) {
+  const device = findMatchingDevice(bp)
+  if (device) {
+    // 将海堤断面的预测信息挂载到设备上，供 DetailPopup 使用
+    emit('station-click', {
+      ...device,
+      forecastPeakValue: bp.forecastPeakValue,
+      forecastPeakUnit: bp.forecastPeakUnit,
+      peakTime: bp.peakTime,
+      tideType: bp.stationType === 'surge' ? 'storm' : 'astronomical',
+    })
+  }
+}
 </script>
 
 <style scoped>
@@ -343,6 +377,32 @@ const filteredItems = computed(() => {
   color: var(--text-tertiary);
 }
 
+.bp-station-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(14, 165, 233, 0.06);
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.bp-station-btn:hover {
+  border-color: rgba(14, 165, 233, 0.35);
+  background: rgba(14, 165, 233, 0.14);
+  color: #0284c7;
+}
+
+.bp-station-btn i {
+  font-size: 10px;
+}
+
 .bp-risk-tag {
   flex-shrink: 0;
   padding: 2px 8px;
@@ -368,7 +428,7 @@ const filteredItems = computed(() => {
 
 .bp-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
