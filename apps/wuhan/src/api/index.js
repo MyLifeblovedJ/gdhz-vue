@@ -1,0 +1,203 @@
+﻿/**
+ * 海洋渊听智能管理系统 - API 服务接口
+ * 预留标准化接口，当前使用 Mock 数据，后续可对接真实 API
+ */
+
+import {
+    mockDevices,
+    mockAlerts,
+    mockStats,
+    mockRiskData,
+    mockMarqueeMessages
+} from '../data/mockData'
+import { getMockGeologySamplingPayload } from '../data/geologySamplingMock'
+import { homeMonitoringMockData } from '../data/homeMonitoringData'
+
+// ===== API 基础配置 =====
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+// ===== 模拟网络延迟 =====
+const simulateDelay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms))
+
+const ALERT_LEVEL_WEIGHT = {
+    red: 4,
+    orange: 3,
+    yellow: 2,
+    blue: 1,
+}
+
+function parseAlertTimeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string') return -1
+    const match = timeStr.match(/(\d{1,2}):(\d{2})/)
+    if (!match) return -1
+    const h = Number(match[1])
+    const m = Number(match[2])
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return -1
+    return h * 60 + m
+}
+
+function sortAlertsBySeverity(alerts) {
+    return [...alerts].sort((a, b) => {
+        const wa = ALERT_LEVEL_WEIGHT[a.level] || 0
+        const wb = ALERT_LEVEL_WEIGHT[b.level] || 0
+        if (wb !== wa) return wb - wa
+
+        const ta = parseAlertTimeToMinutes(a.time)
+        const tb = parseAlertTimeToMinutes(b.time)
+        if (tb !== ta) return tb - ta
+
+        return String(a.id || '').localeCompare(String(b.id || ''))
+    })
+}
+
+// ===== 设备相关接口 =====
+export const deviceApi = {
+    /**
+     * 获取设备列表
+     * @param {Object} params - 查询参数
+     * @returns {Promise<Array>} 设备列表
+     */
+    async getDevices(params = {}) {
+        await simulateDelay(200)
+        let devices = [...mockDevices]
+
+        // 按关键词过滤
+        if (params.keyword) {
+            const keyword = params.keyword.toLowerCase()
+            devices = devices.filter(d =>
+                d.name.toLowerCase().includes(keyword) ||
+                d.id.toLowerCase().includes(keyword)
+            )
+        }
+
+        // 按类型过滤
+        if (params.type) {
+            devices = devices.filter(d => d.type === params.type)
+        }
+
+        // 按状态过滤
+        if (params.status) {
+            devices = devices.filter(d => d.status === params.status)
+        }
+
+        return devices
+    },
+
+    /**
+     * 获取设备详情
+     * @param {string} deviceId - 设备ID
+     * @returns {Promise<Object>} 设备详情
+     */
+    async getDeviceById(deviceId) {
+        await simulateDelay(100)
+        return mockDevices.find(d => d.id === deviceId) || null
+    },
+
+    /**
+     * 获取设备统计
+     * @returns {Promise<Object>} 统计数据
+     */
+    async getDeviceStats() {
+        await simulateDelay(150)
+        return { ...mockStats }
+    },
+}
+
+// ===== 预警相关接口 =====
+export const alertApi = {
+    /**
+     * 获取预警列表
+     * @param {Object} params - 查询参数
+     * @returns {Promise<Array>} 预警列表
+     */
+    async getAlerts(params = {}) {
+        await simulateDelay(200)
+        let alerts = [...mockAlerts]
+
+        // 按类型过滤
+        if (params.type) {
+            alerts = alerts.filter(a => a.type === params.type)
+        }
+
+        // 按等级过滤
+        if (params.level) {
+            alerts = alerts.filter(a => a.level === params.level)
+        }
+
+        return sortAlertsBySeverity(alerts)
+    },
+
+    /**
+     * 获取滚动预警消息
+     * @returns {Promise<Array>} 滚动消息列表
+     */
+    async getMarqueeMessages() {
+        await simulateDelay(100)
+        return [...mockMarqueeMessages]
+    },
+}
+
+// ===== 风险评估接口 =====
+export const riskApi = {
+    /**
+     * 获取区域风险数据
+     * @returns {Promise<Array>} 风险数据
+     */
+    async getRiskData() {
+        await simulateDelay(300)
+        return [...mockRiskData]
+    },
+}
+
+// ===== 时间轴接口 =====
+export const timelineApi = {
+    /**
+     * 获取时间轴数据
+     * @param {Object} params - 时间参数
+     * @returns {Promise<Object>} 时间轴数据
+     */
+    async getTimelineData(params = {}) {
+        await simulateDelay(200)
+        // 返回模拟的时间轴数据
+        const now = new Date()
+        return {
+            current: now.toISOString(),
+            start: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+            end: new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString(),
+        }
+    },
+}
+
+// ===== 首页重点站点与海堤值守接口 =====
+export const homeApi = {
+    /**
+     * 获取首页重点站点与海堤风险数据
+     * @returns {Promise<Object>}
+     */
+    async getHomeMonitoringData() {
+        await simulateDelay(180)
+        return JSON.parse(JSON.stringify(homeMonitoringMockData))
+    },
+}
+
+// ===== 地质采样接口 =====
+export const geologyApi = {
+    /**
+     * 获取地质采样点数据
+     * @returns {Promise<{raw: Array, processed: Array, all: Array}>}
+     */
+    async getSamplingPoints() {
+        await simulateDelay(220)
+        return getMockGeologySamplingPayload()
+    },
+}
+
+// ===== 统一导出 =====
+export default {
+    device: deviceApi,
+    alert: alertApi,
+    risk: riskApi,
+    timeline: timelineApi,
+    home: homeApi,
+    geology: geologyApi,
+}

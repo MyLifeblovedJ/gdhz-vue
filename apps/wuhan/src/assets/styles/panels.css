@@ -1,0 +1,177 @@
+/* ========================================
+   面板通用样式
+   适用于侧栏中的通用 .panel 组件
+   ======================================== */
+
+.panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-normal);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: var(--shadow-panel);
+    flex-shrink: 0;
+    --panel-accent: var(--text-primary);
+}
+
+.panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.14) 24%, rgba(15, 23, 42, 0.14) 76%, transparent);
+    opacity: 0.32;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.panel-header:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.panel-title {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.panel-title .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.badge.ok {
+    background: rgba(22, 163, 74, 0.14);
+    color: var(--status-online);
+}
+
+.badge.alarm {
+    background: rgba(220, 38, 38, 0.14);
+    color: var(--alert-red);
+}
+
+.badge.warn {
+    background: rgba(180, 83, 9, 0.14);
+    color: var(--status-warn);
+}
+
+.toggle-icon {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform var(--transition-fast);
+}
+
+.panel.collapsed .toggle-icon,
+.toggle-icon.collapsed {
+    transform: rotate(-90deg);
+}
+
+.panel-content {
+    max-height: 2000px;
+    overflow: visible;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    padding: 0 var(--space-3) var(--space-3);
+}
+
+.panel.collapsed .panel-content,
+.panel-content.collapsed {
+    max-height: 0;
+    padding: 0 var(--space-3);
+    overflow: hidden;
+}
+
+.sidebar-container {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background: var(--bg-deepest);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2) 10px;
+    gap: 10px;
+    overflow-y: auto;
+    z-index: 50;
+    transform: translateZ(0);
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 2px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover {
+    background: var(--border-accent);
+}
+
+.decision-sidebar .panel {
+    --panel-accent: var(--sidebar-action-accent);
+}
+
+.data-panel-sidebar .panel {
+    --panel-accent: var(--sidebar-data-accent);
+}
+
+.status-badge {
+    font-size: 11px;
+    padding: 3px var(--space-2);
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.status-badge.high {
+    background: rgba(220, 38, 38, 0.14);
+    color: var(--alert-red);
+}
+
+.status-badge.medium {
+    background: rgba(180, 83, 9, 0.14);
+    color: var(--status-warn);
+}
+
+.status-badge.low {
+    background: rgba(22, 163, 74, 0.14);
+    color: var(--status-online);
+}
+
+.module-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: var(--space-1);
+}
+
+.module-scroll::-webkit-scrollbar {
+    width: 3px;
+}
+
+.module-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-normal);
+    border-radius: 2px;
+}
