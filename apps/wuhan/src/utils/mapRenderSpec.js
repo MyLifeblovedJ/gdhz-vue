@@ -24,6 +24,25 @@ function buildPopupHtml(title, rows) {
   return `<b>${title}</b><br>${rows.join('<br>')}`
 }
 
+function blendHexColor(color, mixColor = '#ffffff', ratio = 0) {
+  const normalize = (value) => String(value || '').replace('#', '').trim()
+  const expand = (value) => value.length === 3
+    ? value.split('').map(character => character + character).join('')
+    : value
+  const source = expand(normalize(color))
+  const mix = expand(normalize(mixColor))
+  if (source.length !== 6 || mix.length !== 6) return color
+
+  const mixChannel = (sourceIndex) => {
+    const from = Number.parseInt(source.slice(sourceIndex, sourceIndex + 2), 16)
+    const to = Number.parseInt(mix.slice(sourceIndex, sourceIndex + 2), 16)
+    const value = Math.round(from + (to - from) * ratio)
+    return value.toString(16).padStart(2, '0')
+  }
+
+  return `#${mixChannel(0)}${mixChannel(2)}${mixChannel(4)}`
+}
+
 function getDeviceStyle(device, config) {
   const color = DEVICE_STATUS_COLORS[device.status] || config.color
   const size = device.status === 'offline' ? 12 : 14
@@ -312,14 +331,17 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
     .filter(record => Number.isFinite(record?.latitude) && Number.isFinite(record?.longitude))
     .map((record) => {
       const categoryValue = getGeologyFieldValue(record, colorField)
-      const color = colorMap[categoryValue] || getGeologyDatasetColor(record)
+      const baseColor = colorMap[categoryValue] || getGeologyDatasetColor(record)
       const highlightState = buildGeologyHighlightState(record, geologyStyle)
+      const color = highlightState === 'linked'
+        ? blendHexColor(baseColor, '#ffffff', 0.26)
+        : baseColor
       const size = highlightState === 'selected'
-        ? 22
+        ? 20
         : highlightState === 'linked'
           ? 18
           : 14
-      const opacity = highlightState === 'dimmed' ? 0.3 : 1
+      const opacity = highlightState === 'dimmed' ? 0.18 : 1
 
       return {
         id: `geology-${record.pointId}`,
@@ -341,7 +363,7 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
         colorValue: categoryValue,
         visualVariant: record.datasetType,
         highlightState,
-        hoverHtml: `<b>${record.sample || record.pointId}</b><br>${record.ship}<br>${record.device}`,
+        hoverHtml: '',
         popupHtml: buildPopupHtml(record.sample || record.pointId, [
           `数据源: ${record.datasetType === 'processed' ? '处理后数据' : '原始数据'}`,
           `船舶: ${record.ship || '--'}`,

@@ -125,22 +125,31 @@ export function createTyphoonPointIcon({ color, size = 12 }) {
 
 export function createGeologyPointIcon({ color, size = 14, variant = 'raw', highlightState = 'normal' }) {
   const textureSize = size * GEOLOGY_TEXTURE_SCALE
-  const outerStroke = highlightState === 'selected' ? 2.4 : highlightState === 'linked' ? 1.8 : 1.2
-  const opacity = highlightState === 'dimmed' ? 0.28 : 1
+  const outerStroke = highlightState === 'selected' ? 2 : highlightState === 'linked' ? 1.6 : 1.2
   const fill = variant === 'processed' ? '#ffffff' : color
+  const shapeStroke = highlightState === 'linked'
+    ? color
+    : variant === 'processed'
+      ? color
+      : '#0f172a'
   const shape = variant === 'processed'
-    ? `<rect x="6" y="6" width="12" height="12" rx="2.5" transform="rotate(45 12 12)" fill="${fill}" stroke="${color}" stroke-width="${outerStroke}" />`
-    : `<circle cx="12" cy="12" r="5.8" fill="${fill}" stroke="#0f172a" stroke-width="${outerStroke}" />`
-  const outerGlow = highlightState === 'selected'
-    ? `<circle cx="12" cy="12" r="9.4" fill="none" stroke="${color}" stroke-width="1.6" opacity="0.85" />`
-    : highlightState === 'linked'
-      ? `<circle cx="12" cy="12" r="8.4" fill="none" stroke="${color}" stroke-width="1.2" opacity="0.62" />`
-      : ''
+    ? `<rect x="6" y="6" width="12" height="12" rx="2.5" transform="rotate(45 12 12)" fill="${fill}" stroke="${shapeStroke}" stroke-width="${outerStroke}" />`
+    : `<circle cx="12" cy="12" r="5.8" fill="${fill}" stroke="${shapeStroke}" stroke-width="${outerStroke}" />`
+  const linkedHalo = highlightState === 'linked'
+    ? `<circle cx="12" cy="12" r="8.6" fill="none" stroke="${color}" stroke-width="1.6" opacity="0.82" />`
+    : ''
+  const selectedCross = highlightState === 'selected'
+    ? `<g stroke="#FF00FF" stroke-width="2.8" stroke-linecap="round">
+        <line x1="4" y1="4" x2="20" y2="20" />
+        <line x1="20" y1="4" x2="4" y2="20" />
+      </g>`
+    : ''
 
   return svgToDataUri(`
-    <svg xmlns="${SVG_NS}" width="${textureSize}" height="${textureSize}" viewBox="0 0 24 24" opacity="${opacity}">
-      ${outerGlow}
+    <svg xmlns="${SVG_NS}" width="${textureSize}" height="${textureSize}" viewBox="0 0 24 24">
+      ${linkedHalo}
       ${shape}
+      ${selectedCross}
     </svg>
   `)
 }

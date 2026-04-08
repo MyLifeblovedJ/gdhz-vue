@@ -95,6 +95,7 @@ let basemapLayers = {}
 let markerLayers = {}
 let markers = {}
 let pulseMarkers = {}
+let geologyMarkers = {}
 let deviceEntities3D = []
 let geologyLayer2D = null
 let geologyEntities3D = []
@@ -969,6 +970,18 @@ function processCesiumHoverPick(position) {
   }
 }
 
+function clearGeologyTransientUi() {
+  map?.closePopup()
+  if (map?.getContainer()) {
+    map.getContainer().style.cursor = ''
+  }
+  if (viewer?.scene?.canvas) {
+    viewer.scene.canvas.style.cursor = 'default'
+  }
+  resetCesiumHoverOverlay()
+  closeCesiumPopup()
+}
+
 async function initCesium() {
   if (!cesiumRef.value) return
 
@@ -1025,7 +1038,7 @@ async function initCesium() {
     viewer.screenSpaceEventHandler.setInputAction((movement) => {
       const meta = resolveCesiumMetaFromPick(viewer?.scene?.pick(movement.position))
       if (!meta?.popupHtml) {
-        closeCesiumPopup()
+        clearGeologyTransientUi()
         store.clearActiveGeologySelection()
         return
       }
@@ -1180,6 +1193,7 @@ function initMap() {
   map.on('mousemove', leafletMouseMoveHandler)
   map.getContainer()?.addEventListener('mouseleave', leafletMouseLeaveHandler)
   map.on('click', () => {
+    clearGeologyTransientUi()
     store.clearActiveGeologySelection()
   })
 
@@ -1599,13 +1613,14 @@ function renderGeology2D() {
   if (!map || !geologyLayer2D) return
 
   geologyLayer2D.clearLayers()
+  geologyMarkers = {}
 
   mapRenderSpec.value.geology.forEach((item) => {
     const marker = renderLeafletPointMarker(null, item, {
       pane: 'geology-pane',
-      tooltip: true,
+      tooltip: false,
       popup: true,
-      zIndexOffset: item.highlightState === 'selected' ? 600 : item.highlightState === 'linked' ? 320 : 0
+      zIndexOffset: item.highlightState === 'selected' ? 920 : item.highlightState === 'linked' ? 360 : 0
     })
 
     marker.setOpacity(item.opacity ?? 1)
@@ -1615,7 +1630,13 @@ function renderGeology2D() {
     })
 
     geologyLayer2D.addLayer(marker)
+    geologyMarkers[item.sourceId] = marker
   })
+
+  const activeMarker = geologyMarkers[store.geology.activePointId]
+  if (is2DMode.value && activeMarker) {
+    activeMarker.openPopup()
+  }
 }
 
 function renderGeology3D() {

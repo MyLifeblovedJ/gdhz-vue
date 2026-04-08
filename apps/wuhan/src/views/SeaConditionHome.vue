@@ -319,7 +319,7 @@ const currentBasemap = ref('satellite')
 const showCameraOverlay = ref(false)
 const showTyphoonPanel = ref(false)
 const showDevicePanel = ref(false)
-const showAIPanel = ref(true)
+const showAIPanel = ref(false)
 const showRightLayerPanel = ref(false)
 const isBrowserFullscreen = ref(false)
 const selectedDevice = ref(null)
@@ -1506,4 +1506,3 @@ onBeforeUnmount(() => {
   }
 }
 </style>
-

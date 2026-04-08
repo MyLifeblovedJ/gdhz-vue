@@ -70,7 +70,7 @@ export const useAppStore = defineStore('app', () => {
 
   const geology = ref({
     layers: {
-      rawVisible: false,
+      rawVisible: true,
       processedVisible: false,
     },
     colorBy: 'ship',
