@@ -254,7 +254,7 @@ onUnmounted(() => {
 .minimap-container {
   width: 100%;
   height: 140px;
-  border-radius: 0 8px 0 0;
+  border-radius: 0;
   overflow: hidden;
   position: relative;
   border: 2px solid rgba(56, 189, 248, 0.48);
@@ -280,7 +280,7 @@ onUnmounted(() => {
 .minimap-container.collapsed {
   width: var(--minimap-collapsed-size, 36px);
   height: 36px;
-  border-radius: 0 8px 0 0;
+  border-radius: 0;
   cursor: pointer;
 }
 

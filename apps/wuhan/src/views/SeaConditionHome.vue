@@ -474,6 +474,10 @@ const mouseReadoutDisplay = computed(() => ({
 }))
 
 function handleMouseCoordinateChange(payload) {
+  if (!payload) return
+  const hasCoordinate = Number.isFinite(payload.lng) || Number.isFinite(payload.lat)
+  const hasElevation = Number.isFinite(payload.elevation)
+  if (!hasCoordinate && !hasElevation) return
   mouseReadout.value = payload
 }
 
@@ -496,8 +500,8 @@ function syncMouseReadoutGlass() {
   }
   mouseReadoutGlassInstance = attachLiquidGlass(mouseReadoutRef.value, {
     idPrefix: 'map-mouse-readout',
-    borderRadius: '0 8px 0 0',
-    border: '1px solid rgba(255, 255, 255, 0.5)',
+    borderRadius: '0',
+    border: '1px solid rgba(148, 163, 184, 0.18)',
     boxShadow: '0 8px 18px rgba(2, 8, 23, 0.18), 0 -10px 25px inset rgba(0, 0, 0, 0.05)',
   })
 }
@@ -1518,7 +1522,7 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   position: relative;
   overflow: hidden;
-  border-radius: 0 8px 0 0;
+  border-radius: 0;
 }
 
 .map-mouse-readout-row {
