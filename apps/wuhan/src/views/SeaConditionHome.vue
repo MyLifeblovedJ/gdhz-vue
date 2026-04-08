@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div ref="pageRootRef" class="home-page" :style="homeChromeStyle">
     <!-- 左侧固定侧边栏 -->
     <aside
@@ -16,33 +16,26 @@
             </div>
           </div>
           <div class="sidebar-section-body" v-show="activeSidebarMenu === 'layers'">
-            <!-- 地质采样子菜单 -->
-            <div class="geology-group">
-              <div class="geology-group-header">
-                <i class="fa-solid fa-gem"></i>
-                <span>地质采样</span>
-              </div>
-              <div class="geology-sub-menu">
-                <div
-                  class="geology-sub-item"
-                  :class="{ active: activeGeologyTab === 'raw' }"
-                  @click="activeGeologyTab = 'raw'"
-                >
-                  <i class="fa-solid fa-database"></i>
-                  <span>原始数据</span>
+            <div class="map-legend-wrapper embedded">
+              <div class="legend-container">
+                <div class="legend-scroll">
+                  <div class="legend-panel" :class="{ collapsed: geologyCollapsed }">
+                    <div class="legend-header" @click="geologyCollapsed = !geologyCollapsed">
+                      <span class="legend-name">地质采样</span>
+                      <i :class="geologyCollapsed ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
+                    </div>
+                    <div class="legend-content geology-layer-options" v-show="!geologyCollapsed">
+                      <label class="geology-layer-option" :class="{ active: geologyRawVisible }">
+                        <input type="checkbox" v-model="geologyRawVisible">
+                        <span class="geology-layer-option-label">原始数据</span>
+                      </label>
+                      <label class="geology-layer-option" :class="{ active: geologyProcessedVisible }">
+                        <input type="checkbox" v-model="geologyProcessedVisible">
+                        <span class="geology-layer-option-label">处理后数据</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
-                <div
-                  class="geology-sub-item"
-                  :class="{ active: activeGeologyTab === 'processed' }"
-                  @click="activeGeologyTab = 'processed'"
-                >
-                  <i class="fa-solid fa-chart-line"></i>
-                  <span>处理后数据</span>
-                </div>
-              </div>
-              <div class="geology-tab-content">
-                <div v-if="activeGeologyTab === 'raw'" class="empty-content">暂无原始数据</div>
-                <div v-else-if="activeGeologyTab === 'processed'" class="empty-content">暂无处理后数据</div>
               </div>
             </div>
           </div>
@@ -118,6 +111,13 @@
 
       <!-- 全局视图（鹰眼图） -->
       <div class="minimap-anchor" :style="{ left: sidebarWidth + 'px' }">
+        <div ref="mouseReadoutRef" class="map-mouse-readout" aria-live="polite">
+          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.lng }}</span>
+          <span class="map-mouse-readout-separator">/</span>
+          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.lat }}</span>
+          <span class="map-mouse-readout-separator">/</span>
+          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.elevation }}</span>
+        </div>
         <MiniMap
           :view-bounds="viewBounds"
           :basemap="currentBasemap"
@@ -280,6 +280,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useWindowSize } from '@vueuse/core'
 import { useAppStore } from '../stores/app'
 import { HOME_DEFAULT_MAP_MODE } from '../utils/homeMapMode'
+import { attachLiquidGlass } from '../utils/liquidGlass'
 import CoastalCameraOverlay from '../components/layout/CoastalCameraOverlay.vue'
 import { mockErosionVideoStreams } from '../data/mockData'
 import AIDecisionPanel from '../components/decision/AIDecisionPanel.vue'
@@ -299,6 +300,7 @@ const store = useAppStore()
 const pageRootRef = ref(null)
 const sidebarRef = ref(null)
 const mapRef = ref(null)
+const mouseReadoutRef = ref(null)
 const currentBasemap = ref('satellite')
 const showCameraOverlay = ref(false)
 const showTyphoonPanel = ref(false)
@@ -308,11 +310,25 @@ const showRightLayerPanel = ref(false)
 const isBrowserFullscreen = ref(false)
 const selectedDevice = ref(null)
 const activeSidebarMenu = ref('layers')
-const activeGeologyTab = ref('raw')
+const geologyCollapsed = ref(false)
+const mouseReadout = ref(null)
 const viewBounds = ref(null)
 let viewBoundsRaf = null
 let previousLayerSnapshot = null
+let mouseReadoutGlassInstance = null
+let mouseReadoutResizeObserver = null
+let mouseReadoutSyncRaf = null
 const basemaps = ['satellite', 'dark', 'street']
+
+const geologyRawVisible = computed({
+  get: () => store.geology.layers.rawVisible,
+  set: (value) => store.setGeologyLayerVisibility('raw', value),
+})
+
+const geologyProcessedVisible = computed({
+  get: () => store.geology.layers.processedVisible,
+  set: (value) => store.setGeologyLayerVisibility('processed', value),
+})
 
 // ─── 侧边栏手风琴点击逻辑 ───
 const sidebarMenuOrder = ['layers', 'legends', 'more_info', 'help']
@@ -392,6 +408,49 @@ const dataCompletenessRate = computed(() => {
 const homeChromeStyle = computed(() => ({
   '--sidebar-width': `${sidebarWidth.value}px`,
 }))
+
+function formatDirectionalCoordinate(value, positiveSuffix, negativeSuffix) {
+  if (!Number.isFinite(value)) return '--'
+  const suffix = value >= 0 ? positiveSuffix : negativeSuffix
+  return `${Math.abs(value).toFixed(2)}${suffix}`
+}
+
+function formatReadoutElevation(value) {
+  if (!Number.isFinite(value)) return '--'
+  return `${Math.round(value)}m`
+}
+
+const mouseReadoutDisplay = computed(() => ({
+  lng: formatDirectionalCoordinate(mouseReadout.value?.lng, 'E', 'W'),
+  lat: formatDirectionalCoordinate(mouseReadout.value?.lat, 'N', 'S'),
+  elevation: formatReadoutElevation(mouseReadout.value?.elevation),
+}))
+
+function handleMouseCoordinateChange(payload) {
+  mouseReadout.value = payload
+}
+
+function syncMouseReadoutGlass() {
+  if (!mouseReadoutRef.value) return
+  if (mouseReadoutGlassInstance) {
+    mouseReadoutGlassInstance.destroy()
+    mouseReadoutGlassInstance = null
+  }
+  mouseReadoutGlassInstance = attachLiquidGlass(mouseReadoutRef.value, {
+    idPrefix: 'map-mouse-readout',
+    borderRadius: '10px',
+    border: '1px solid rgba(255, 255, 255, 0.5)',
+    boxShadow: '0 8px 18px rgba(2, 8, 23, 0.18), 0 -10px 25px inset rgba(0, 0, 0, 0.05)',
+  })
+}
+
+function scheduleMouseReadoutGlassSync() {
+  if (mouseReadoutSyncRaf) cancelAnimationFrame(mouseReadoutSyncRaf)
+  mouseReadoutSyncRaf = requestAnimationFrame(() => {
+    mouseReadoutSyncRaf = null
+    syncMouseReadoutGlass()
+  })
+}
 
 const glassVisible = ref(false)
 const glassScreenX = ref(0)
@@ -501,6 +560,15 @@ async function handleToggleFullscreen() {
 
 onMounted(() => {
   ;(async () => {
+    mapRef.value?.onMouseCoordinateChange?.(handleMouseCoordinateChange)
+    await nextTick()
+    scheduleMouseReadoutGlassSync()
+    mouseReadoutResizeObserver = new ResizeObserver(() => {
+      scheduleMouseReadoutGlassSync()
+    })
+    if (mouseReadoutRef.value) {
+      mouseReadoutResizeObserver.observe(mouseReadoutRef.value)
+    }
     await store.initializeData()
     store.setMapMode(HOME_DEFAULT_MAP_MODE)
 
@@ -552,6 +620,19 @@ function handleMinimapNavigate({ lat, lng }) {
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState)
+  mapRef.value?.offMouseCoordinateChange?.(handleMouseCoordinateChange)
+  if (mouseReadoutSyncRaf) {
+    cancelAnimationFrame(mouseReadoutSyncRaf)
+    mouseReadoutSyncRaf = null
+  }
+  if (mouseReadoutResizeObserver) {
+    mouseReadoutResizeObserver.disconnect()
+    mouseReadoutResizeObserver = null
+  }
+  if (mouseReadoutGlassInstance) {
+    mouseReadoutGlassInstance.destroy()
+    mouseReadoutGlassInstance = null
+  }
   if (previousLayerSnapshot) {
     Object.entries(previousLayerSnapshot).forEach(([key, val]) => {
       store.setLayerVisibility(key, val)
@@ -840,10 +921,14 @@ onBeforeUnmount(() => {
 /* ─── 全局视图（鹰眼图）定位 ─── */
 .minimap-anchor {
   position: fixed;
-  bottom: 0;
+  bottom: 12px;
   z-index: 1100;
   pointer-events: auto;
   transition: left 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 /* ─── 工具栏面板（保留） ─── */
@@ -1238,66 +1323,132 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-/* ── 地质采样子菜单 ── */
-.geology-group {
-  margin-bottom: 8px;
+/* ── 地质采样图例风格子菜单 ── */
+.geology-sidebar .map-legend-wrapper.embedded {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: auto;
+  position: static;
+  width: 100%;
 }
 
-.geology-group-header {
+.geology-sidebar .legend-container {
+  padding: 0;
+}
+
+.geology-sidebar .legend-scroll {
+  max-height: none;
+  overflow: visible;
+}
+
+.geology-sidebar .legend-panel {
+  border: none;
+  margin: 0;
+  background: transparent;
+}
+
+.geology-sidebar .legend-header {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 8px 4px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background 0.15s;
+}
+
+.geology-sidebar .legend-header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.geology-sidebar .legend-name {
   font-size: 14px;
   font-weight: 700;
   color: #334155;
 }
 
-.geology-group-header i {
-  font-size: 13px;
+.geology-sidebar .legend-header i {
+  font-size: 11px;
   color: #64748b;
+  transition: transform 0.2s;
 }
 
-.geology-sub-menu {
+.geology-sidebar .legend-content {
+  padding: 8px 0;
+}
+
+.geology-layer-options {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding-left: 14px;
-  margin-bottom: 8px;
 }
 
-.geology-sub-item {
+.geology-layer-option {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 8px 14px;
   cursor: pointer;
   font-size: 13px;
   color: #475569;
   transition: background 0.15s, color 0.15s;
   user-select: none;
+  border-radius: 4px;
 }
 
-.geology-sub-item:hover {
+.geology-layer-option:hover {
   background: #f1f5f9;
   color: #1e293b;
 }
 
-.geology-sub-item.active {
-  background: #e0f2fe;
+.geology-layer-option.active {
+  background: rgba(14, 165, 233, 0.06);
   color: #0369a1;
+}
+
+.geology-layer-option input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: #0ea5e9;
+  cursor: pointer;
+}
+
+.geology-layer-option-label {
+  flex: 1;
+}
+
+/* ── 鼠标经纬度读数组件 ── */
+.map-mouse-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  margin-left: 12px;
 }
 
-.geology-sub-item i {
-  font-size: 13px;
-  width: 18px;
-  text-align: center;
+.map-mouse-readout-separator {
+  opacity: 0.45;
+  font-weight: 400;
 }
 
-.geology-tab-content {
-  padding-left: 14px;
+.map-mouse-readout-value {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Transitions ── */
