@@ -84,6 +84,7 @@ export const useAppStore = defineStore('app', () => {
       raw: [],
       processed: [],
     },
+    focusFilter: null,
   })
 
   const selectedDevice = ref(null)
@@ -143,13 +144,25 @@ export const useAppStore = defineStore('app', () => {
     geology.value.selectedValuesByField[geology.value.filterField] || []
   ))
 
-  const visibleGeologyRecords = computed(() => filterGeologyRecords(
-    visibleGeologyBaseRecords.value,
-    {
-      filterField: geology.value.filterField,
-      selectedValues: visibleGeologySelectedValues.value,
-    },
-  ))
+  const visibleGeologyRecords = computed(() => {
+    let records = filterGeologyRecords(
+      visibleGeologyBaseRecords.value,
+      {
+        filterField: geology.value.filterField,
+        selectedValues: visibleGeologySelectedValues.value,
+      },
+    )
+    const focus = geology.value.focusFilter
+    if (focus?.filters) {
+      records = records.filter(record => {
+        if (focus.filters.institution && (record.institution || '') !== focus.filters.institution) return false
+        if (focus.filters.ship && (record.ship || '') !== focus.filters.ship) return false
+        if (focus.filters.cruise && (record.cruise || '') !== focus.filters.cruise) return false
+        return true
+      })
+    }
+    return records
+  })
 
   const geologyFilterTreeItems = computed(() => buildGeologyFilterTreeItems(
     visibleGeologyBaseRecords.value,
@@ -355,6 +368,14 @@ export const useAppStore = defineStore('app', () => {
     geology.value.activeMggid = null
   }
 
+  function setGeologyFocusFilter(focusFilter) {
+    geology.value.focusFilter = focusFilter
+  }
+
+  function clearGeologyFocusFilter() {
+    geology.value.focusFilter = null
+  }
+
   function toggleBanner() {
     isBannerCollapsed.value = !isBannerCollapsed.value
   }
@@ -454,6 +475,8 @@ export const useAppStore = defineStore('app', () => {
     toggleGeologySelectedValue,
     setActiveGeologyPoint,
     clearActiveGeologySelection,
+    setGeologyFocusFilter,
+    clearGeologyFocusFilter,
     toggleBanner,
     collapseBannerWithAnimation,
     updateCurrentTime,

@@ -41,7 +41,20 @@
           </div>
         </div>
 
-        <!-- 2. 图例 -->
+        <!-- 2. 筛选 -->
+        <div class="sidebar-section" :class="{ 'is-expanded': activeSidebarMenu === 'filter' }">
+          <div class="sidebar-section-title" @click="toggleSidebarMenu('filter')">
+            <div class="title-left">
+              <i class="fa-solid fa-filter"></i>
+              <span>筛选</span>
+            </div>
+          </div>
+          <div class="sidebar-section-body filter-body" v-show="activeSidebarMenu === 'filter'">
+            <GeologyFilterPanel @sample-click="handleFilterSampleClick" />
+          </div>
+        </div>
+
+        <!-- 3. 图例 -->
         <div class="sidebar-section" :class="{ 'is-expanded': activeSidebarMenu === 'legends' }">
           <div class="sidebar-section-title" @click="toggleSidebarMenu('legends')">
             <div class="title-left">
@@ -54,7 +67,7 @@
           </div>
         </div>
 
-        <!-- 3. 更多信息 -->
+        <!-- 4. 更多信息 -->
         <div class="sidebar-section" :class="{ 'is-expanded': activeSidebarMenu === 'more_info' }">
           <div class="sidebar-section-title" @click="toggleSidebarMenu('more_info')">
             <div class="title-left">
@@ -67,7 +80,7 @@
           </div>
         </div>
 
-        <!-- 4. 帮助 -->
+        <!-- 5. 帮助 -->
         <div class="sidebar-section" :class="{ 'is-expanded': activeSidebarMenu === 'help' }">
           <div class="sidebar-section-title" @click="toggleSidebarMenu('help')">
             <div class="title-left">
@@ -295,6 +308,7 @@ import DetailPopup from '../components/common/DetailPopup.vue'
 import StationGlassPopup from '../components/map/StationGlassPopup.vue'
 import MiniMap from '../components/map/MiniMap.vue'
 import MapSearchGlass from '../components/map/MapSearchGlass.vue'
+import GeologyFilterPanel from '../components/map/GeologyFilterPanel.vue'
 
 const store = useAppStore()
 const pageRootRef = ref(null)
@@ -331,7 +345,7 @@ const geologyProcessedVisible = computed({
 })
 
 // ─── 侧边栏手风琴点击逻辑 ───
-const sidebarMenuOrder = ['layers', 'legends', 'more_info', 'help']
+const sidebarMenuOrder = ['layers', 'filter', 'legends', 'more_info', 'help']
 
 function toggleSidebarMenu(menuName) {
   if (activeSidebarMenu.value === menuName) {
@@ -507,6 +521,14 @@ function updateGlassPosition(device) {
   if (pt) {
     glassScreenX.value = pt.x
     glassScreenY.value = pt.y
+  }
+}
+
+function handleFilterSampleClick(record) {
+  if (!record) return
+  store.setActiveGeologyPoint(record.pointId)
+  if (record.lat && record.lng) {
+    mapRef.value?.flyToLatLng(record.lat, record.lng, 12)
   }
 }
 
@@ -764,6 +786,12 @@ onBeforeUnmount(() => {
 
 .sidebar-section-body :deep(.layer-tree-scroll) {
   max-height: none;
+}
+
+.filter-body {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-content {
