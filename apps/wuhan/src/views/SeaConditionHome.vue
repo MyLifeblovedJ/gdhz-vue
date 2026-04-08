@@ -123,19 +123,27 @@
       </div>
 
       <!-- 全局视图（鹰眼图） -->
-      <div class="minimap-anchor" :style="{ left: sidebarWidth + 'px' }">
-        <div ref="mouseReadoutRef" class="map-mouse-readout" aria-live="polite">
-          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.lng }}</span>
-          <span class="map-mouse-readout-separator">/</span>
-          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.lat }}</span>
-          <span class="map-mouse-readout-separator">/</span>
-          <span class="map-mouse-readout-value">{{ mouseReadoutDisplay.elevation }}</span>
+      <div class="minimap-anchor" :class="{ 'is-collapsed': isMinimapCollapsed }" :style="{ left: sidebarWidth + 'px' }">
+        <div v-show="!isMinimapCollapsed" ref="mouseReadoutRef" class="map-mouse-readout" aria-live="polite">
+          <div class="map-mouse-readout-row">
+            <span class="map-mouse-readout-label">位置：</span>
+            <span class="map-mouse-readout-content">{{ mouseReadoutDisplay.lng }}, {{ mouseReadoutDisplay.lat }}</span>
+          </div>
+          <div class="map-mouse-readout-row">
+            <span class="map-mouse-readout-label">海拔：</span>
+            <span class="map-mouse-readout-content">{{ mouseReadoutDisplay.elevation }}</span>
+          </div>
+          <div class="map-mouse-readout-row">
+            <span class="map-mouse-readout-label">比例尺：</span>
+            <span class="map-mouse-readout-content">{{ mouseReadoutDisplay.scale }}</span>
+          </div>
         </div>
         <MiniMap
           :view-bounds="viewBounds"
           :basemap="currentBasemap"
           :center="[22.0, 112.5]"
           :zoom="7.5"
+          @collapse-change="handleMinimapCollapseChange"
           @navigate="handleMinimapNavigate"
         />
       </div>
@@ -325,6 +333,7 @@ const isBrowserFullscreen = ref(false)
 const selectedDevice = ref(null)
 const activeSidebarMenu = ref('layers')
 const geologyCollapsed = ref(false)
+const isMinimapCollapsed = ref(false)
 const mouseReadout = ref(null)
 const viewBounds = ref(null)
 let viewBoundsRaf = null
@@ -431,28 +440,63 @@ function formatDirectionalCoordinate(value, positiveSuffix, negativeSuffix) {
 
 function formatReadoutElevation(value) {
   if (!Number.isFinite(value)) return '--'
-  return `${Math.round(value)}m`
+  return `${Math.round(value)}米`
 }
+
+function roundScaleDenominator(value) {
+  if (!Number.isFinite(value) || value <= 0) return '--'
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  const normalized = value / magnitude
+  const roundedNormalized = normalized < 1.5 ? 1 : normalized < 3 ? 2 : normalized < 7 ? 5 : 10
+  return Math.round(roundedNormalized * magnitude).toLocaleString('zh-CN')
+}
+
+const mainMapScaleDisplay = computed(() => {
+  const bounds = viewBounds.value
+  const mapViewportWidth = Math.max(viewportWidth.value - sidebarWidth.value, 1)
+  if (!bounds || !Number.isFinite(mapViewportWidth)) return '--'
+
+  const centerLat = ((bounds.north + bounds.south) / 2) * (Math.PI / 180)
+  const lngSpan = Math.abs(bounds.east - bounds.west)
+  const widthMeters = lngSpan * 111320 * Math.max(Math.cos(centerLat), 0)
+  if (!(widthMeters > 0)) return '--'
+
+  const metersPerPixel = widthMeters / mapViewportWidth
+  const scaleDenominator = metersPerPixel / 0.0002645833333333333
+  return `1:${roundScaleDenominator(scaleDenominator)}`
+})
 
 const mouseReadoutDisplay = computed(() => ({
   lng: formatDirectionalCoordinate(mouseReadout.value?.lng, 'E', 'W'),
   lat: formatDirectionalCoordinate(mouseReadout.value?.lat, 'N', 'S'),
   elevation: formatReadoutElevation(mouseReadout.value?.elevation),
+  scale: mainMapScaleDisplay.value,
 }))
 
 function handleMouseCoordinateChange(payload) {
   mouseReadout.value = payload
 }
 
+function handleMinimapCollapseChange(collapsed) {
+  isMinimapCollapsed.value = collapsed
+  scheduleMouseReadoutGlassSync()
+}
+
 function syncMouseReadoutGlass() {
-  if (!mouseReadoutRef.value) return
+  if (!mouseReadoutRef.value || isMinimapCollapsed.value) {
+    if (mouseReadoutGlassInstance) {
+      mouseReadoutGlassInstance.destroy()
+      mouseReadoutGlassInstance = null
+    }
+    return
+  }
   if (mouseReadoutGlassInstance) {
     mouseReadoutGlassInstance.destroy()
     mouseReadoutGlassInstance = null
   }
   mouseReadoutGlassInstance = attachLiquidGlass(mouseReadoutRef.value, {
     idPrefix: 'map-mouse-readout',
-    borderRadius: '10px',
+    borderRadius: '0 8px 0 0',
     border: '1px solid rgba(255, 255, 255, 0.5)',
     boxShadow: '0 8px 18px rgba(2, 8, 23, 0.18), 0 -10px 25px inset rgba(0, 0, 0, 0.05)',
   })
@@ -948,15 +992,22 @@ onBeforeUnmount(() => {
 
 /* ─── 全局视图（鹰眼图）定位 ─── */
 .minimap-anchor {
+  --minimap-module-width: 180px;
+  --minimap-collapsed-size: 36px;
   position: fixed;
-  bottom: 12px;
+  bottom: 0;
   z-index: 1100;
   pointer-events: auto;
-  transition: left 0.25s ease;
+  transition: left 0.25s ease, width 0.25s ease;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0;
+  width: var(--minimap-module-width);
+}
+
+.minimap-anchor.is-collapsed {
+  width: var(--minimap-collapsed-size);
 }
 
 /* ─── 工具栏面板（保留） ─── */
@@ -1454,29 +1505,48 @@ onBeforeUnmount(() => {
 
 /* ── 鼠标经纬度读数组件 ── */
 .map-mouse-readout {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
+  width: var(--minimap-module-width);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
-  letter-spacing: 0.03em;
-  white-space: nowrap;
+  letter-spacing: 0.02em;
   pointer-events: auto;
   position: relative;
   overflow: hidden;
-  border-radius: 10px;
-  margin-left: 12px;
+  border-radius: 0 8px 0 0;
 }
 
-.map-mouse-readout-separator {
-  opacity: 0.45;
-  font-weight: 400;
+.map-mouse-readout-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  line-height: 1.4;
 }
 
-.map-mouse-readout-value {
+.map-mouse-readout-label {
+  flex: 0 0 42px;
+  color: rgba(186, 230, 253, 0.82);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-right: 0;
+  text-align: left;
+}
+
+.map-mouse-readout-content {
+  flex: 1;
+  color: #fef3c7;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Transitions ── */
@@ -1495,6 +1565,10 @@ onBeforeUnmount(() => {
   .map-search-glass-anchor {
     left: calc(var(--sidebar-width) + 20px);
     width: min(420px, calc(100vw - var(--sidebar-width) - 120px));
+  }
+
+  .minimap-anchor {
+    --minimap-module-width: 160px;
   }
 }
 

@@ -49,7 +49,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'collapse-change'])
 
 const minimapRef = ref(null)
 const isCollapsed = ref(false)
@@ -222,6 +222,7 @@ watch(() => props.basemap, (newBasemap) => {
 })
 
 watch(isCollapsed, (collapsed) => {
+  emit('collapse-change', collapsed)
   if (!collapsed) {
     nextTick(() => {
       if (minimap) {
@@ -251,7 +252,7 @@ onUnmounted(() => {
 
 <style scoped>
 .minimap-container {
-  width: 180px;
+  width: 100%;
   height: 140px;
   border-radius: 0 8px 0 0;
   overflow: hidden;
@@ -277,7 +278,7 @@ onUnmounted(() => {
 }
 
 .minimap-container.collapsed {
-  width: 36px;
+  width: var(--minimap-collapsed-size, 36px);
   height: 36px;
   border-radius: 0 8px 0 0;
   cursor: pointer;
@@ -380,7 +381,6 @@ onUnmounted(() => {
 
 @media (max-width: 1440px) {
   .minimap-container {
-    width: 160px;
     height: 120px;
   }
 }
