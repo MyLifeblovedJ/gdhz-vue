@@ -30,7 +30,29 @@
         >
           <div class="legend-header" @click="toggleLegend(legend.id)">
             <span class="legend-name">{{ legend.title }}</span>
-            <i :class="collapsedLegends[legend.id] ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
+            <span class="legend-header-controls">
+              <span
+                v-if="legend.id === 'geology'"
+                class="legend-link-inline header"
+                :title="geologyLinkTooltip"
+                @click.stop
+              >
+                <span class="legend-link-label">联动</span>
+                <button
+                  type="button"
+                  class="ios-switch"
+                  :class="{ active: isGeologyLinked, disabled: !canToggleGeologyLink }"
+                  :disabled="!canToggleGeologyLink"
+                  :aria-pressed="isGeologyLinked"
+                  @click.stop="toggleGeologyColorLink"
+                >
+                  <span class="ios-switch-track">
+                    <span class="ios-switch-thumb"></span>
+                  </span>
+                </button>
+              </span>
+              <i :class="collapsedLegends[legend.id] ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
+            </span>
           </div>
 
           <div class="legend-content" v-show="!collapsedLegends[legend.id]">
@@ -40,71 +62,10 @@
               class="legend-item"
               :class="{
                 'has-description': Boolean(item.description),
-                'legend-item-section': item.type === 'geology-color-section' || item.type === 'geology-control',
+                'legend-item-section': item.type === 'geology-color-section',
               }"
             >
-              <template v-if="item.type === 'geology-control'">
-                <div class="legend-geology-control">
-                  <div class="legend-geology-mode-row">
-                    <span class="legend-geology-control-label">着色模式</span>
-                    <div class="legend-geology-mode-buttons">
-                      <button
-                        v-for="mode in geologyColorModes"
-                        :key="mode.key"
-                        type="button"
-                        class="legend-geology-mode-button"
-                        :class="{ active: store.geology.colorMode === mode.key }"
-                        @click.stop="store.setGeologyColorMode(mode.key)"
-                      >
-                        {{ mode.label }}
-                      </button>
-                    </div>
-                  </div>
-
-                  <template v-if="store.geology.colorMode === 'linked'">
-                    <label class="legend-geology-select-row">
-                      <span class="legend-geology-control-label">着色字段</span>
-                      <select
-                        class="inline-color-select block"
-                        :value="geologyColorByField"
-                        @change="handleGeologyColorByChange"
-                      >
-                        <option v-for="field in geologyFieldOptions" :key="field.key" :value="field.key">
-                          {{ field.label }}
-                        </option>
-                      </select>
-                    </label>
-                  </template>
-
-                  <template v-else>
-                    <label v-if="store.geology.layers.rawVisible" class="legend-geology-select-row">
-                      <span class="legend-geology-control-label">原始数据字段</span>
-                      <select
-                        class="inline-color-select block"
-                        :value="rawGeologyColorByField"
-                        @change="handleGeologyDatasetColorByChange('raw', $event)"
-                      >
-                        <option v-for="field in geologyFieldOptions" :key="field.key" :value="field.key">
-                          {{ field.label }}
-                        </option>
-                      </select>
-                    </label>
-                    <label v-if="store.geology.layers.processedVisible" class="legend-geology-select-row">
-                      <span class="legend-geology-control-label">处理后数据字段</span>
-                      <select
-                        class="inline-color-select block"
-                        :value="processedGeologyColorByField"
-                        @change="handleGeologyDatasetColorByChange('processed', $event)"
-                      >
-                        <option v-for="field in geologyFieldOptions" :key="field.key" :value="field.key">
-                          {{ field.label }}
-                        </option>
-                      </select>
-                    </label>
-                  </template>
-                </div>
-              </template>
-              <template v-else-if="item.type === 'geology-color-section'">
+              <template v-if="item.type === 'geology-color-section'">
                 <div class="legend-color-section">
                   <div class="legend-color-section-title">{{ item.label }}</div>
                   <div
@@ -174,7 +135,22 @@
                 <span class="legend-text">
                   <span class="legend-label">{{ item.label }}</span>
                   <span v-if="item.description" class="legend-description">
-                    {{ item.description }}
+                    <template v-if="item.type === 'geology-raw' || item.type === 'geology-processed'">
+                      稳定按照
+                      <select
+                        class="inline-color-select"
+                        :value="getGeologyItemColorField(item.type)"
+                        @change="handleGeologyItemColorByChange(item.type, $event)"
+                      >
+                        <option v-for="field in geologyFieldOptions" :key="field.key" :value="field.key">
+                          {{ field.label }}
+                        </option>
+                      </select>
+                      映射颜色，同值同色，{{ item.shapeText }}。
+                    </template>
+                    <template v-else>
+                      {{ item.description }}
+                    </template>
                   </span>
                 </span>
               </template>
@@ -190,7 +166,7 @@
 import { ref, computed, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { legendConfig } from '../../data/deviceConfig'
-import { GEOLOGY_COLOR_MODE_OPTIONS, GEOLOGY_FIELD_OPTIONS } from '../../utils/geologySampling'
+import { GEOLOGY_FIELD_OPTIONS } from '../../utils/geologySampling'
 
 const props = defineProps({
   embedded: {
@@ -211,7 +187,13 @@ const geologyColorByField = computed(() => store.geology.colorBy)
 const rawGeologyColorByField = computed(() => store.geology.rawColorBy)
 const processedGeologyColorByField = computed(() => store.geology.processedColorBy)
 const geologyFieldOptions = computed(() => store.geology.fieldOptions?.length ? store.geology.fieldOptions : GEOLOGY_FIELD_OPTIONS)
-const geologyColorModes = GEOLOGY_COLOR_MODE_OPTIONS
+const canToggleGeologyLink = computed(() => store.geology.layers.rawVisible && store.geology.layers.processedVisible)
+const isGeologyLinked = computed(() => canToggleGeologyLink.value && store.geology.colorMode === 'linked')
+const geologyLinkTooltip = computed(() => (
+  canToggleGeologyLink.value
+    ? '开启后原始数据和处理后数据共用同一个分类着色字段；关闭后可分别设置。'
+    : '仅在同时显示原始数据和处理后数据时可开启联动着色。'
+))
 const geologyColorItems = computed(() => {
   const group = store.geologyColorLegendItems[0]
   return group?.children?.map(item => ({
@@ -241,8 +223,32 @@ function handleGeologyColorByChange(event) {
   store.setGeologyColorBy(event.target.value)
 }
 
-function handleGeologyDatasetColorByChange(datasetType, event) {
-  store.setGeologyDatasetColorBy(datasetType, event.target.value)
+function getGeologyItemColorField(itemType) {
+  if (isGeologyLinked.value) return geologyColorByField.value
+  return itemType === 'geology-processed'
+    ? processedGeologyColorByField.value
+    : rawGeologyColorByField.value
+}
+
+function handleGeologyItemColorByChange(itemType, event) {
+  if (isGeologyLinked.value) {
+    handleGeologyColorByChange(event)
+    return
+  }
+  store.setGeologyDatasetColorBy(
+    itemType === 'geology-processed' ? 'processed' : 'raw',
+    event.target.value,
+  )
+}
+
+function toggleGeologyColorLink() {
+  if (!canToggleGeologyLink.value) return
+  if (isGeologyLinked.value) {
+    store.setGeologyColorMode('independent')
+    return
+  }
+  store.setGeologyColorBy(rawGeologyColorByField.value)
+  store.setGeologyColorMode('linked')
 }
 
 const geologyLegend = computed(() => {
@@ -252,17 +258,14 @@ const geologyLegend = computed(() => {
 
   const items = []
 
-  items.push({
-    type: 'geology-control',
-  })
-
   if (store.geology.layers.rawVisible) {
     items.push({
       type: 'geology-raw',
       color: '#64748b',
       borderColor: '#0f172a',
       label: '原始数据',
-      description: '地图中显示为实心圆点。',
+      description: true,
+      shapeText: '实心圆点',
     })
     const colorItems = store.geology.colorMode === 'independent'
       ? rawGeologyColorItems.value
@@ -284,7 +287,8 @@ const geologyLegend = computed(() => {
       color: '#64748b',
       fillColor: '#ffffff',
       label: '处理后数据',
-      description: '地图中显示为白心菱形。',
+      description: true,
+      shapeText: '白心菱形',
     })
     const colorItems = store.geology.colorMode === 'independent'
       ? processedGeologyColorItems.value
@@ -551,6 +555,12 @@ function getLegendIdForLayer(layerId) {
   transition: transform 0.2s;
 }
 
+.legend-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .legend-panel.collapsed .legend-header i {
   transform: rotate(0);
 }
@@ -571,50 +581,6 @@ function getLegendIdForLayer(layerId) {
 
 .legend-item-section {
   padding: 4px 0 2px;
-}
-
-.legend-geology-control {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-left: 30px;
-}
-
-.legend-geology-mode-row,
-.legend-geology-select-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.legend-geology-control-label {
-  color: var(--text-secondary);
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
-.legend-geology-mode-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.legend-geology-mode-button {
-  min-height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #334155;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.legend-geology-mode-button.active {
-  border-color: rgba(14, 165, 233, 0.28);
-  background: rgba(224, 242, 254, 0.92);
-  color: #0f172a;
 }
 
 .legend-symbol {
@@ -743,6 +709,67 @@ function getLegendIdForLayer(layerId) {
   line-height: 1.5;
 }
 
+.legend-link-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.legend-link-inline.header {
+  margin-left: 0;
+}
+
+.legend-link-label {
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ios-switch {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ios-switch-track {
+  position: relative;
+  display: block;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  transition: background 0.2s ease;
+}
+
+.ios-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+  transition: transform 0.2s ease;
+}
+
+.ios-switch.active .ios-switch-track {
+  background: #22c55e;
+}
+
+.ios-switch.active .ios-switch-thumb {
+  transform: translateX(14px);
+}
+
+.ios-switch.disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 /* ── 地质采样内联着色选择 ── */
 .inline-color-select {
   appearance: none;
@@ -763,19 +790,6 @@ function getLegendIdForLayer(layerId) {
   cursor: pointer;
   outline: none;
   vertical-align: baseline;
-}
-
-.inline-color-select.block {
-  display: block;
-  width: 100%;
-  min-height: 30px;
-  padding: 0 22px 0 8px;
-  margin: 0;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.96);
-  background-position: right 8px center;
-  text-decoration: none;
 }
 
 .inline-color-select:focus {

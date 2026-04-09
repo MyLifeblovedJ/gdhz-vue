@@ -15,7 +15,6 @@ import {
 } from '../data/mockData'
 import { deviceTypeConfig } from '../data/deviceConfig'
 import {
-  GEOLOGY_COLOR_MODE_OPTIONS,
   GEOLOGY_FIELD_OPTIONS,
   buildGeologyColorLegendItems,
   buildGeologyFilterTreeItems,
@@ -74,7 +73,7 @@ export const useAppStore = defineStore('app', () => {
       rawVisible: true,
       processedVisible: false,
     },
-    colorMode: GEOLOGY_COLOR_MODE_OPTIONS[0].key,
+    colorMode: 'independent',
     colorBy: 'ship',
     rawColorBy: 'ship',
     processedColorBy: 'ship',
@@ -324,6 +323,9 @@ export const useAppStore = defineStore('app', () => {
     if (datasetType === 'processed') {
       geology.value.layers.processedVisible = visible
     }
+    if (!(geology.value.layers.rawVisible && geology.value.layers.processedVisible)) {
+      geology.value.colorMode = 'independent'
+    }
     ensureActiveGeologySelectionVisible()
   }
 
@@ -333,9 +335,12 @@ export const useAppStore = defineStore('app', () => {
   }
 
   function setGeologyColorMode(mode) {
-    const nextMode = mode === 'independent' ? 'independent' : 'linked'
+    const nextMode = mode === 'linked' ? 'linked' : 'independent'
+    if (nextMode === 'linked' && !(geology.value.layers.rawVisible && geology.value.layers.processedVisible)) {
+      return
+    }
     if (nextMode === geology.value.colorMode) return
-    if (nextMode === 'independent') {
+    if (nextMode === 'linked') {
       geology.value.rawColorBy = geology.value.colorBy
       geology.value.processedColorBy = geology.value.colorBy
     }

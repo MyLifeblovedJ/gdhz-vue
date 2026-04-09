@@ -68,22 +68,6 @@
     <div class="panel-block">
       <div class="block-title">着色图例</div>
 
-      <div class="mode-row">
-        <span>着色模式</span>
-        <div class="mode-buttons">
-          <button
-            v-for="mode in colorModes"
-            :key="mode.key"
-            type="button"
-            class="mode-button"
-            :class="{ active: store.geology.colorMode === mode.key }"
-            @click="store.setGeologyColorMode(mode.key)"
-          >
-            {{ mode.label }}
-          </button>
-        </div>
-      </div>
-
       <template v-if="store.geology.colorMode === 'linked'">
         <label class="field-control">
           <span>着色字段</span>
@@ -122,33 +106,9 @@
       </template>
 
       <template v-else>
-        <template v-if="store.geology.layers.rawVisible">
-          <label class="field-control">
-            <span>原始数据着色字段</span>
-            <select
-              :value="store.geology.rawColorBy"
-              @change="store.setGeologyDatasetColorBy('raw', $event.target.value)"
-            >
-              <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
-                {{ field.label }}
-              </option>
-            </select>
-          </label>
-        </template>
-
-        <template v-if="store.geology.layers.processedVisible">
-          <label class="field-control">
-            <span>处理后数据着色字段</span>
-            <select
-              :value="store.geology.processedColorBy"
-              @change="store.setGeologyDatasetColorBy('processed', $event.target.value)"
-            >
-              <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
-                {{ field.label }}
-              </option>
-            </select>
-          </label>
-        </template>
+        <div class="color-mode-tip">
+          当前为独立着色，请在地图图例说明文本中分别调整原始数据和处理后数据的分类字段。
+        </div>
 
         <div class="tree-shell">
           <template v-if="rawColorGroup?.children?.length || processedColorGroup?.children?.length">
@@ -218,13 +178,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
-import { GEOLOGY_COLOR_MODE_OPTIONS, GEOLOGY_FILTER_MODE_OPTIONS } from '../../utils/geologySampling'
+import { GEOLOGY_FILTER_MODE_OPTIONS } from '../../utils/geologySampling'
 
 const store = useAppStore()
 
 const fieldOptions = computed(() => store.geology.fieldOptions || [])
 const filterModes = GEOLOGY_FILTER_MODE_OPTIONS
-const colorModes = GEOLOGY_COLOR_MODE_OPTIONS
 const isSingleMode = computed(() => store.geology.filterMode === 'single')
 const filterGroup = computed(() => store.geologyFilterTreeItems[0] || null)
 const colorGroup = computed(() => store.geologyColorLegendItems[0] || null)
@@ -387,6 +346,12 @@ const processedColorGroup = computed(() => store.processedGeologyColorLegendItem
   background: #ffffff;
   transform: rotate(45deg);
   box-sizing: border-box;
+}
+
+.color-mode-tip {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .tree-group-subheader {
