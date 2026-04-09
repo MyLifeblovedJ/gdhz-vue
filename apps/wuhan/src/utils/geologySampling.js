@@ -188,9 +188,10 @@ export function getUniqueFieldValues(records = [], field) {
  * @returns {Array} 过滤后的记录数组
  */
 export function filterByTopFilters(records = [], filters = {}) {
-  const { institution, ship, cruise, device, yearStart, yearEnd } = filters
+  const { mggid, institution, ship, cruise, device, yearStart, yearEnd } = filters
 
   return records.filter((record) => {
+    if (mggid && getGeologyFieldValue(record, 'mggid') !== mggid) return false
     if (institution && getGeologyFieldValue(record, 'institution') !== institution) return false
     if (ship && getGeologyFieldValue(record, 'ship') !== ship) return false
     if (cruise && getGeologyFieldValue(record, 'cruise') !== cruise) return false
