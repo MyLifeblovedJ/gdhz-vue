@@ -43,6 +43,7 @@ function buildGeologyPopupHtml(title, rows) {
 
   return `
     <section class="geology-popup-card" data-popup-type="geology">
+      <button class="geology-popup-card__close" type="button" aria-label="关闭地质点气泡">×</button>
       <header class="geology-popup-card__title">${escapePopupHtml(title)}</header>
       <div class="geology-popup-card__body">${renderedRows}</div>
     </section>

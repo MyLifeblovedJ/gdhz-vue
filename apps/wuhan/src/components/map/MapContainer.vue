@@ -29,7 +29,7 @@
         :class="{ 'is-geology-popup': cesiumPopupOverlay.sourceType === 'geology' }"
         :style="{ left: `${cesiumPopupOverlay.x}px`, top: `${cesiumPopupOverlay.y}px` }"
       >
-        <div class="cesium-floating-popup__content" v-html="cesiumPopupOverlay.html"></div>
+        <div class="cesium-floating-popup__content" @click="handleCesiumPopupContentClick" v-html="cesiumPopupOverlay.html"></div>
       </div>
       <slot></slot>
     </div>
@@ -224,7 +224,7 @@ const cesiumPopupOverlay = ref(createOverlayState())
 let cesiumPopupGlassInstance = null
 let leafletPopupGlassInstance = null
 
-const GEOLOGY_POPUP_GLASS_BORDER = '1px solid rgba(148, 163, 184, 0.18)'
+const GEOLOGY_POPUP_GLASS_BORDER = '1px solid rgba(255, 255, 255, 0.5)'
 const GEOLOGY_POPUP_GLASS_SHADOW = '0 8px 18px rgba(2, 8, 23, 0.18), 0 -10px 25px inset rgba(0, 0, 0, 0.05)'
 
 // 椋庨櫓浣嶇疆鏄犲皠锛堝吋瀹圭己澶辩粡绾害鐨勬棫鏁版嵁锛?
@@ -1456,6 +1456,38 @@ function syncCesiumPopupGlass() {
   })
 }
 
+function closeActiveGeologyPopup() {
+  clearGeologyTransientUi()
+  store.clearActiveGeologySelection()
+  viewer?.scene?.requestRender()
+}
+
+function handlePopupCloseButtonClick(event, onClose) {
+  const target = event?.target
+  if (!(target instanceof Element)) return false
+
+  const closeButton = target.closest('.geology-popup-card__close')
+  if (!closeButton) return false
+
+  event.preventDefault()
+  event.stopPropagation()
+  onClose()
+  return true
+}
+
+function bindLeafletPopupCloseButton(popup) {
+  const popupElement = popup?.getElement?.()
+  if (!popupElement) return
+
+  popupElement.addEventListener('click', (event) => {
+    handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
+  })
+}
+
+function handleCesiumPopupContentClick(event) {
+  handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
+}
+
 function setCesiumHoverOverlay(meta) {
   if (!meta?.hoverHtml) {
     resetCesiumHoverOverlay()
@@ -1540,7 +1572,10 @@ function renderLeafletPointMarker(layer, item, { pane = 'markers-pane', zIndexOf
 
   if (item.sourceType === 'geology') {
     marker.on('popupopen', (event) => {
-      requestAnimationFrame(() => syncLeafletPopupGlass(event.popup))
+      requestAnimationFrame(() => {
+        syncLeafletPopupGlass(event.popup)
+        bindLeafletPopupCloseButton(event.popup)
+      })
     })
     marker.on('popupclose', () => {
       destroyLeafletPopupGlass()
@@ -2567,15 +2602,49 @@ onUnmounted(() => {
 }
 
 :deep(.geology-popup-card) {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 200px;
 }
 
+:deep(.geology-popup-card__close) {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #c9f0ff;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 0.9;
+  cursor: pointer;
+  text-shadow: 0 0 12px rgba(125, 211, 252, 0.2);
+  transition: color 0.18s ease, transform 0.18s ease, text-shadow 0.18s ease;
+}
+
+:deep(.geology-popup-card__close:hover) {
+  color: #ffffff;
+  transform: scale(1.08);
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.32);
+}
+
+:deep(.geology-popup-card__close:focus-visible) {
+  outline: 1px solid rgba(125, 211, 252, 0.6);
+  outline-offset: 1px;
+}
+
 :deep(.geology-popup-card__title) {
   margin: 0;
-  padding-bottom: 7px;
+  padding: 0 26px 7px 0;
   border-bottom: 1px solid rgba(125, 211, 252, 0.18);
   color: #7dd3fc;
   font-size: 14px;
