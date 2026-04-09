@@ -13,6 +13,15 @@
           </select>
         </div>
         <div class="filter-cell">
+          <span class="filter-label">数据集</span>
+          <select v-model="filters.title" class="filter-select" @change="onFilterChange">
+            <option value="">全部</option>
+            <option v-for="opt in titleOptions" :key="opt.value" :value="opt.value">
+              {{ opt.value }}（{{ opt.count }}）
+            </option>
+          </select>
+        </div>
+        <div class="filter-cell">
           <span class="filter-label">机构</span>
           <select v-model="filters.institution" class="filter-select" @change="onFilterChange">
             <option value="">全部</option>
@@ -22,7 +31,7 @@
           </select>
         </div>
         <div class="filter-cell">
-          <span class="filter-label">船只</span>
+          <span class="filter-label">调查船</span>
           <select v-model="filters.ship" class="filter-select" @change="onFilterChange">
             <option value="">全部</option>
             <option v-for="opt in shipOptions" :key="opt.value" :value="opt.value">
@@ -121,6 +130,7 @@ const emit = defineEmits(['sample-click'])
 
 const filters = reactive({
   mggid: '',
+  title: '',
   institution: '',
   ship: '',
   device: '',
@@ -146,6 +156,7 @@ const baseRecords = computed(() => {
 const effectiveFilters = computed(() => {
   const f = {
     mggid: filters.mggid,
+    title: filters.title,
     institution: filters.institution,
     ship: filters.ship,
     device: filters.device,
@@ -164,7 +175,7 @@ const filteredRecords = computed(() => filterByTopFilters(baseRecords.value, eff
 const filteredTotal = computed(() => filteredRecords.value.length)
 
 const hasActiveFilter = computed(() =>
-  filters.mggid || filters.institution || filters.ship || filters.device || filters.dateStart || filters.dateEnd,
+  filters.mggid || filters.title || filters.institution || filters.ship || filters.device || filters.dateStart || filters.dateEnd,
 )
 
 // 下拉选项：每个下拉框基于"除自身外的所有筛选条件"过滤记录后计算，实现完全联动
@@ -172,6 +183,7 @@ function filtersExcept(...excludeKeys) {
   const base = effectiveFilters.value
   const result = {}
   if (!excludeKeys.includes('mggid') && base.mggid) result.mggid = base.mggid
+  if (!excludeKeys.includes('title') && base.title) result.title = base.title
   if (!excludeKeys.includes('institution') && base.institution) result.institution = base.institution
   if (!excludeKeys.includes('ship') && base.ship) result.ship = base.ship
   if (!excludeKeys.includes('device') && base.device) result.device = base.device
@@ -182,6 +194,9 @@ function filtersExcept(...excludeKeys) {
 
 const mggidOptions = computed(() =>
   getUniqueFieldValues(filterByTopFilters(baseRecords.value, filtersExcept('mggid')), 'mggid'),
+)
+const titleOptions = computed(() =>
+  getUniqueFieldValues(filterByTopFilters(baseRecords.value, filtersExcept('title')), 'title'),
 )
 const institutionOptions = computed(() =>
   getUniqueFieldValues(filterByTopFilters(baseRecords.value, filtersExcept('institution')), 'institution'),
@@ -211,7 +226,7 @@ const dateRange = computed(() => {
 
 // 只看类型中文标签
 const focusTypeLabel = computed(() => {
-  const labels = { institution: '机构', ship: '船舶', cruise: '航次' }
+  const labels = { institution: '机构', ship: '调查船', cruise: '航次' }
   return labels[store.geology.focusFilter?.type] || ''
 })
 
@@ -221,11 +236,13 @@ const treeData = computed(() => buildGeologyHierarchicalTree(baseRecords.value, 
 function onFilterChange() {
   // 联动清理：当已选值不在当前可选范围内时自动重置
   const validMggids = new Set(mggidOptions.value.map(o => o.value))
+  const validTitles = new Set(titleOptions.value.map(o => o.value))
   const validInstitutions = new Set(institutionOptions.value.map(o => o.value))
   const validShips = new Set(shipOptions.value.map(o => o.value))
   const validDevices = new Set(deviceOptions.value.map(o => o.value))
 
   if (filters.mggid && !validMggids.has(filters.mggid)) filters.mggid = ''
+  if (filters.title && !validTitles.has(filters.title)) filters.title = ''
   if (filters.institution && !validInstitutions.has(filters.institution)) filters.institution = ''
   if (filters.ship && !validShips.has(filters.ship)) filters.ship = ''
   if (filters.device && !validDevices.has(filters.device)) filters.device = ''
@@ -235,6 +252,7 @@ function onFilterChange() {
 
 function clearFilters() {
   filters.mggid = ''
+  filters.title = ''
   filters.institution = ''
   filters.ship = ''
   filters.device = ''

@@ -1,9 +1,10 @@
 export const GEOLOGY_FIELD_OPTIONS = [
-  { key: 'title', label: '项目标题' },
-  { key: 'ship', label: '调查船' },
-  { key: 'cruise', label: '航次' },
-  { key: 'yearmoda', label: '日期' },
+  { key: 'mggid', label: 'MGGID' },
+  { key: 'title', label: '数据集' },
   { key: 'institution', label: '机构' },
+  { key: 'ship', label: '调查船' },
+  { key: 'device', label: '设备' },
+  { key: 'yearmoda', label: '日期' },
 ]
 
 export const GEOLOGY_FILTER_MODE_OPTIONS = [
@@ -49,32 +50,118 @@ function mixBits(h) {
 }
 
 /**
- * 根据字符串哈希生成稳定且高区分度的 HSL 颜色
- *
- * 三个维度使用独立混淆种子：
- * - 色相：哈希选槽位，再用黄金角（≈137.508°）映射，
- *   相邻槽位的色相间隔 ~137.5 度，视觉区分极大
- * - 饱和度 / 明度：独立种子散列，即使色相偶然接近也有额外差异
+ * 将色相标准化到 0~360，避免后续计算出现负值或超界。
  */
-function stableHslColor(field, value) {
+function normalizeHue(hue) {
+  return ((hue % 360) + 360) % 360
+}
+
+function formatHslColor({ h, s, l }) {
+  return `hsl(${normalizeHue(h).toFixed(1)}, ${Math.round(s)}%, ${Math.round(l)}%)`
+}
+
+function hslToRgb({ h, s, l }) {
+  const hue = normalizeHue(h)
+  const saturation = s / 100
+  const lightness = l / 100
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
+  const huePrime = hue / 60
+  const x = chroma * (1 - Math.abs((huePrime % 2) - 1))
+
+  let red = 0
+  let green = 0
+  let blue = 0
+
+  if (huePrime >= 0 && huePrime < 1) {
+    red = chroma
+    green = x
+  } else if (huePrime < 2) {
+    red = x
+    green = chroma
+  } else if (huePrime < 3) {
+    green = chroma
+    blue = x
+  } else if (huePrime < 4) {
+    green = x
+    blue = chroma
+  } else if (huePrime < 5) {
+    red = x
+    blue = chroma
+  } else {
+    red = chroma
+    blue = x
+  }
+
+  const match = lightness - chroma / 2
+  return [red + match, green + match, blue + match].map(value => Math.round(value * 255))
+}
+
+function getRgbDistance(left, right) {
+  return Math.sqrt(
+    ((left[0] - right[0]) ** 2)
+      + ((left[1] - right[1]) ** 2)
+      + ((left[2] - right[2]) ** 2),
+  )
+}
+
+function buildStableColorCandidate(field, value, attempt = 0) {
   const hash = hashString(`${field}:${value}`)
-  const mSlot = mixBits(hash)
-  const mSat = mixBits(hash ^ 0x9E3779B9)
-  const mLit = mixBits(hash ^ 0x517CC1B7)
-  const hue = ((mSlot % 360) * 137.508) % 360
-  const saturation = 52 + (mSat % 26)
-  const lightness = 38 + (mLit % 22)
-  return `hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`
+  const hue = normalizeHue((mixBits(hash) % 360) + attempt * 137.508)
+  const saturationBands = [74, 66, 82, 58, 70]
+  const lightnessBands = [48, 58, 40, 64, 34]
+  const saturationSeed = mixBits(hash ^ 0x9E3779B9)
+  const lightnessSeed = mixBits(hash ^ 0x517CC1B7)
+  const saturation = saturationBands[(saturationSeed + attempt) % saturationBands.length]
+  const lightness = lightnessBands[(lightnessSeed + Math.floor(attempt / saturationBands.length)) % lightnessBands.length]
+
+  return { h: hue, s: saturation, l: lightness }
+}
+
+function getMinimumColorDistance(categoryCount) {
+  if (categoryCount <= 8) return 42
+  if (categoryCount <= 20) return 34
+  if (categoryCount <= 40) return 28
+  if (categoryCount <= 80) return 22
+  return 18
+}
+
+function pickDistinctStableColor(field, value, assignedColors, minimumDistance) {
+  let bestCandidate = null
+
+  for (let attempt = 0; attempt < 96; attempt += 1) {
+    const candidate = buildStableColorCandidate(field, value, attempt)
+    const rgb = hslToRgb(candidate)
+    const nearestDistance = assignedColors.length
+      ? Math.min(...assignedColors.map(assigned => getRgbDistance(rgb, assigned.rgb)))
+      : Number.POSITIVE_INFINITY
+
+    if (nearestDistance >= minimumDistance) {
+      return { ...candidate, rgb }
+    }
+
+    if (!bestCandidate || nearestDistance > bestCandidate.nearestDistance) {
+      bestCandidate = { ...candidate, rgb, nearestDistance }
+    }
+  }
+
+  return bestCandidate || {
+    ...buildStableColorCandidate(field, value, 0),
+    rgb: hslToRgb(buildStableColorCandidate(field, value, 0)),
+  }
 }
 
 export function createStableCategoryColorMap(records = [], field = 'ship') {
   const counts = getFieldCounts(records, field)
-  return Object.keys(counts)
-    .sort((left, right) => left.localeCompare(right, 'zh-CN'))
-    .reduce((accumulator, value) => {
-      accumulator[value] = stableHslColor(field, value)
-      return accumulator
-    }, {})
+  const keys = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+  const minimumDistance = getMinimumColorDistance(keys.length)
+  const assignedColors = []
+
+  return keys.reduce((map, value) => {
+    const color = pickDistinctStableColor(field, value, assignedColors, minimumDistance)
+    assignedColors.push(color)
+    map[value] = formatHslColor(color)
+    return map
+  }, {})
 }
 
 export function filterGeologyRecords(
@@ -188,10 +275,11 @@ export function getUniqueFieldValues(records = [], field) {
  * @returns {Array} 过滤后的记录数组
  */
 export function filterByTopFilters(records = [], filters = {}) {
-  const { mggid, institution, ship, cruise, device, yearStart, yearEnd } = filters
+  const { mggid, title, institution, ship, cruise, device, yearStart, yearEnd } = filters
 
   return records.filter((record) => {
     if (mggid && getGeologyFieldValue(record, 'mggid') !== mggid) return false
+    if (title && getGeologyFieldValue(record, 'title') !== title) return false
     if (institution && getGeologyFieldValue(record, 'institution') !== institution) return false
     if (ship && getGeologyFieldValue(record, 'ship') !== ship) return false
     if (cruise && getGeologyFieldValue(record, 'cruise') !== cruise) return false

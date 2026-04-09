@@ -118,6 +118,14 @@ const legendOrder = ref([])
 
 const geologyColorByField = computed(() => store.geology.colorBy)
 const geologyFieldOptions = GEOLOGY_FIELD_OPTIONS
+const geologyColorItems = computed(() => {
+  const group = store.geologyColorLegendItems[0]
+  return group?.children?.map(item => ({
+    type: 'dot',
+    color: item.color,
+    label: item.label,
+  })) || []
+})
 
 function handleGeologyColorByChange(event) {
   store.setGeologyColorBy(event.target.value)
@@ -148,6 +156,10 @@ const geologyLegend = computed(() => {
       hasColorBySelect: true,
       shapeText: '白心菱形',
     })
+  }
+
+  if (geologyColorItems.value.length) {
+    items.push(...geologyColorItems.value)
   }
 
   if (!items.length) return null

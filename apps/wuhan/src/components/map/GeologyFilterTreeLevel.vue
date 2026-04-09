@@ -153,7 +153,7 @@ function nodeIcon(node) {
 }
 
 function focusLabel(type) {
-  const labels = { institution: '机构', ship: '船舶', cruise: '航次' }
+  const labels = { institution: '机构', ship: '调查船', cruise: '航次' }
   return labels[type] || ''
 }
 

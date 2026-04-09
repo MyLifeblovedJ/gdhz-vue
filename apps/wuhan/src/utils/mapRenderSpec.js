@@ -390,7 +390,8 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
         visualVariant: record.datasetType,
         highlightState,
         hoverHtml: '',
-        legacyPopupHtml: buildPopupHtml(record.sample || record.pointId, [
+        legacyPopupHtml: buildPopupHtml(`样品编号: ${record.sample || record.pointId || '--'}`, [
+          `数据集: ${record.title || '--'}`,
           `数据源: ${record.datasetType === 'processed' ? '处理后数据' : '原始数据'}`,
           `船舶: ${record.ship || '--'}`,
           `航次: ${record.cruise || '--'}`,
@@ -398,7 +399,8 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
           `机构: ${record.institution || '--'}`,
           `MGGID: ${record.mggid || '--'}`,
         ]),
-        popupHtml: buildGeologyPopupHtml(record.sample || record.pointId, [
+        popupHtml: buildGeologyPopupHtml(`样品编号：${record.sample || record.pointId || '--'}`, [
+          { label: '数据集', value: record.title || '--' },
           { label: '\u6570\u636e\u6e90', value: record.datasetType === 'processed' ? '\u5904\u7406\u540e\u6570\u636e' : '\u539f\u59cb\u6570\u636e' },
           { label: '\u8239\u8236', value: record.ship || '--' },
           { label: '\u822a\u6b21', value: record.cruise || '--' },
