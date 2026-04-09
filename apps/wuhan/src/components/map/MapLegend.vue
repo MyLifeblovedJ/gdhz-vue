@@ -72,7 +72,22 @@
 
               <span class="legend-text">
                 <span class="legend-label">{{ item.label }}</span>
-                <span v-if="item.description" class="legend-description">{{ item.description }}</span>
+                <span v-if="item.description" class="legend-description">
+                  <template v-if="item.hasColorBySelect">
+                    稳定按照
+                    <select
+                      class="inline-color-select"
+                      :value="geologyColorByField"
+                      @change="handleGeologyColorByChange"
+                    >
+                      <option v-for="field in geologyFieldOptions" :key="field.key" :value="field.key">
+                        {{ field.label }}
+                      </option>
+                    </select>
+                    映射颜色，同值同色，{{ item.shapeText }}。
+                  </template>
+                  <template v-else>{{ item.description }}</template>
+                </span>
               </span>
             </div>
           </div>
@@ -86,7 +101,7 @@
 import { ref, computed, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { legendConfig } from '../../data/deviceConfig'
-import { getGeologyFieldOption } from '../../utils/geologySampling'
+import { GEOLOGY_FIELD_OPTIONS } from '../../utils/geologySampling'
 
 const props = defineProps({
   embedded: {
@@ -101,8 +116,14 @@ const collapsedLegends = ref({})
 const isContainerExpanded = ref(false)
 const legendOrder = ref([])
 
+const geologyColorByField = computed(() => store.geology.colorBy)
+const geologyFieldOptions = GEOLOGY_FIELD_OPTIONS
+
+function handleGeologyColorByChange(event) {
+  store.setGeologyColorBy(event.target.value)
+}
+
 const geologyLegend = computed(() => {
-  const colorFieldLabel = getGeologyFieldOption(store.geology.colorBy)?.label || store.geology.colorBy
   const items = []
 
   if (store.geology.layers.rawVisible) {
@@ -111,7 +132,9 @@ const geologyLegend = computed(() => {
       color: '#64748b',
       borderColor: '#0f172a',
       label: '原始数据',
-      description: `当前按“${colorFieldLabel}”稳定映射颜色，同值同色，地图显示为实心圆点。`,
+      description: true,
+      hasColorBySelect: true,
+      shapeText: '实心圆点',
     })
   }
 
@@ -121,7 +144,9 @@ const geologyLegend = computed(() => {
       color: '#64748b',
       fillColor: '#ffffff',
       label: '处理后数据',
-      description: `当前按“${colorFieldLabel}”稳定映射颜色，同值同色，地图显示为白心菱形。`,
+      description: true,
+      hasColorBySelect: true,
+      shapeText: '白心菱形',
     })
   }
 
@@ -367,15 +392,15 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-content {
-  padding: 7px 10px 10px;
+  padding: 8px 10px 12px;
   border-top: 1px solid var(--border-subtle);
 }
 
 .legend-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 10px;
+  padding: 6px 0;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -462,13 +487,39 @@ function getLegendIdForLayer(layerId) {
 
 .legend-item.has-description .legend-label {
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
 }
 
 .legend-description {
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── 地质采样内联着色选择 ── */
+.inline-color-select {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline;
+  padding: 0 14px 0 2px;
+  margin: 0 3px;
+  border: none;
+  border-radius: 0;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 5 5-5' fill='none' stroke='%231e293b' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 1px center;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: #1e293b;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  outline: none;
+  vertical-align: baseline;
+}
+
+.inline-color-select:focus {
+  text-decoration-color: #1e293b;
 }
 </style>

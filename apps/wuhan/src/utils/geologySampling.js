@@ -1,9 +1,8 @@
 export const GEOLOGY_FIELD_OPTIONS = [
+  { key: 'title', label: '项目标题' },
   { key: 'ship', label: '调查船' },
   { key: 'cruise', label: '航次' },
-  { key: 'device', label: '设备' },
   { key: 'yearmoda', label: '日期' },
-  { key: 'title', label: '标题' },
   { key: 'institution', label: '机构' },
 ]
 
@@ -16,21 +15,6 @@ export const GEOLOGY_DATASET_COLORS = {
   raw: '#0EA5E9',
   processed: '#F97316',
 }
-
-const GEOLOGY_CATEGORY_PALETTE = [
-  '#0EA5E9',
-  '#22C55E',
-  '#F97316',
-  '#8B5CF6',
-  '#EF4444',
-  '#EAB308',
-  '#14B8A6',
-  '#EC4899',
-  '#6366F1',
-  '#84CC16',
-  '#F59E0B',
-  '#06B6D4',
-]
 
 export function getGeologyFieldOption(field) {
   return GEOLOGY_FIELD_OPTIONS.find(item => item.key === field) || GEOLOGY_FIELD_OPTIONS[0]
@@ -57,12 +41,38 @@ function hashString(input = '') {
   }, 7)
 }
 
+/** MurmurHash3 终态混淆，将相近哈希值打散到完全不同的输出 */
+function mixBits(h) {
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0
+  return (h ^ (h >>> 16)) >>> 0
+}
+
+/**
+ * 根据字符串哈希生成稳定且高区分度的 HSL 颜色
+ *
+ * 三个维度使用独立混淆种子：
+ * - 色相：哈希选槽位，再用黄金角（≈137.508°）映射，
+ *   相邻槽位的色相间隔 ~137.5 度，视觉区分极大
+ * - 饱和度 / 明度：独立种子散列，即使色相偶然接近也有额外差异
+ */
+function stableHslColor(field, value) {
+  const hash = hashString(`${field}:${value}`)
+  const mSlot = mixBits(hash)
+  const mSat = mixBits(hash ^ 0x9E3779B9)
+  const mLit = mixBits(hash ^ 0x517CC1B7)
+  const hue = ((mSlot % 360) * 137.508) % 360
+  const saturation = 52 + (mSat % 26)
+  const lightness = 38 + (mLit % 22)
+  return `hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`
+}
+
 export function createStableCategoryColorMap(records = [], field = 'ship') {
   const counts = getFieldCounts(records, field)
   return Object.keys(counts)
     .sort((left, right) => left.localeCompare(right, 'zh-CN'))
     .reduce((accumulator, value) => {
-      accumulator[value] = GEOLOGY_CATEGORY_PALETTE[hashString(`${field}:${value}`) % GEOLOGY_CATEGORY_PALETTE.length]
+      accumulator[value] = stableHslColor(field, value)
       return accumulator
     }, {})
 }
