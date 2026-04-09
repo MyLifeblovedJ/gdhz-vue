@@ -267,6 +267,7 @@ function getLegendIdForLayer(layerId) {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  overflow: visible;
 }
 
 .legend-title-bar {
@@ -300,6 +301,11 @@ function getLegendIdForLayer(layerId) {
   max-height: 250px;
   overflow-y: auto;
   flex: 1;
+}
+
+.map-legend-wrapper.embedded .legend-scroll {
+  max-height: none;
+  overflow: visible;
 }
 
 .legend-scroll::-webkit-scrollbar {
