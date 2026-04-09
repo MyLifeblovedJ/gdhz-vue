@@ -1,42 +1,59 @@
 <template>
   <div class="map-legend-wrapper" :class="{ embedded }">
     <div class="legend-container">
-      <!-- 标题栏 -->
-      <div v-if="!embedded" class="legend-title-bar" @click="isContainerExpanded = !isContainerExpanded" :style="{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }">
+      <div
+        v-if="!embedded"
+        class="legend-title-bar"
+        @click="isContainerExpanded = !isContainerExpanded"
+        :style="{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', userSelect: 'none' }"
+      >
         <div style="display: flex; align-items: center; gap: 8px;">
           <i class="fa-solid fa-palette"></i>
           <span>图例</span>
         </div>
-        <i :class="isContainerExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'" style="font-size: 14px; color: #64748b; transition: transform 0.2s;"></i>
+        <i
+          :class="isContainerExpanded ? 'fa-solid fa-chevron-up' : 'fa-solid fa-chevron-down'"
+          style="font-size: 14px; color: #64748b; transition: transform 0.2s;"
+        ></i>
       </div>
-      <!-- 图例内容区 -->
+
       <div class="legend-scroll" v-show="embedded || isContainerExpanded">
-        <div v-if="visibleLegends.length === 0" style="padding: 12px; color: #888; font-size: 13px; text-align: center;">
+        <div v-if="visibleLegends.length === 0" class="legend-empty">
           暂无相关图例
         </div>
-        <div 
-          v-for="legend in visibleLegends" 
+
+        <div
+          v-for="legend in visibleLegends"
           :key="legend.id"
           class="legend-panel"
           :class="{ collapsed: collapsedLegends[legend.id] }"
         >
-          <!-- 图例标题栏 -->
           <div class="legend-header" @click="toggleLegend(legend.id)">
             <span class="legend-name">{{ legend.title }}</span>
             <i :class="collapsedLegends[legend.id] ? 'fa-solid fa-chevron-down' : 'fa-solid fa-chevron-up'"></i>
           </div>
-          
-          <!-- 鍥句緥鍐呭 -->
+
           <div class="legend-content" v-show="!collapsedLegends[legend.id]">
-            <div 
-              v-for="(item, index) in legend.items" 
+            <div
+              v-for="(item, index) in legend.items"
               :key="index"
               class="legend-item"
             >
-              <!-- 鍥句緥绗﹀彿 -->
               <span class="legend-symbol" :class="[item.type, { animate: item.animate }]">
                 <template v-if="item.type === 'dot'">
                   <span class="symbol-dot" :style="{ background: item.color }"></span>
+                </template>
+                <template v-else-if="item.type === 'geology-raw'">
+                  <span
+                    class="symbol-geology-raw"
+                    :style="{ background: item.color, borderColor: item.borderColor || '#0f172a' }"
+                  ></span>
+                </template>
+                <template v-else-if="item.type === 'geology-processed'">
+                  <span
+                    class="symbol-geology-processed"
+                    :style="{ borderColor: item.color, background: item.fillColor || '#ffffff' }"
+                  ></span>
                 </template>
                 <template v-else-if="item.type === 'line'">
                   <span class="symbol-line" :style="{ background: item.color }"></span>
@@ -51,7 +68,11 @@
                   <span class="symbol-gradient" :style="{ background: item.color }"></span>
                 </template>
               </span>
-              <span class="legend-label">{{ item.label }}</span>
+
+              <span class="legend-text">
+                <span class="legend-label">{{ item.label }}</span>
+                <span v-if="item.description" class="legend-description">{{ item.description }}</span>
+              </span>
             </div>
           </div>
         </div>
@@ -64,98 +85,129 @@
 import { ref, computed, watch } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { legendConfig } from '../../data/deviceConfig'
+import { getGeologyFieldOption } from '../../utils/geologySampling'
 
 const props = defineProps({
   embedded: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const store = useAppStore()
 
-// 璺熻釜宸叉姌鍙犵殑鍥句緥
 const collapsedLegends = ref({})
-
-// 整个图例区域是否展开
 const isContainerExpanded = ref(false)
-
-// 璺熻釜鍥句緥娣诲姞椤哄簭锛堝悗娣诲姞鐨勫湪涓婇潰锛?
 const legendOrder = ref([])
 
-// 鏍规嵁鍥惧眰鍙鎬ц幏鍙栭渶瑕佹樉绀虹殑鍥句緥
+const geologyLegend = computed(() => {
+  const colorFieldLabel = getGeologyFieldOption(store.geology.colorBy)?.label || store.geology.colorBy
+  const items = []
+
+  if (store.geology.layers.rawVisible) {
+    items.push({
+      type: 'geology-raw',
+      color: '#64748b',
+      borderColor: '#0f172a',
+      label: '原始数据',
+      description: `当前按“${colorFieldLabel}”稳定映射颜色，同值同色，地图显示为实心圆点。`,
+    })
+  }
+
+  if (store.geology.layers.processedVisible) {
+    items.push({
+      type: 'geology-processed',
+      color: '#64748b',
+      fillColor: '#ffffff',
+      label: '处理后数据',
+      description: `当前按“${colorFieldLabel}”稳定映射颜色，同值同色，地图显示为白心菱形。`,
+    })
+  }
+
+  if (!items.length) return null
+
+  return {
+    id: 'geology',
+    title: '地质采样',
+    items,
+  }
+})
+
 const visibleLegends = computed(() => {
   const legends = []
   const visibility = store.layerVisibility
-  
-  // 瑙傛祴绔欑偣锛堟€绘槸鏄剧ず锛屽鏋滄湁浠讳綍绔欑偣鍥惧眰寮€鍚級
-  if (visibility.surge_stations || visibility.buoys || 
-      visibility.coastal_stations || visibility.tide_stations || 
-      visibility.coastal_base || visibility.wave_buoy ||
-      visibility.erosion_monitor || visibility.smart_marker ||
-      visibility.uav || visibility.usv) {
+
+  if (geologyLegend.value) {
+    legends.push(geologyLegend.value)
+  }
+
+  if (
+    visibility.surge_stations ||
+    visibility.buoys ||
+    visibility.coastal_stations ||
+    visibility.tide_stations ||
+    visibility.coastal_base ||
+    visibility.wave_buoy ||
+    visibility.erosion_monitor ||
+    visibility.smart_marker ||
+    visibility.uav ||
+    visibility.usv
+  ) {
     legends.push(legendConfig.stations)
   }
-  
-  // 鍙伴
+
   if (visibility.typhoon) {
     legends.push(legendConfig.typhoon)
   }
-  
-  // 鑸硅埗
+
   if (visibility.vessels) {
     legends.push(legendConfig.vessels)
   }
-  
-  // 椋庣矑瀛?
+
   if (visibility.wind_particle) {
     legends.push(legendConfig.wind_particle)
   }
-  
-  // 娴锋氮鐑姏鍥?
+
   if (visibility.wave_heatmap) {
     legends.push(legendConfig.wave_heatmap)
   }
-  
-  // 鎸夋坊鍔犻『搴忔帓搴忥紙鍚庢坊鍔犵殑鍦ㄥ墠闈級锛屾湭鍦ㄩ『搴忓垪琛ㄤ腑鐨勬斁鏈€鍚?
+
   return legends.sort((a, b) => {
     const aIndex = legendOrder.value.indexOf(a.id)
     const bIndex = legendOrder.value.indexOf(b.id)
     if (aIndex === -1 && bIndex === -1) return 0
     if (aIndex === -1) return 1
     if (bIndex === -1) return -1
-    return bIndex - aIndex // 鍚庢坊鍔犵殑鎺掑湪鍓嶉潰
+    return bIndex - aIndex
   })
 })
 
-// 鍒囨崲鍥句緥灞曞紑/鎶樺彔
 function toggleLegend(legendId) {
   collapsedLegends.value[legendId] = !collapsedLegends.value[legendId]
 }
 
-// 鐩戝惉鍥惧眰鍙鎬у彉鍖栵紝鏇存柊鍥句緥椤哄簭
-watch(() => store.layerVisibility, (newVal, oldVal) => {
-  // 妫€娴嬫柊寮€鍚殑鍥惧眰
-  Object.keys(newVal).forEach(key => {
-    if (newVal[key] && !oldVal?.[key]) {
-      // 鏂板紑鍚殑鍥惧眰锛屾坊鍔犲埌椤哄簭鍒楄〃鏈熬锛堟樉绀哄湪鏈€涓婇潰锛?
-      const legendId = getLegendIdForLayer(key)
-      if (legendId && !legendOrder.value.includes(legendId)) {
-        legendOrder.value.push(legendId)
-        
-        // 鎶樺彔鍏朵粬鍥句緥锛屽睍寮€鏂板浘渚?
-        Object.keys(collapsedLegends.value).forEach(id => {
-          if (id !== legendId) {
-            collapsedLegends.value[id] = true
-          }
-        })
-        collapsedLegends.value[legendId] = false
-      }
-    }
-  })
-}, { deep: true })
+watch(
+  () => store.layerVisibility,
+  (newVal, oldVal) => {
+    Object.keys(newVal).forEach((key) => {
+      if (newVal[key] && !oldVal?.[key]) {
+        const legendId = getLegendIdForLayer(key)
+        if (legendId && !legendOrder.value.includes(legendId)) {
+          legendOrder.value.push(legendId)
 
-// 鏍规嵁鍥惧眰ID鑾峰彇瀵瑰簲鐨勫浘渚婭D
+          Object.keys(collapsedLegends.value).forEach((id) => {
+            if (id !== legendId) {
+              collapsedLegends.value[id] = true
+            }
+          })
+          collapsedLegends.value[legendId] = false
+        }
+      }
+    })
+  },
+  { deep: true },
+)
+
 function getLegendIdForLayer(layerId) {
   const mapping = {
     surge_stations: 'stations',
@@ -216,7 +268,6 @@ function getLegendIdForLayer(layerId) {
   box-shadow: none;
 }
 
-/* 鏍囬鏍忥紙涓庡乏渚ц竟鏍忕粍浠朵竴鑷达級 */
 .legend-title-bar {
   display: flex;
   align-items: center;
@@ -254,7 +305,6 @@ function getLegendIdForLayer(layerId) {
   width: 4px;
 }
 
-
 .legend-scroll::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.04);
   border-radius: 2px;
@@ -263,6 +313,13 @@ function getLegendIdForLayer(layerId) {
 .legend-scroll::-webkit-scrollbar-thumb {
   background: var(--border-normal);
   border-radius: 2px;
+}
+
+.legend-empty {
+  padding: 12px;
+  color: #888;
+  font-size: 13px;
+  text-align: center;
 }
 
 .legend-panel {
@@ -309,7 +366,7 @@ function getLegendIdForLayer(layerId) {
 
 .legend-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 4px 0;
   font-size: 12px;
@@ -318,16 +375,34 @@ function getLegendIdForLayer(layerId) {
 
 .legend-symbol {
   width: 20px;
+  min-width: 20px;
+  min-height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* 鍦嗙偣绗﹀彿 */
 .symbol-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.symbol-geology-raw {
+  width: 10px;
+  height: 10px;
+  border: 1.2px solid #0f172a;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.symbol-geology-processed {
+  width: 10px;
+  height: 10px;
+  border: 1.4px solid #64748b;
+  background: #ffffff;
+  transform: rotate(45deg);
+  box-sizing: border-box;
 }
 
 .legend-symbol.animate .symbol-dot {
@@ -339,21 +414,18 @@ function getLegendIdForLayer(layerId) {
   50% { opacity: 0.5; transform: scale(1.2); }
 }
 
-/* 绾挎潯绗﹀彿 */
 .symbol-line {
   width: 16px;
   height: 2px;
   border-radius: 1px;
 }
 
-/* 铏氱嚎绗﹀彿 */
 .symbol-dashed {
   width: 16px;
   height: 0;
   border-top: 2px dashed;
 }
 
-/* 鍦嗗湀绗﹀彿 */
 .symbol-circle {
   width: 12px;
   height: 12px;
@@ -362,7 +434,6 @@ function getLegendIdForLayer(layerId) {
   background: transparent;
 }
 
-/* 娓愬彉绗﹀彿 */
 .symbol-gradient {
   width: 16px;
   height: 8px;
@@ -370,9 +441,23 @@ function getLegendIdForLayer(layerId) {
   opacity: 0.8;
 }
 
-.legend-label {
+.legend-text {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.35;
 }
-</style>
 
+.legend-description {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+</style>
