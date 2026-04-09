@@ -38,6 +38,7 @@
               v-for="(item, index) in legend.items"
               :key="index"
               class="legend-item"
+              :class="{ 'has-description': Boolean(item.description) }"
             >
               <span class="legend-symbol" :class="[item.type, { animate: item.animate }]">
                 <template v-if="item.type === 'dot'">
@@ -449,10 +450,14 @@ function getLegendIdForLayer(layerId) {
 }
 
 .legend-label {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.legend-item.has-description .legend-label {
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 700;
-  line-height: 1.35;
 }
 
 .legend-description {
