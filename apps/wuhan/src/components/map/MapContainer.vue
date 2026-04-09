@@ -16,6 +16,21 @@
     ></canvas>
 
     <div class="map-ui-overlay">
+      <div
+        v-if="cesiumHoverOverlay.visible"
+        class="cesium-floating-tooltip"
+        :style="{ left: `${cesiumHoverOverlay.x}px`, top: `${cesiumHoverOverlay.y}px` }"
+        v-html="cesiumHoverOverlay.html"
+      ></div>
+      <div
+        v-if="cesiumPopupOverlay.visible"
+        ref="cesiumPopupRef"
+        class="cesium-floating-popup"
+        :class="{ 'is-geology-popup': cesiumPopupOverlay.sourceType === 'geology' }"
+        :style="{ left: `${cesiumPopupOverlay.x}px`, top: `${cesiumPopupOverlay.y}px` }"
+      >
+        <div class="cesium-floating-popup__content" v-html="cesiumPopupOverlay.html"></div>
+      </div>
       <slot></slot>
     </div>
   </div>
@@ -26,6 +41,7 @@ import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue'
 import { useAppStore } from '../../stores/app'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { attachLiquidGlass } from '../../utils/liquidGlass'
 import {
   Cartesian3,
   Cartesian2,
@@ -88,6 +104,7 @@ const mapRef = ref(null)
 const cesiumRef = ref(null)
 const windCanvas = ref(null)
 const waveCanvas = ref(null)
+const cesiumPopupRef = ref(null)
 
 let map = null
 let viewer = null
@@ -197,12 +214,18 @@ function createOverlayState() {
     x: 0,
     y: 0,
     position: null,
-    entityId: null
+    entityId: null,
+    sourceType: null,
   }
 }
 
 const cesiumHoverOverlay = ref(createOverlayState())
 const cesiumPopupOverlay = ref(createOverlayState())
+let cesiumPopupGlassInstance = null
+let leafletPopupGlassInstance = null
+
+const GEOLOGY_POPUP_GLASS_BORDER = '1px solid rgba(148, 163, 184, 0.18)'
+const GEOLOGY_POPUP_GLASS_SHADOW = '0 8px 18px rgba(2, 8, 23, 0.18), 0 -10px 25px inset rgba(0, 0, 0, 0.05)'
 
 // 椋庨櫓浣嶇疆鏄犲皠锛堝吋瀹圭己澶辩粡绾害鐨勬棫鏁版嵁锛?
 const riskLocationMap = {
@@ -1391,6 +1414,48 @@ function updateCesiumOverlayPositions() {
   updateCesiumOverlayPosition('popup')
 }
 
+function destroyCesiumPopupGlass() {
+  if (cesiumPopupGlassInstance) {
+    cesiumPopupGlassInstance.destroy()
+    cesiumPopupGlassInstance = null
+  }
+}
+
+function destroyLeafletPopupGlass() {
+  if (leafletPopupGlassInstance) {
+    leafletPopupGlassInstance.destroy()
+    leafletPopupGlassInstance = null
+  }
+}
+
+function syncLeafletPopupGlass(popup) {
+  destroyLeafletPopupGlass()
+  const popupElement = popup?.getElement?.()
+  const wrapper = popupElement?.querySelector?.('.leaflet-popup-content-wrapper')
+  if (!wrapper) return
+
+  leafletPopupGlassInstance = attachLiquidGlass(wrapper, {
+    idPrefix: 'geology-popup',
+    borderRadius: '18px',
+    border: GEOLOGY_POPUP_GLASS_BORDER,
+    boxShadow: GEOLOGY_POPUP_GLASS_SHADOW,
+  })
+}
+
+function syncCesiumPopupGlass() {
+  destroyCesiumPopupGlass()
+  if (!cesiumPopupOverlay.value.visible || cesiumPopupOverlay.value.sourceType !== 'geology' || !cesiumPopupRef.value) {
+    return
+  }
+
+  cesiumPopupGlassInstance = attachLiquidGlass(cesiumPopupRef.value, {
+    idPrefix: 'geology-popup',
+    borderRadius: '18px',
+    border: GEOLOGY_POPUP_GLASS_BORDER,
+    boxShadow: GEOLOGY_POPUP_GLASS_SHADOW,
+  })
+}
+
 function setCesiumHoverOverlay(meta) {
   if (!meta?.hoverHtml) {
     resetCesiumHoverOverlay()
@@ -1402,7 +1467,8 @@ function setCesiumHoverOverlay(meta) {
     x: 0,
     y: 0,
     position: meta.position,
-    entityId: meta.id
+    entityId: meta.id,
+    sourceType: meta.sourceType || null,
   }
   updateCesiumOverlayPosition('hover')
   viewer.scene.requestRender()
@@ -1419,7 +1485,8 @@ function setCesiumPopupOverlay(meta) {
     x: 0,
     y: 0,
     position: meta.position,
-    entityId: meta.id
+    entityId: meta.id,
+    sourceType: meta.sourceType || null,
   }
   updateCesiumOverlayPosition('popup')
   viewer.scene.requestRender()
@@ -1462,7 +1529,22 @@ function renderLeafletPointMarker(layer, item, { pane = 'markers-pane', zIndexOf
   })
 
   if (popup && item.popupHtml) {
-    marker.bindPopup(item.popupHtml)
+    marker.bindPopup(item.popupHtml, item.sourceType === 'geology'
+      ? {
+          className: 'geology-map-popup',
+          closeButton: false,
+          autoPanPadding: L.point(24, 24),
+        }
+      : undefined)
+  }
+
+  if (item.sourceType === 'geology') {
+    marker.on('popupopen', (event) => {
+      requestAnimationFrame(() => syncLeafletPopupGlass(event.popup))
+    })
+    marker.on('popupclose', () => {
+      destroyLeafletPopupGlass()
+    })
   }
 
   if (tooltip && item.hoverHtml) {
@@ -2183,6 +2265,14 @@ watch(() => layerVisibility.value.wind_particle, (nv) => {
   }
 })
 watch(() => layerVisibility.value.wave_heatmap, () => renderWaveHeatmap())
+watch(
+  () => [cesiumPopupOverlay.value.visible, cesiumPopupOverlay.value.html, cesiumPopupOverlay.value.sourceType],
+  async () => {
+    await nextTick()
+    syncCesiumPopupGlass()
+  },
+  { flush: 'post' }
+)
 
 watch(currentMapMode, (nm) => {
   if (nm === '2D') { nextTick(() => { resizeCanvas(); if (layerVisibility.value.wind_particle) startWindAnimation(); renderWaveHeatmap(); applyCountyBoundaryVisibility2D(); applyCountyBoundaryVisibility3D(); }) }
@@ -2334,6 +2424,8 @@ onUnmounted(() => {
   countyLabelEntities3D = []
   resetCesiumHoverOverlay()
   closeCesiumPopup()
+  destroyLeafletPopupGlass()
+  destroyCesiumPopupGlass()
   Object.values(markerLayers).forEach(l => l.clearLayers())
   if (map) map.remove(); if (viewer) viewer.destroy()
 })
@@ -2416,6 +2508,22 @@ onUnmounted(() => {
   line-height: 1.5;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.24);
 }
+.cesium-floating-popup__content {
+  position: relative;
+  z-index: 1;
+}
+.cesium-floating-popup.is-geology-popup {
+  min-width: 224px;
+  max-width: 280px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.22);
+  box-shadow: none;
+}
+.cesium-floating-popup.is-geology-popup .cesium-floating-popup__content {
+  padding: 10px 12px 12px;
+}
 .cesium-floating-popup__close {
   position: absolute;
   top: 8px;
@@ -2431,6 +2539,78 @@ onUnmounted(() => {
 }
 .map-ui-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 500; }
 .map-ui-overlay > * { pointer-events: auto; }
+
+:global(.leaflet-popup.geology-map-popup) {
+  margin-bottom: 18px;
+}
+
+:global(.leaflet-popup.geology-map-popup .leaflet-popup-content-wrapper) {
+  min-width: 224px;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.22);
+  box-shadow: none;
+}
+
+:global(.leaflet-popup.geology-map-popup .leaflet-popup-content) {
+  margin: 0;
+  padding: 10px 12px 12px;
+  min-width: 0;
+  line-height: 1;
+}
+
+:global(.leaflet-popup.geology-map-popup .leaflet-popup-tip-container),
+:global(.leaflet-popup.geology-map-popup .leaflet-popup-close-button) {
+  display: none;
+}
+
+:deep(.geology-popup-card) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+:deep(.geology-popup-card__title) {
+  margin: 0;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.18);
+  color: #7dd3fc;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 10px rgba(125, 211, 252, 0.14);
+}
+
+:deep(.geology-popup-card__body) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+:deep(.geology-popup-card__row) {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: start;
+  gap: 0;
+  line-height: 1.4;
+}
+
+:deep(.geology-popup-card__label) {
+  color: rgba(186, 230, 253, 0.82);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+:deep(.geology-popup-card__value) {
+  color: #fef3c7;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 
 :global(.typhoon-spinning-icon) { display: flex !important; align-items: center !important; justify-content: center !important; background: transparent !important; border: none !important; }
 :global(.typhoon-svg-wrapper) { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; animation: typhoon-spin 4s linear infinite; filter: drop-shadow(0 0 8px rgba(216, 30, 6, 0.6)); }

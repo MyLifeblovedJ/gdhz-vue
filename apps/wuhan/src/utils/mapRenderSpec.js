@@ -24,6 +24,31 @@ function buildPopupHtml(title, rows) {
   return `<b>${title}</b><br>${rows.join('<br>')}`
 }
 
+function escapePopupHtml(value) {
+  return String(value ?? '--')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildGeologyPopupHtml(title, rows) {
+  const renderedRows = rows.map(({ label, value }) => `
+    <div class="geology-popup-card__row">
+      <span class="geology-popup-card__label">${escapePopupHtml(label)}</span>
+      <span class="geology-popup-card__value">${escapePopupHtml(value)}</span>
+    </div>
+  `).join('')
+
+  return `
+    <section class="geology-popup-card" data-popup-type="geology">
+      <header class="geology-popup-card__title">${escapePopupHtml(title)}</header>
+      <div class="geology-popup-card__body">${renderedRows}</div>
+    </section>
+  `.trim()
+}
+
 function blendHexColor(color, mixColor = '#ffffff', ratio = 0) {
   const normalize = (value) => String(value || '').replace('#', '').trim()
   const expand = (value) => value.length === 3
@@ -364,13 +389,21 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
         visualVariant: record.datasetType,
         highlightState,
         hoverHtml: '',
-        popupHtml: buildPopupHtml(record.sample || record.pointId, [
+        legacyPopupHtml: buildPopupHtml(record.sample || record.pointId, [
           `数据源: ${record.datasetType === 'processed' ? '处理后数据' : '原始数据'}`,
           `船舶: ${record.ship || '--'}`,
           `航次: ${record.cruise || '--'}`,
           `设备: ${record.device || '--'}`,
           `机构: ${record.institution || '--'}`,
           `MGGID: ${record.mggid || '--'}`,
+        ]),
+        popupHtml: buildGeologyPopupHtml(record.sample || record.pointId, [
+          { label: '\u6570\u636e\u6e90', value: record.datasetType === 'processed' ? '\u5904\u7406\u540e\u6570\u636e' : '\u539f\u59cb\u6570\u636e' },
+          { label: '\u8239\u8236', value: record.ship || '--' },
+          { label: '\u822a\u6b21', value: record.cruise || '--' },
+          { label: '\u8bbe\u5907', value: record.device || '--' },
+          { label: '\u673a\u6784', value: record.institution || '--' },
+          { label: 'MGGID', value: record.mggid || '--' },
         ]),
       }
     })
