@@ -68,40 +68,128 @@
     <div class="panel-block">
       <div class="block-title">着色图例</div>
 
-      <label class="field-control">
-        <span>着色字段</span>
-        <select
-          :value="store.geology.colorBy"
-          @change="store.setGeologyColorBy($event.target.value)"
-        >
-          <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
-            {{ field.label }}
-          </option>
-        </select>
-      </label>
-
-      <div class="tree-shell">
-        <template v-if="colorGroup?.children?.length">
-          <div class="tree-group-header">
-            <i class="fa-solid fa-swatchbook"></i>
-            <span>{{ colorGroup.label }}</span>
-          </div>
-
-          <div
-            v-for="item in colorGroup.children"
-            :key="item.id"
-            class="color-item"
+      <div class="mode-row">
+        <span>着色模式</span>
+        <div class="mode-buttons">
+          <button
+            v-for="mode in colorModes"
+            :key="mode.key"
+            type="button"
+            class="mode-button"
+            :class="{ active: store.geology.colorMode === mode.key }"
+            @click="store.setGeologyColorMode(mode.key)"
           >
-            <span class="color-dot" :style="{ backgroundColor: item.color }"></span>
-            <span class="tree-item-label">{{ item.label }}</span>
-            <span class="tree-item-count">{{ item.count }}</span>
-          </div>
-        </template>
-
-        <div v-else class="empty-state">
-          当前没有可着色的采样点。
+            {{ mode.label }}
+          </button>
         </div>
       </div>
+
+      <template v-if="store.geology.colorMode === 'linked'">
+        <label class="field-control">
+          <span>着色字段</span>
+          <select
+            :value="store.geology.colorBy"
+            @change="store.setGeologyColorBy($event.target.value)"
+          >
+            <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
+              {{ field.label }}
+            </option>
+          </select>
+        </label>
+
+        <div class="tree-shell">
+          <template v-if="colorGroup?.children?.length">
+            <div class="tree-group-header">
+              <i class="fa-solid fa-swatchbook"></i>
+              <span>{{ colorGroup.label }}</span>
+            </div>
+
+            <div
+              v-for="item in colorGroup.children"
+              :key="item.id"
+              class="color-item"
+            >
+              <span class="color-dot" :style="{ backgroundColor: item.color }"></span>
+              <span class="tree-item-label">{{ item.label }}</span>
+              <span class="tree-item-count">{{ item.count }}</span>
+            </div>
+          </template>
+
+          <div v-else class="empty-state">
+            当前没有可着色的采样点。
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <template v-if="store.geology.layers.rawVisible">
+          <label class="field-control">
+            <span>原始数据着色字段</span>
+            <select
+              :value="store.geology.rawColorBy"
+              @change="store.setGeologyDatasetColorBy('raw', $event.target.value)"
+            >
+              <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
+                {{ field.label }}
+              </option>
+            </select>
+          </label>
+        </template>
+
+        <template v-if="store.geology.layers.processedVisible">
+          <label class="field-control">
+            <span>处理后数据着色字段</span>
+            <select
+              :value="store.geology.processedColorBy"
+              @change="store.setGeologyDatasetColorBy('processed', $event.target.value)"
+            >
+              <option v-for="field in fieldOptions" :key="field.key" :value="field.key">
+                {{ field.label }}
+              </option>
+            </select>
+          </label>
+        </template>
+
+        <div class="tree-shell">
+          <template v-if="rawColorGroup?.children?.length || processedColorGroup?.children?.length">
+            <template v-if="rawColorGroup?.children?.length">
+              <div class="tree-group-header">
+                <i class="fa-solid fa-swatchbook"></i>
+                <span>原始数据分类</span>
+              </div>
+              <div
+                v-for="item in rawColorGroup.children"
+                :key="item.id"
+                class="color-item"
+              >
+                <span class="color-dot" :style="{ backgroundColor: item.color }"></span>
+                <span class="tree-item-label">{{ item.label }}</span>
+                <span class="tree-item-count">{{ item.count }}</span>
+              </div>
+            </template>
+
+            <template v-if="processedColorGroup?.children?.length">
+              <div class="tree-group-header tree-group-subheader">
+                <i class="fa-solid fa-swatchbook"></i>
+                <span>处理后数据分类</span>
+              </div>
+              <div
+                v-for="item in processedColorGroup.children"
+                :key="item.id"
+                class="color-item"
+              >
+                <span class="color-diamond" :style="{ borderColor: item.color }"></span>
+                <span class="tree-item-label">{{ item.label }}</span>
+                <span class="tree-item-count">{{ item.count }}</span>
+              </div>
+            </template>
+          </template>
+
+          <div v-else class="empty-state">
+            当前没有可着色的采样点。
+          </div>
+        </div>
+      </template>
     </div>
 
     <div v-if="store.activeGeologyRecord" class="active-group-card">
@@ -130,15 +218,18 @@
 <script setup>
 import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
-import { GEOLOGY_FILTER_MODE_OPTIONS } from '../../utils/geologySampling'
+import { GEOLOGY_COLOR_MODE_OPTIONS, GEOLOGY_FILTER_MODE_OPTIONS } from '../../utils/geologySampling'
 
 const store = useAppStore()
 
 const fieldOptions = computed(() => store.geology.fieldOptions || [])
 const filterModes = GEOLOGY_FILTER_MODE_OPTIONS
+const colorModes = GEOLOGY_COLOR_MODE_OPTIONS
 const isSingleMode = computed(() => store.geology.filterMode === 'single')
 const filterGroup = computed(() => store.geologyFilterTreeItems[0] || null)
 const colorGroup = computed(() => store.geologyColorLegendItems[0] || null)
+const rawColorGroup = computed(() => store.rawGeologyColorLegendItems[0] || null)
+const processedColorGroup = computed(() => store.processedGeologyColorLegendItems[0] || null)
 </script>
 
 <style scoped>
@@ -287,6 +378,19 @@ const colorGroup = computed(() => store.geologyColorLegendItems[0] || null)
   height: 12px;
   border-radius: 999px;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.color-diamond {
+  width: 10px;
+  height: 10px;
+  border: 1.4px solid #64748b;
+  background: #ffffff;
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+
+.tree-group-subheader {
+  margin-top: 8px;
 }
 
 .empty-state {

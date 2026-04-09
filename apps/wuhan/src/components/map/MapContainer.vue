@@ -198,7 +198,10 @@ const mapRenderSpec = computed(() => buildMapRenderSpec({
   layerVisibility: layerVisibility.value,
   geologyRecords: store.visibleGeologyRecords,
   geologyStyle: {
+    colorMode: store.geology.colorMode,
     colorBy: store.geology.colorBy,
+    rawColorBy: store.geology.rawColorBy,
+    processedColorBy: store.geology.processedColorBy,
     activeMggid: store.geology.activeMggid,
     activePointId: store.geology.activePointId
   }

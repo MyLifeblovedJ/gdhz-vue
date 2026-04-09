@@ -350,14 +350,36 @@ export function buildVesselRenderSpec(vessels = [], layerVisibility = {}) {
 }
 
 export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
-  const colorField = geologyStyle.colorBy || 'ship'
-  const colorMap = createStableCategoryColorMap(records, colorField)
+  const colorMode = geologyStyle.colorMode === 'independent' ? 'independent' : 'linked'
+  const linkedColorField = geologyStyle.colorBy || 'ship'
+  const rawColorField = colorMode === 'independent'
+    ? (geologyStyle.rawColorBy || linkedColorField)
+    : linkedColorField
+  const processedColorField = colorMode === 'independent'
+    ? (geologyStyle.processedColorBy || linkedColorField)
+    : linkedColorField
+  const rawRecords = records.filter(record => record?.datasetType !== 'processed')
+  const processedRecords = records.filter(record => record?.datasetType === 'processed')
+  const linkedColorMap = colorMode === 'linked'
+    ? createStableCategoryColorMap(records, linkedColorField)
+    : null
+  const rawColorMap = colorMode === 'independent'
+    ? createStableCategoryColorMap(rawRecords, rawColorField)
+    : null
+  const processedColorMap = colorMode === 'independent'
+    ? createStableCategoryColorMap(processedRecords, processedColorField)
+    : null
 
   return records
     .filter(record => Number.isFinite(record?.latitude) && Number.isFinite(record?.longitude))
     .map((record) => {
+      const isProcessed = record?.datasetType === 'processed'
+      const colorField = isProcessed ? processedColorField : rawColorField
+      const colorMap = colorMode === 'independent'
+        ? (isProcessed ? processedColorMap : rawColorMap)
+        : linkedColorMap
       const categoryValue = getGeologyFieldValue(record, colorField)
-      const baseColor = colorMap[categoryValue] || getGeologyDatasetColor(record)
+      const baseColor = colorMap?.[categoryValue] || getGeologyDatasetColor(record)
       const highlightState = buildGeologyHighlightState(record, geologyStyle)
       const color = highlightState === 'linked'
         ? blendHexColor(baseColor, '#ffffff', 0.26)

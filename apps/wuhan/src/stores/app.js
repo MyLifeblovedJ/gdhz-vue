@@ -15,6 +15,7 @@ import {
 } from '../data/mockData'
 import { deviceTypeConfig } from '../data/deviceConfig'
 import {
+  GEOLOGY_COLOR_MODE_OPTIONS,
   GEOLOGY_FIELD_OPTIONS,
   buildGeologyColorLegendItems,
   buildGeologyFilterTreeItems,
@@ -73,7 +74,10 @@ export const useAppStore = defineStore('app', () => {
       rawVisible: true,
       processedVisible: false,
     },
+    colorMode: GEOLOGY_COLOR_MODE_OPTIONS[0].key,
     colorBy: 'ship',
+    rawColorBy: 'ship',
+    processedColorBy: 'ship',
     filterField: 'ship',
     filterMode: 'multiple',
     selectedValuesByField: {},
@@ -144,6 +148,14 @@ export const useAppStore = defineStore('app', () => {
     geology.value.selectedValuesByField[geology.value.filterField] || []
   ))
 
+  const visibleRawGeologyRecords = computed(() => (
+    visibleGeologyRecords.value.filter(record => record.datasetType !== 'processed')
+  ))
+
+  const visibleProcessedGeologyRecords = computed(() => (
+    visibleGeologyRecords.value.filter(record => record.datasetType === 'processed')
+  ))
+
   const visibleGeologyRecords = computed(() => {
     let records = filterGeologyRecords(
       visibleGeologyBaseRecords.value,
@@ -171,8 +183,18 @@ export const useAppStore = defineStore('app', () => {
   ))
 
   const geologyColorLegendItems = computed(() => buildGeologyColorLegendItems(
-    visibleGeologyBaseRecords.value,
+    visibleGeologyRecords.value,
     geology.value.colorBy,
+  ))
+
+  const rawGeologyColorLegendItems = computed(() => buildGeologyColorLegendItems(
+    visibleRawGeologyRecords.value,
+    geology.value.colorMode === 'independent' ? geology.value.rawColorBy : geology.value.colorBy,
+  ))
+
+  const processedGeologyColorLegendItems = computed(() => buildGeologyColorLegendItems(
+    visibleProcessedGeologyRecords.value,
+    geology.value.colorMode === 'independent' ? geology.value.processedColorBy : geology.value.colorBy,
   ))
 
   const activeGeologyRecord = computed(() =>
@@ -308,6 +330,26 @@ export const useAppStore = defineStore('app', () => {
   function setGeologyColorBy(field) {
     if (!geology.value.fieldOptions.some(item => item.key === field)) return
     geology.value.colorBy = field
+  }
+
+  function setGeologyColorMode(mode) {
+    const nextMode = mode === 'independent' ? 'independent' : 'linked'
+    if (nextMode === geology.value.colorMode) return
+    if (nextMode === 'independent') {
+      geology.value.rawColorBy = geology.value.colorBy
+      geology.value.processedColorBy = geology.value.colorBy
+    }
+    geology.value.colorMode = nextMode
+  }
+
+  function setGeologyDatasetColorBy(datasetType, field) {
+    if (!geology.value.fieldOptions.some(item => item.key === field)) return
+    if (datasetType === 'raw') {
+      geology.value.rawColorBy = field
+    }
+    if (datasetType === 'processed') {
+      geology.value.processedColorBy = field
+    }
   }
 
   function setGeologyFilterField(field) {
@@ -451,8 +493,12 @@ export const useAppStore = defineStore('app', () => {
     deviceStatsByType,
     deviceStatusSummary,
     visibleGeologyRecords,
+    visibleRawGeologyRecords,
+    visibleProcessedGeologyRecords,
     geologyFilterTreeItems,
     geologyColorLegendItems,
+    rawGeologyColorLegendItems,
+    processedGeologyColorLegendItems,
     activeGeologyRecord,
     activeGeologyGroupRecords,
 
@@ -468,7 +514,9 @@ export const useAppStore = defineStore('app', () => {
     toggleLayerVisibility,
     setLayerVisibility,
     setGeologyLayerVisibility,
+    setGeologyColorMode,
     setGeologyColorBy,
+    setGeologyDatasetColorBy,
     setGeologyFilterField,
     setGeologyFilterMode,
     setGeologySelectedValues,

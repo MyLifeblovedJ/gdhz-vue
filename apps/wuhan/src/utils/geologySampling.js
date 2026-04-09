@@ -12,6 +12,11 @@ export const GEOLOGY_FILTER_MODE_OPTIONS = [
   { key: 'multiple', label: '复选' },
 ]
 
+export const GEOLOGY_COLOR_MODE_OPTIONS = [
+  { key: 'linked', label: '联动' },
+  { key: 'independent', label: '独立' },
+]
+
 export const GEOLOGY_DATASET_COLORS = {
   raw: '#0EA5E9',
   processed: '#F97316',
