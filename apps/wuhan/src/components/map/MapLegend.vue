@@ -451,6 +451,7 @@ function getLegendIdForLayer(layerId) {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .map-legend-wrapper.embedded .legend-container {
@@ -577,6 +578,7 @@ function getLegendIdForLayer(layerId) {
   padding: 6px 0;
   font-size: 12px;
   color: var(--text-secondary);
+  min-width: 0;
 }
 
 .legend-item-section {
@@ -653,6 +655,7 @@ function getLegendIdForLayer(layerId) {
 
 .legend-text {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -661,6 +664,9 @@ function getLegendIdForLayer(layerId) {
 .legend-label {
   flex: 1;
   line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .legend-item.has-description .legend-label {
@@ -675,6 +681,8 @@ function getLegendIdForLayer(layerId) {
   flex-direction: column;
   gap: 2px;
   padding-left: 30px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .legend-color-section-title {

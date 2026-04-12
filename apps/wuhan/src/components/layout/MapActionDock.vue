@@ -33,12 +33,14 @@
     <div class="wave-legend wave-legend-bar">
       <div class="wave-legend-gradient">
         <span class="wave-legend-unit">kt</span>
-        <span
-          v-for="tick in waveLegendTicks"
-          :key="tick.value"
-          class="wave-legend-tick"
-          :style="{ left: tick.pct + '%' }"
-        >{{ tick.value }}</span>
+        <div class="wave-legend-ticks">
+          <span
+            v-for="tick in waveLegendTicks"
+            :key="tick.value"
+            class="wave-legend-tick"
+            :style="{ '--tick-pct': tick.pct + '%' }"
+          >{{ tick.value }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -221,6 +223,8 @@ function handleSecondaryClick(item) {
   align-items: center;
   padding: 0;
   height: 30px;
+  overflow: hidden;
+  border-radius: 999px;
 }
 
 .wave-legend-unit {
@@ -237,6 +241,7 @@ function handleSecondaryClick(item) {
   width: 100%;
   height: 26px;
   border-radius: 999px;
+  box-sizing: border-box;
   background: linear-gradient(
     to right,
     #f0f4e8 0%,
@@ -251,27 +256,41 @@ function handleSecondaryClick(item) {
   position: relative;
   display: flex;
   align-items: center;
+  overflow: hidden;
+}
+
+.wave-legend-ticks {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  bottom: 0;
+  left: 28px;
 }
 
 .wave-legend-tick {
   position: absolute;
-  transform: translateX(-50%);
-  font-size: 10px;
+  top: 50%;
+  left: var(--tick-pct);
+  transform: translate(-50%, -50%);
+  min-width: 18px;
+  font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   line-height: 1;
   pointer-events: none;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .wave-legend-tick:first-child {
-  transform: translateX(0);
-  left: 6px !important;
+  transform: translate(0, -50%);
+  left: 0;
 }
 
 .wave-legend-tick:last-child {
-  transform: translateX(-100%);
-  left: calc(100% - 6px) !important;
+  transform: translate(-100%, -50%);
+  left: 100%;
 }
 
 @media (max-width: 1100px) {
