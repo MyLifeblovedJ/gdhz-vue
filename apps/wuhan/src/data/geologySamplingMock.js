@@ -224,6 +224,46 @@ function createRecord(datasetType, seed, pointIndex, globalIndex, offsetLng, off
   return record
 }
 
+function buildProcessedLineage(seed, pointIndex) {
+  const pdfDefinitions = [
+    {
+      id: 'pdf-overview',
+      name: `${seed.mggid}_metadata_overview.pdf`,
+      processedPairs: Array.from({ length: 3 }, (_, index) => ({
+        excel: `${seed.mggid}_metadata_overview_processed_${String(index + 1).padStart(2, '0')}.xlsx`,
+        template: `${seed.mggid}_metadata_overview_template_${String(index + 1).padStart(2, '0')}.xlsx`,
+      })),
+    },
+    {
+      id: 'pdf-station-log',
+      name: `${seed.mggid}_${seed.samplePrefix}-${String(pointIndex + 1).padStart(3, '0')}_station_log.pdf`,
+      processedPairs: Array.from({ length: 2 }, (_, index) => ({
+        excel: `${seed.mggid}_${seed.samplePrefix}-${String(pointIndex + 1).padStart(3, '0')}_station_log_processed_${String(index + 1).padStart(2, '0')}.xlsx`,
+        template: `${seed.mggid}_${seed.samplePrefix}-${String(pointIndex + 1).padStart(3, '0')}_station_log_template_${String(index + 1).padStart(2, '0')}.xlsx`,
+      })),
+    },
+    {
+      id: 'pdf-fgdc',
+      name: `${seed.mggid}_fgdc_record.pdf`,
+      processedPairs: Array.from({ length: 1 }, (_, index) => ({
+        excel: `${seed.mggid}_fgdc_record_processed_${String(index + 1).padStart(2, '0')}.xlsx`,
+        template: `${seed.mggid}_fgdc_record_template_${String(index + 1).padStart(2, '0')}.xlsx`,
+      })),
+    },
+  ]
+
+  const flatPairs = pdfDefinitions.flatMap(pdf =>
+    pdf.processedPairs.map((pair, pairIndex) => ({
+      sourcePdfId: pdf.id,
+      sourcePdfName: pdf.name,
+      pairIndex,
+      ...pair,
+    }))
+  )
+
+  return flatPairs[pointIndex % flatPairs.length]
+}
+
 // 每个种子生成 5~8 个原始采样点，坐标在中心点附近 ±0.3° 随机散布
 function buildRawRecords() {
   let globalIndex = 1
@@ -255,12 +295,17 @@ function buildProcessedRecords() {
     for (let i = 0; i < pointCount; i++) {
       const offsetLng = (rng() - 0.5) * 0.5
       const offsetLat = (rng() - 0.5) * 0.5
+      const lineage = buildProcessedLineage(seed, i)
       points.push({
         ...createRecord('processed', seed, i, globalIndex++, offsetLng, offsetLat),
         folderPath: `/data/geology/${seed.mggid}`,
         pdfCount: 1 + (groupIndex % 4),
         excelCount: 2 + ((groupIndex + i) % 3),
         parseStatus: i % 3 === 0 ? 'reviewed' : i % 3 === 1 ? 'draft' : 'pending',
+        sourcePdfId: lineage.sourcePdfId,
+        sourcePdfName: lineage.sourcePdfName,
+        processedExcelName: lineage.excel,
+        templateExcelName: lineage.template,
       })
     }
 

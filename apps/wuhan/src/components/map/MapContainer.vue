@@ -1474,7 +1474,7 @@ function escapeMetadataHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
-function buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device }) {
+function buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device, focus = null }) {
   const safeMggid = mggid || '--'
   const safeSample = sample || '--'
   const safeTitle = title || '--'
@@ -1499,6 +1499,7 @@ function buildMetadataExplorerData({ mggid, sample, title, institution, cruise, 
       cruise: safeCruise,
       device: safeDevice,
     },
+    currentFocus: focus ? { ...focus } : null,
     directories: {
       root: {
         key: 'root',
@@ -1564,14 +1565,14 @@ function serializeMetadataData(value) {
     .replace(/&/g, '\\u0026')
 }
 
-function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, device }) {
+function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, device, focus = null }) {
   if (typeof window === 'undefined') return
 
-  const popupWindow = window.open('', '_blank', 'width=980,height=720')
+  const popupWindow = window.open('', '_blank')
   if (!popupWindow) return
 
   popupWindow.opener = null
-  const explorerData = buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device })
+  const explorerData = buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device, focus })
   const serializedData = serializeMetadataData(explorerData)
 
   popupWindow.document.write(`
@@ -1850,6 +1851,9 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
             color: #445569;
             font-size: 13px;
           }
+          .metadata-table tbody tr.is-current-row td {
+            background: #fff1f2;
+          }
           .metadata-file {
             display: flex;
             align-items: center;
@@ -1937,6 +1941,9 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
             color: var(--accent);
             font-size: 12px;
             font-weight: 700;
+          }
+          .metadata-kind.is-current {
+            color: #b91c1c;
           }
           .metadata-note {
             margin-top: 14px;
@@ -2050,7 +2057,8 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
           const cruiseEl = document.getElementById('metadata-cruise');
           const deviceEl = document.getElementById('metadata-device');
           const expandedProcessed = new Set();
-          let activeDirKey = 'root';
+          const currentFocus = explorerData.currentFocus || null;
+          let activeDirKey = currentFocus?.dirKey || 'root';
 
           titleEl.textContent = explorerData.summary.title;
           sampleEl.textContent = explorerData.summary.sample;
@@ -2095,14 +2103,21 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
             return items.map((item) => {
               const processedCount = Array.isArray(item.processedPairs) ? item.processedPairs.length : 0;
               const isExpanded = expandedProcessed.has(item.id);
+              const isCurrentPdf = currentFocus && currentFocus.pdfId === item.id;
               const buttonHtml = processedCount
                 ? '<button type="button" class="metadata-file__button' + (isExpanded ? ' is-active' : '') + '" data-toggle-processed="' + item.id + '">处理后数据</button><span class="metadata-file__hint">' + processedCount + ' 组</span>'
                 : '';
-              const parentRow = buildFileRow(item, { opsHtml: buttonHtml });
+              const parentRow = buildFileRow(item, {
+                opsHtml: buttonHtml,
+                rowClass: isCurrentPdf ? 'is-current-row' : '',
+                kindHtml: isCurrentPdf ? '<span class="metadata-kind is-current">当前来源PDF</span>' : '',
+              });
 
               if (!isExpanded || !processedCount) return parentRow;
 
               const childRows = item.processedPairs.flatMap((pair, index) => {
+                const isCurrentExcel = currentFocus && currentFocus.excel === pair.excel;
+                const isCurrentTemplate = currentFocus && currentFocus.template === pair.template;
                 const excelItem = {
                   name: pair.excel,
                   type: 'XLSX',
@@ -2119,8 +2134,16 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
                 };
 
                 return [
-                  buildFileRow(excelItem, { indent: true, rowClass: 'is-processed-row', kindHtml: '<span class="metadata-kind">处理后</span>' }),
-                  buildFileRow(templateItem, { indent: true, rowClass: 'is-processed-row', kindHtml: '<span class="metadata-kind">模板</span>' }),
+                  buildFileRow(excelItem, {
+                    indent: true,
+                    rowClass: 'is-processed-row' + (isCurrentExcel ? ' is-current-row' : ''),
+                    kindHtml: '<span class="metadata-kind' + (isCurrentExcel ? ' is-current' : '') + '">' + (isCurrentExcel ? '当前处理后采样点' : '处理后') + '</span>',
+                  }),
+                  buildFileRow(templateItem, {
+                    indent: true,
+                    rowClass: 'is-processed-row' + (isCurrentTemplate ? ' is-current-row' : ''),
+                    kindHtml: '<span class="metadata-kind' + (isCurrentTemplate ? ' is-current' : '') + '">' + (isCurrentTemplate ? '当前对应模板' : '模板') + '</span>',
+                  }),
                 ];
               }).join('');
 
@@ -2164,7 +2187,8 @@ function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, 
             }
           });
 
-          renderDirectory('root');
+          if (currentFocus?.pdfId) expandedProcessed.add(currentFocus.pdfId);
+          renderDirectory(activeDirKey);
         <\/script>
       </body>
     </html>
@@ -2176,7 +2200,7 @@ function handlePopupMetadataLinkClick(event) {
   const target = event?.target
   if (!(target instanceof Element)) return false
 
-  const metadataLink = target.closest('.geology-popup-card__meta-link')
+  const metadataLink = target.closest('.geology-popup-card__meta-link, .geology-popup-card__processed-link')
   if (!metadataLink) return false
 
   event.preventDefault()
@@ -2188,6 +2212,15 @@ function handlePopupMetadataLinkClick(event) {
     institution: metadataLink.getAttribute('data-institution') || '--',
     cruise: metadataLink.getAttribute('data-cruise') || '--',
     device: metadataLink.getAttribute('data-device') || '--',
+    focus: metadataLink.getAttribute('data-focus-excel')
+      ? {
+          dirKey: metadataLink.getAttribute('data-focus-dir') || 'pdf',
+          pdfId: metadataLink.getAttribute('data-focus-pdf-id') || '',
+          pdfName: metadataLink.getAttribute('data-focus-pdf-name') || '',
+          excel: metadataLink.getAttribute('data-focus-excel') || '',
+          template: metadataLink.getAttribute('data-focus-template') || '',
+        }
+      : null,
   })
   return true
 }
@@ -3280,8 +3313,8 @@ onUnmounted(() => {
   z-index: 1;
 }
 .cesium-floating-popup.is-geology-popup {
-  min-width: 300px;
-  max-width: 380px;
+  min-width: 520px;
+  max-width: 640px;
   padding: 0;
   overflow: hidden;
   border-radius: 22px;
@@ -3312,8 +3345,8 @@ onUnmounted(() => {
 }
 
 :global(.leaflet-popup.geology-map-popup .leaflet-popup-content-wrapper) {
-  min-width: 300px;
-  max-width: 380px;
+  min-width: 520px;
+  max-width: 640px;
   padding: 0;
   overflow: hidden;
   border: none;
@@ -3339,7 +3372,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 264px;
+  min-width: 500px;
 }
 
 :deep(.geology-popup-card__close) {
@@ -3390,15 +3423,20 @@ onUnmounted(() => {
 :deep(.geology-popup-card__body) {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
 }
 
 :deep(.geology-popup-card__row) {
   display: grid;
-  grid-template-columns: 66px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   align-items: start;
-  column-gap: 10px;
+  column-gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
   line-height: 1.5;
+  backdrop-filter: blur(8px);
 }
 
 :deep(.geology-popup-card__label) {
@@ -3406,24 +3444,91 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
+  line-height: 1.8;
+  white-space: nowrap;
 }
 
 :deep(.geology-popup-card__value) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: #fef3c7;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 211, 252, 0.42) transparent;
+}
+
+:deep(.geology-popup-card__value.is-compound) {
+  display: block;
+  overflow: visible;
+}
+
+:deep(.geology-popup-card__compound-value) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+:deep(.geology-popup-card__compound-text) {
+  min-width: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 211, 252, 0.42) transparent;
+}
+
+:deep(.geology-popup-card__compound-text::-webkit-scrollbar) {
+  height: 6px;
+}
+
+:deep(.geology-popup-card__compound-text::-webkit-scrollbar-thumb) {
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.34);
+}
+
+:deep(.geology-popup-card__value::-webkit-scrollbar) {
+  height: 6px;
+}
+
+:deep(.geology-popup-card__value::-webkit-scrollbar-thumb) {
+  border-radius: 999px;
+  background: rgba(125, 211, 252, 0.34);
 }
 
 :deep(.geology-popup-card__meta-link) {
   display: inline-flex;
   align-items: center;
   margin-left: 6px;
+  flex: 0 0 auto;
   color: #fb7185;
   font-size: 13px;
   font-weight: 800;
   line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+:deep(.geology-popup-card__processed-link) {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  flex: 0 0 auto;
+  color: #22c55e;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
   transition: color 0.18s ease, transform 0.18s ease;
@@ -3434,8 +3539,19 @@ onUnmounted(() => {
   transform: translateY(-1px);
 }
 
+:deep(.geology-popup-card__processed-link:hover) {
+  color: #4ade80;
+  transform: translateY(-1px);
+}
+
 :deep(.geology-popup-card__meta-link:focus-visible) {
   outline: 1px solid rgba(251, 113, 133, 0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+:deep(.geology-popup-card__processed-link:focus-visible) {
+  outline: 1px solid rgba(34, 197, 94, 0.55);
   outline-offset: 2px;
   border-radius: 4px;
 }
