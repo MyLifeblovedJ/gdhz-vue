@@ -4,6 +4,8 @@ import { createDeviceIcon, createGeologyPointIcon, createTyphoonIcon, createTyph
 import {
   buildGeologyHighlightState,
   createStableCategoryColorMap,
+  getGeologyCategory,
+  getGeologyCategoryGroup,
   getGeologyDatasetColor,
   getGeologyFieldValue,
 } from './geologySampling'
@@ -33,7 +35,12 @@ function escapePopupHtml(value) {
     .replace(/'/g, '&#39;')
 }
 
-function buildGeologyPopupHtml(title, rows) {
+function formatCoordinateValue(value) {
+  if (!Number.isFinite(value)) return '--'
+  return Number(value).toFixed(6)
+}
+
+function buildGeologyPopupHtml(title, rows, categoryTag = null) {
   const renderedRows = rows.map(({ label, value }) => `
     <div class="geology-popup-card__row">
       <span class="geology-popup-card__label">${escapePopupHtml(label)}</span>
@@ -41,10 +48,18 @@ function buildGeologyPopupHtml(title, rows) {
     </div>
   `).join('')
 
+  const categoryHtml = categoryTag
+    ? `<span class="geology-popup-card__cat-tag" style="--cat-color: ${escapePopupHtml(categoryTag.color)}">
+         <i class="${escapePopupHtml(categoryTag.icon)}"></i>
+         ${escapePopupHtml(categoryTag.label)}
+       </span>`
+    : ''
+
   return `
     <section class="geology-popup-card" data-popup-type="geology">
       <button class="geology-popup-card__close" type="button" aria-label="关闭地质点气泡">×</button>
       <header class="geology-popup-card__title">${escapePopupHtml(title)}</header>
+      ${categoryHtml ? `<div class="geology-popup-card__cat-row">${categoryHtml}</div>` : ''}
       <div class="geology-popup-card__body">${renderedRows}</div>
     </section>
   `.trim()
@@ -369,6 +384,7 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
   const processedColorMap = colorMode === 'independent'
     ? createStableCategoryColorMap(processedRecords, processedColorField)
     : null
+  const activeRecord = records.find(record => record?.pointId === geologyStyle.activePointId) || null
 
   return records
     .filter(record => Number.isFinite(record?.latitude) && Number.isFinite(record?.longitude))
@@ -380,7 +396,14 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
         : linkedColorMap
       const categoryValue = getGeologyFieldValue(record, colorField)
       const baseColor = colorMap?.[categoryValue] || getGeologyDatasetColor(record)
-      const highlightState = buildGeologyHighlightState(record, geologyStyle)
+      const highlightState = buildGeologyHighlightState(record, {
+        activeRecord,
+        activePointId: geologyStyle.activePointId,
+        colorMode,
+        colorBy: linkedColorField,
+        rawColorBy: rawColorField,
+        processedColorBy: processedColorField,
+      })
       const color = highlightState === 'linked'
         ? blendHexColor(baseColor, '#ffffff', 0.26)
         : baseColor
@@ -390,7 +413,22 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
           ? 18
           : 14
       const opacity = highlightState === 'dimmed' ? 0.18 : 1
-
+      const datasetLabel = isProcessed ? '\u5904\u7406\u540e\u6570\u636e' : '\u539f\u59cb\u6570\u636e'
+      const category = getGeologyCategory(record)
+      const categoryGroup = getGeologyCategoryGroup(record)
+      const popupRows = [
+        { label: '\u6570\u636e\u96c6', value: record.title || '--' },
+        { label: 'MGGID', value: record.mggid || '--' },
+        { label: '\u6570\u636e\u6e90', value: datasetLabel },
+        { label: '\u7814\u7a76\u5927\u7c7b', value: categoryGroup.label },
+        { label: '\u5177\u4f53\u5206\u7c7b', value: category.label },
+        { label: '\u673a\u6784', value: record.institution || '--' },
+        { label: '\u8239\u8236', value: record.ship || '--' },
+        { label: '\u822a\u6b21', value: record.cruise || '--' },
+        { label: '\u8bbe\u5907', value: record.device || '--' },
+        { label: '\u7ecf\u5ea6', value: formatCoordinateValue(record.longitude) },
+        { label: '\u7eac\u5ea6', value: formatCoordinateValue(record.latitude) },
+      ]
       return {
         id: `geology-${record.pointId}`,
         sourceId: record.pointId,
@@ -421,15 +459,11 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
           `机构: ${record.institution || '--'}`,
           `MGGID: ${record.mggid || '--'}`,
         ]),
-        popupHtml: buildGeologyPopupHtml(`样品编号：${record.sample || record.pointId || '--'}`, [
-          { label: '数据集', value: record.title || '--' },
-          { label: '\u6570\u636e\u6e90', value: record.datasetType === 'processed' ? '\u5904\u7406\u540e\u6570\u636e' : '\u539f\u59cb\u6570\u636e' },
-          { label: '\u8239\u8236', value: record.ship || '--' },
-          { label: '\u822a\u6b21', value: record.cruise || '--' },
-          { label: '\u8bbe\u5907', value: record.device || '--' },
-          { label: '\u673a\u6784', value: record.institution || '--' },
-          { label: 'MGGID', value: record.mggid || '--' },
-        ]),
+        popupHtml: buildGeologyPopupHtml(
+          `\u6837\u54c1\u7f16\u53f7\uff1a${record.sample || record.pointId || '--'}`,
+          popupRows,
+          category,
+        ),
       }
     })
 }
@@ -443,3 +477,4 @@ export function buildMapRenderSpec({ devices = [], homeStations = [], typhoonDat
     geology: buildGeologyRenderSpec(geologyRecords, geologyStyle),
   }
 }
+

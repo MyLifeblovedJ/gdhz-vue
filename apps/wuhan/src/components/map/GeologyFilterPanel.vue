@@ -1,6 +1,5 @@
 <template>
   <div class="geology-filter-panel">
-    <!-- 顶部筛选器 -->
     <div class="top-filters">
       <div class="filter-grid">
         <div class="filter-cell">
@@ -12,6 +11,7 @@
             </option>
           </select>
         </div>
+
         <div class="filter-cell">
           <span class="filter-label">数据集</span>
           <select v-model="filters.title" class="filter-select" @change="onFilterChange">
@@ -21,6 +21,7 @@
             </option>
           </select>
         </div>
+
         <div class="filter-cell">
           <span class="filter-label">机构</span>
           <select v-model="filters.institution" class="filter-select" @change="onFilterChange">
@@ -30,6 +31,7 @@
             </option>
           </select>
         </div>
+
         <div class="filter-cell">
           <span class="filter-label">调查船</span>
           <select v-model="filters.ship" class="filter-select" @change="onFilterChange">
@@ -39,6 +41,27 @@
             </option>
           </select>
         </div>
+
+        <div class="filter-cell">
+          <span class="filter-label">研究大类</span>
+          <select v-model="filters.categoryGroup" class="filter-select" @change="onFilterChange">
+            <option value="">全部</option>
+            <option v-for="opt in categoryGroupOptions" :key="opt.key" :value="opt.key">
+              {{ opt.label }}（{{ opt.count }}）
+            </option>
+          </select>
+        </div>
+
+        <div class="filter-cell">
+          <span class="filter-label">具体分类</span>
+          <select v-model="filters.category" class="filter-select" @change="onFilterChange">
+            <option value="">全部</option>
+            <option v-for="opt in categoryOptions" :key="opt.key" :value="opt.key">
+              {{ opt.label }}（{{ opt.count }}）
+            </option>
+          </select>
+        </div>
+
         <div class="filter-cell">
           <span class="filter-label">设备</span>
           <select v-model="filters.device" class="filter-select" @change="onFilterChange">
@@ -48,22 +71,24 @@
             </option>
           </select>
         </div>
+
         <div class="filter-cell">
           <span class="filter-label">起始日期</span>
           <input
-            type="date"
             v-model="filters.dateStart"
+            type="date"
             class="filter-input"
             :min="dateRange.min"
             :max="filters.dateEnd || dateRange.max"
             @change="onFilterChange"
           >
         </div>
+
         <div class="filter-cell">
           <span class="filter-label">结束日期</span>
           <input
-            type="date"
             v-model="filters.dateEnd"
+            type="date"
             class="filter-input"
             :min="filters.dateStart || dateRange.min"
             :max="dateRange.max"
@@ -71,6 +96,7 @@
           >
         </div>
       </div>
+
       <div class="filter-summary">
         <span class="summary-text">
           共 <strong>{{ filteredTotal }}</strong> 条采样记录
@@ -84,7 +110,7 @@
           </button>
         </div>
       </div>
-      <!-- 只看提示条 -->
+
       <div v-if="store.geology.focusFilter" class="focus-indicator">
         <i class="fa-solid fa-eye"></i>
         <span>只看{{ focusTypeLabel }}：<strong>{{ store.geology.focusFilter.label }}</strong></span>
@@ -94,7 +120,6 @@
       </div>
     </div>
 
-    <!-- 树形结果区 -->
     <div class="tree-area">
       <TreeLevel
         :nodes="treeData"
@@ -105,6 +130,7 @@
         @sample-click="handleSampleClick"
         @focus-node="handleFocusNode"
       />
+
       <div v-if="!treeData.length" class="tree-empty">
         <i class="fa-solid fa-filter-circle-xmark"></i>
         <span>未找到匹配的采样记录</span>
@@ -118,9 +144,10 @@ import { computed, reactive, ref } from 'vue'
 import { useAppStore } from '../../stores/app'
 import {
   buildGeologyHierarchicalTree,
-  extractYearFromYearmoda,
-  getUniqueFieldValues,
   filterByTopFilters,
+  getGeologyCategoryGroupSummary,
+  getGeologyCategorySummary,
+  getUniqueFieldValues,
 } from '../../utils/geologySampling'
 import TreeLevel from './GeologyFilterTreeLevel.vue'
 
@@ -133,6 +160,8 @@ const filters = reactive({
   title: '',
   institution: '',
   ship: '',
+  categoryGroup: '',
+  category: '',
   device: '',
   dateStart: '',
   dateEnd: '',
@@ -140,7 +169,6 @@ const filters = reactive({
 
 const expandedMap = ref({})
 
-// 所有可见记录（原始 + 处理后，已受图层开关控制）
 const baseRecords = computed(() => {
   const records = []
   if (store.geology.layers.rawVisible) {
@@ -152,33 +180,42 @@ const baseRecords = computed(() => {
   return records
 })
 
-// 将日期筛选器的值转换为 filterByTopFilters 可用的格式
 const effectiveFilters = computed(() => {
-  const f = {
+  const nextFilters = {
     mggid: filters.mggid,
     title: filters.title,
     institution: filters.institution,
     ship: filters.ship,
+    categoryGroup: filters.categoryGroup,
+    category: filters.category,
     device: filters.device,
   }
+
   if (filters.dateStart) {
-    f.yearStart = filters.dateStart.replace(/-/g, '')
+    nextFilters.yearStart = filters.dateStart.replace(/-/g, '')
   }
   if (filters.dateEnd) {
-    f.yearEnd = filters.dateEnd.replace(/-/g, '')
+    nextFilters.yearEnd = filters.dateEnd.replace(/-/g, '')
   }
-  return f
+
+  return nextFilters
 })
 
-// 当前筛选条件过滤后的记录
 const filteredRecords = computed(() => filterByTopFilters(baseRecords.value, effectiveFilters.value))
 const filteredTotal = computed(() => filteredRecords.value.length)
 
-const hasActiveFilter = computed(() =>
-  filters.mggid || filters.title || filters.institution || filters.ship || filters.device || filters.dateStart || filters.dateEnd,
-)
+const hasActiveFilter = computed(() => (
+  filters.mggid
+  || filters.title
+  || filters.institution
+  || filters.ship
+  || filters.categoryGroup
+  || filters.category
+  || filters.device
+  || filters.dateStart
+  || filters.dateEnd
+))
 
-// 下拉选项：每个下拉框基于"除自身外的所有筛选条件"过滤记录后计算，实现完全联动
 function filtersExcept(...excludeKeys) {
   const base = effectiveFilters.value
   const result = {}
@@ -186,6 +223,8 @@ function filtersExcept(...excludeKeys) {
   if (!excludeKeys.includes('title') && base.title) result.title = base.title
   if (!excludeKeys.includes('institution') && base.institution) result.institution = base.institution
   if (!excludeKeys.includes('ship') && base.ship) result.ship = base.ship
+  if (!excludeKeys.includes('categoryGroup') && base.categoryGroup) result.categoryGroup = base.categoryGroup
+  if (!excludeKeys.includes('category') && base.category) result.category = base.category
   if (!excludeKeys.includes('device') && base.device) result.device = base.device
   if (!excludeKeys.includes('date') && base.yearStart) result.yearStart = base.yearStart
   if (!excludeKeys.includes('date') && base.yearEnd) result.yearEnd = base.yearEnd
@@ -204,47 +243,55 @@ const institutionOptions = computed(() =>
 const shipOptions = computed(() =>
   getUniqueFieldValues(filterByTopFilters(baseRecords.value, filtersExcept('ship')), 'ship'),
 )
+const categoryGroupOptions = computed(() =>
+  getGeologyCategoryGroupSummary(filterByTopFilters(baseRecords.value, filtersExcept('categoryGroup'))),
+)
+const categoryOptions = computed(() =>
+  getGeologyCategorySummary(filterByTopFilters(baseRecords.value, filtersExcept('category'))),
+)
 const deviceOptions = computed(() =>
   getUniqueFieldValues(filterByTopFilters(baseRecords.value, filtersExcept('device')), 'device'),
 )
 
-// 日期范围：基于除日期外的所有筛选条件过滤后计算
 const dateRange = computed(() => {
   const source = filterByTopFilters(baseRecords.value, filtersExcept('date'))
   let min = ''
   let max = ''
+
   for (const record of source) {
     const raw = String(record?.yearmoda ?? '').trim()
-    if (raw.length >= 8) {
-      const iso = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
-      if (!min || iso < min) min = iso
-      if (!max || iso > max) max = iso
-    }
+    if (raw.length < 8) continue
+
+    const iso = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+    if (!min || iso < min) min = iso
+    if (!max || iso > max) max = iso
   }
+
   return { min, max }
 })
 
-// 只看类型中文标签
 const focusTypeLabel = computed(() => {
   const labels = { institution: '机构', ship: '调查船', cruise: '航次' }
   return labels[store.geology.focusFilter?.type] || ''
 })
 
-// 层级树
 const treeData = computed(() => buildGeologyHierarchicalTree(baseRecords.value, effectiveFilters.value))
 
 function onFilterChange() {
-  // 联动清理：当已选值不在当前可选范围内时自动重置
-  const validMggids = new Set(mggidOptions.value.map(o => o.value))
-  const validTitles = new Set(titleOptions.value.map(o => o.value))
-  const validInstitutions = new Set(institutionOptions.value.map(o => o.value))
-  const validShips = new Set(shipOptions.value.map(o => o.value))
-  const validDevices = new Set(deviceOptions.value.map(o => o.value))
+  const validMggids = new Set(mggidOptions.value.map(option => option.value))
+  const validTitles = new Set(titleOptions.value.map(option => option.value))
+  const validInstitutions = new Set(institutionOptions.value.map(option => option.value))
+  const validShips = new Set(shipOptions.value.map(option => option.value))
+  const validCategoryGroups = new Set(categoryGroupOptions.value.map(option => option.key))
+  const validCategories = new Set(categoryOptions.value.map(option => option.key))
+  const validDevices = new Set(deviceOptions.value.map(option => option.value))
 
   if (filters.mggid && !validMggids.has(filters.mggid)) filters.mggid = ''
   if (filters.title && !validTitles.has(filters.title)) filters.title = ''
   if (filters.institution && !validInstitutions.has(filters.institution)) filters.institution = ''
   if (filters.ship && !validShips.has(filters.ship)) filters.ship = ''
+  if (filters.categoryGroup && !validCategoryGroups.has(filters.categoryGroup)) filters.categoryGroup = ''
+  if (filters.category && !validCategories.has(filters.category)) filters.category = ''
   if (filters.device && !validDevices.has(filters.device)) filters.device = ''
 
   expandedMap.value = {}
@@ -255,6 +302,8 @@ function clearFilters() {
   filters.title = ''
   filters.institution = ''
   filters.ship = ''
+  filters.categoryGroup = ''
+  filters.category = ''
   filters.device = ''
   filters.dateStart = ''
   filters.dateEnd = ''
@@ -296,7 +345,6 @@ function resetFocus() {
   height: 100%;
 }
 
-/* ─── 顶部筛选器 ─── */
 .top-filters {
   padding: 10px 12px 8px;
   border-bottom: 1px solid #e2e8f0;
@@ -414,7 +462,6 @@ function resetFocus() {
   background: rgba(14, 165, 233, 0.15);
 }
 
-/* ─── 只看提示条 ─── */
 .focus-indicator {
   display: flex;
   align-items: center;
@@ -454,7 +501,6 @@ function resetFocus() {
   color: #ef4444;
 }
 
-/* ─── 树形结果区 ─── */
 .tree-area {
   flex: 1;
   overflow-y: auto;

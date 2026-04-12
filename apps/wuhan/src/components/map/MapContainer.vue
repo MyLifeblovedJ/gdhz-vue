@@ -2551,16 +2551,16 @@ onUnmounted(() => {
   z-index: 1;
 }
 .cesium-floating-popup.is-geology-popup {
-  min-width: 224px;
-  max-width: 280px;
+  min-width: 300px;
+  max-width: 380px;
   padding: 0;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: 22px;
   background: rgba(15, 23, 42, 0.22);
   box-shadow: none;
 }
 .cesium-floating-popup.is-geology-popup .cesium-floating-popup__content {
-  padding: 10px 12px 12px;
+  padding: 16px 18px 18px;
 }
 .cesium-floating-popup__close {
   position: absolute;
@@ -2583,18 +2583,19 @@ onUnmounted(() => {
 }
 
 :global(.leaflet-popup.geology-map-popup .leaflet-popup-content-wrapper) {
-  min-width: 224px;
+  min-width: 300px;
+  max-width: 380px;
   padding: 0;
   overflow: hidden;
   border: none;
-  border-radius: 18px;
+  border-radius: 22px;
   background: rgba(15, 23, 42, 0.22);
   box-shadow: none;
 }
 
 :global(.leaflet-popup.geology-map-popup .leaflet-popup-content) {
   margin: 0;
-  padding: 10px 12px 12px;
+  padding: 16px 18px 18px;
   min-width: 0;
   line-height: 1;
 }
@@ -2608,25 +2609,25 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 200px;
+  gap: 12px;
+  min-width: 264px;
 }
 
 :deep(.geology-popup-card__close) {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -2px;
+  right: -2px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
   background: transparent;
   color: #c9f0ff;
-  font-size: 21px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 0.9;
   cursor: pointer;
@@ -2647,41 +2648,69 @@ onUnmounted(() => {
 
 :deep(.geology-popup-card__title) {
   margin: 0;
-  padding: 0 26px 7px 0;
+  padding: 0 32px 10px 0;
   border-bottom: 1px solid rgba(125, 211, 252, 0.18);
   color: #7dd3fc;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
   text-shadow: 0 0 10px rgba(125, 211, 252, 0.14);
 }
 
 :deep(.geology-popup-card__body) {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 9px;
 }
 
 :deep(.geology-popup-card__row) {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 66px minmax(0, 1fr);
   align-items: start;
-  gap: 0;
-  line-height: 1.4;
+  column-gap: 10px;
+  line-height: 1.5;
 }
 
 :deep(.geology-popup-card__label) {
   color: rgba(186, 230, 253, 0.82);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 :deep(.geology-popup-card__value) {
   color: #fef3c7;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+:deep(.geology-popup-card__cat-row) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+}
+
+:deep(.geology-popup-card__cat-tag) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--cat-color) 18%, transparent);
+  color: var(--cat-color);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--cat-color) 25%, transparent);
+}
+
+:deep(.geology-popup-card__cat-tag > i) {
+  font-size: 11px;
 }
 
 :global(.typhoon-spinning-icon) { display: flex !important; align-items: center !important; justify-content: center !important; background: transparent !important; border: none !important; }

@@ -1,4 +1,8 @@
-import { GEOLOGY_FIELD_OPTIONS } from '../utils/geologySampling'
+import {
+  GEOLOGY_FIELD_OPTIONS,
+  getGeologyCategory,
+  getGeologyCategoryGroup,
+} from '../utils/geologySampling'
 
 // NOAA MGG 标准业务字段（不含内部 pointId/datasetType/groupId）
 export const GEOLOGY_FIELD_KEYS = [
@@ -190,7 +194,7 @@ function createRecord(datasetType, seed, pointIndex, globalIndex, offsetLng, off
   const latitude = Number(pos.lat.toFixed(6))
   const longitude = Number(pos.lng.toFixed(6))
 
-  return {
+  const record = {
     pointId,
     groupId: seed.mggid,
     datasetType,
@@ -209,6 +213,15 @@ function createRecord(datasetType, seed, pointIndex, globalIndex, offsetLng, off
     objectid,
     mggid: seed.mggid,
   }
+
+  // 注入语义大类（当前基于 device 自动推导，后续可由后端直接下发）
+  const category = getGeologyCategory(record)
+  const categoryGroup = getGeologyCategoryGroup(record)
+  record.category = category.key
+  record.categoryGroup = categoryGroup.key
+  record.categorySource = 'derived'
+
+  return record
 }
 
 // 每个种子生成 5~8 个原始采样点，坐标在中心点附近 ±0.3° 随机散布

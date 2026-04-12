@@ -3,13 +3,15 @@ export const GEOLOGY_FIELD_OPTIONS = [
   { key: 'title', label: '数据集' },
   { key: 'institution', label: '机构' },
   { key: 'ship', label: '调查船' },
+  { key: 'categoryGroup', label: '研究大类' },
+  { key: 'category', label: '具体分类' },
   { key: 'device', label: '设备' },
   { key: 'yearmoda', label: '日期' },
 ]
 
 export const GEOLOGY_FILTER_MODE_OPTIONS = [
   { key: 'single', label: '单选' },
-  { key: 'multiple', label: '复选' },
+  { key: 'multiple', label: '多选' },
 ]
 
 export const GEOLOGY_COLOR_MODE_OPTIONS = [
@@ -22,11 +24,205 @@ export const GEOLOGY_DATASET_COLORS = {
   processed: '#F97316',
 }
 
+export const GEOLOGY_CATEGORY_GROUP_MAP = {
+  sediment: {
+    key: 'sediment',
+    label: '沉积采样',
+    color: '#0ea5e9',
+    icon: 'fa-solid fa-layer-group',
+  },
+  rock_basement: {
+    key: 'rock_basement',
+    label: '岩石与基底',
+    color: '#8b5cf6',
+    icon: 'fa-solid fa-gem',
+  },
+  in_situ_geophysics: {
+    key: 'in_situ_geophysics',
+    label: '原位地球物理',
+    color: '#ef4444',
+    icon: 'fa-solid fa-temperature-half',
+  },
+}
+
+export const GEOLOGY_CATEGORY_DEFINITIONS = {
+  core_long: {
+    key: 'core_long',
+    label: '柱状岩心',
+    groupKey: 'sediment',
+    color: '#0ea5e9',
+    icon: 'fa-solid fa-trowel',
+  },
+  core_surface: {
+    key: 'core_surface',
+    label: '表层短岩心',
+    groupKey: 'sediment',
+    color: '#38bdf8',
+    icon: 'fa-solid fa-box-open',
+  },
+  surface_grab: {
+    key: 'surface_grab',
+    label: '表层抓样',
+    groupKey: 'sediment',
+    color: '#f59e0b',
+    icon: 'fa-solid fa-hand',
+  },
+  dredged_rock: {
+    key: 'dredged_rock',
+    label: '疏浚岩石',
+    groupKey: 'rock_basement',
+    color: '#8b5cf6',
+    icon: 'fa-solid fa-gem',
+  },
+  drilled_rock: {
+    key: 'drilled_rock',
+    label: '钻探岩芯',
+    groupKey: 'rock_basement',
+    color: '#7c3aed',
+    icon: 'fa-solid fa-hill-rockslide',
+  },
+  heat_flow: {
+    key: 'heat_flow',
+    label: '热流原位',
+    groupKey: 'in_situ_geophysics',
+    color: '#ef4444',
+    icon: 'fa-solid fa-temperature-half',
+  },
+}
+
+export const GEOLOGY_DEVICE_CATEGORY_MAP = {
+  'Piston Corer': 'core_long',
+  'Gravity Corer': 'core_long',
+  Vibracorer: 'core_long',
+  'Box Corer': 'core_surface',
+  'Multi Corer': 'core_surface',
+  'Grab Sampler': 'surface_grab',
+  Dredge: 'dredged_rock',
+  'Rock Drill': 'drilled_rock',
+  'Heat Probe': 'heat_flow',
+}
+
+const GEOLOGY_LEGACY_CATEGORY_ALIASES = {
+  sediment: 'core_long',
+  rock: 'dredged_rock',
+  surface: 'surface_grab',
+  geophys: 'heat_flow',
+}
+
+const GEOLOGY_LEGACY_GROUP_ALIASES = {
+  sediment: 'sediment',
+  rock: 'rock_basement',
+  surface: 'sediment',
+  geophys: 'in_situ_geophysics',
+}
+
+const GEOLOGY_CATEGORY_GROUP_FALLBACK = {
+  key: 'other',
+  label: '其他',
+  color: '#94a3b8',
+  icon: 'fa-solid fa-circle-question',
+}
+
+const GEOLOGY_CATEGORY_FALLBACK = {
+  key: 'other',
+  label: '其他',
+  groupKey: 'other',
+  color: '#94a3b8',
+  icon: 'fa-solid fa-circle-question',
+}
+
+function resolveGeologyCategoryKey(record) {
+  const explicitCategory = String(record?.category || '').trim()
+  if (explicitCategory) {
+    if (GEOLOGY_CATEGORY_DEFINITIONS[explicitCategory]) return explicitCategory
+    if (GEOLOGY_LEGACY_CATEGORY_ALIASES[explicitCategory]) return GEOLOGY_LEGACY_CATEGORY_ALIASES[explicitCategory]
+  }
+
+  return GEOLOGY_DEVICE_CATEGORY_MAP[String(record?.device || '').trim()] || GEOLOGY_CATEGORY_FALLBACK.key
+}
+
+function resolveGeologyCategoryGroupKey(record, categoryKey) {
+  const explicitGroup = String(record?.categoryGroup || '').trim()
+  if (explicitGroup) {
+    if (GEOLOGY_CATEGORY_GROUP_MAP[explicitGroup]) return explicitGroup
+    if (GEOLOGY_LEGACY_GROUP_ALIASES[explicitGroup]) return GEOLOGY_LEGACY_GROUP_ALIASES[explicitGroup]
+  }
+
+  return GEOLOGY_CATEGORY_DEFINITIONS[categoryKey]?.groupKey || GEOLOGY_CATEGORY_GROUP_FALLBACK.key
+}
+
+export function getGeologyCategoryGroup(record) {
+  const categoryKey = resolveGeologyCategoryKey(record)
+  const groupKey = resolveGeologyCategoryGroupKey(record, categoryKey)
+  const groupDefinition = GEOLOGY_CATEGORY_GROUP_MAP[groupKey]
+
+  if (!groupDefinition) {
+    return {
+      ...GEOLOGY_CATEGORY_GROUP_FALLBACK,
+      label: String(record?.categoryGroup || GEOLOGY_CATEGORY_GROUP_FALLBACK.label),
+    }
+  }
+
+  return groupDefinition
+}
+
+export function getGeologyCategory(record) {
+  const categoryKey = resolveGeologyCategoryKey(record)
+  const categoryDefinition = GEOLOGY_CATEGORY_DEFINITIONS[categoryKey]
+  const group = getGeologyCategoryGroup({ ...record, category: categoryKey })
+
+  if (!categoryDefinition) {
+    return {
+      ...GEOLOGY_CATEGORY_FALLBACK,
+      label: String(record?.category || GEOLOGY_CATEGORY_FALLBACK.label),
+      groupKey: group.key,
+      groupLabel: group.label,
+      groupColor: group.color,
+      groupIcon: group.icon,
+    }
+  }
+
+  return {
+    ...categoryDefinition,
+    groupKey: group.key,
+    groupLabel: group.label,
+    groupColor: group.color,
+    groupIcon: group.icon,
+  }
+}
+
+export function getGeologyCategorySummary(records = []) {
+  const counts = new Map()
+  for (const record of records) {
+    const category = getGeologyCategory(record)
+    if (!counts.has(category.key)) {
+      counts.set(category.key, { ...category, count: 0 })
+    }
+    counts.get(category.key).count += 1
+  }
+  return Array.from(counts.values()).sort((a, b) => b.count - a.count)
+}
+
+export function getGeologyCategoryGroupSummary(records = []) {
+  const counts = new Map()
+  for (const record of records) {
+    const group = getGeologyCategoryGroup(record)
+    if (!counts.has(group.key)) {
+      counts.set(group.key, { ...group, count: 0 })
+    }
+    counts.get(group.key).count += 1
+  }
+  return Array.from(counts.values()).sort((a, b) => b.count - a.count)
+}
+
 export function getGeologyFieldOption(field) {
   return GEOLOGY_FIELD_OPTIONS.find(item => item.key === field) || GEOLOGY_FIELD_OPTIONS[0]
 }
 
 export function getGeologyFieldValue(record, field) {
+  if (field === 'categoryGroup') return getGeologyCategoryGroup(record).label
+  if (field === 'category') return getGeologyCategory(record).label
+
   const rawValue = record?.[field]
   if (rawValue === null || rawValue === undefined) return '未标注'
   const value = String(rawValue).trim()
@@ -47,16 +243,12 @@ function hashString(input = '') {
   }, 7)
 }
 
-/** MurmurHash3 终态混淆，将相近哈希值打散到完全不同的输出 */
 function mixBits(h) {
   h = Math.imul(h ^ (h >>> 16), 0x85ebca6b) >>> 0
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35) >>> 0
   return (h ^ (h >>> 16)) >>> 0
 }
 
-/**
- * 将色相标准化到 0~360，避免后续计算出现负值或超界。
- */
 function normalizeHue(hue) {
   return ((hue % 360) + 360) % 360
 }
@@ -237,29 +429,36 @@ export function getGeologyDatasetColor(record) {
     : GEOLOGY_DATASET_COLORS.raw
 }
 
-export function buildGeologyHighlightState(record, { activeMggid = null, activePointId = null } = {}) {
-  if (!activeMggid) return 'normal'
+export function buildGeologyHighlightState(
+  record,
+  {
+    activeRecord = null,
+    activePointId = null,
+    colorMode = 'independent',
+    colorBy = 'ship',
+    rawColorBy = 'ship',
+    processedColorBy = 'ship',
+  } = {},
+) {
+  if (!activeRecord) return 'normal'
   if (record?.pointId === activePointId) return 'selected'
-  if (record?.mggid === activeMggid) return 'linked'
+
+  const isProcessed = record?.datasetType === 'processed'
+  const targetField = colorMode === 'linked'
+    ? colorBy
+    : (isProcessed ? processedColorBy : rawColorBy)
+
+  if (getGeologyFieldValue(record, targetField) === getGeologyFieldValue(activeRecord, targetField)) {
+    return 'linked'
+  }
   return 'dimmed'
 }
 
-/**
- * 从 '20240315' 格式的日期字符串中提取年份
- * @param {string} yearmoda - 日期字符串，格式为 YYYYMMDD
- * @returns {string} 年份字符串，无效时返回空字符串
- */
 export function extractYearFromYearmoda(yearmoda) {
   const str = String(yearmoda ?? '').trim()
   return str.length >= 4 ? str.slice(0, 4) : ''
 }
 
-/**
- * 获取指定字段的所有唯一值及其记录数，按中文排序
- * @param {Array} records - 采样记录数组
- * @param {string} field - 字段名
- * @returns {Array<{value: string, count: number}>} 唯一值列表
- */
 export function getUniqueFieldValues(records = [], field) {
   const counts = getFieldCounts(records, field)
   return Object.entries(counts)
@@ -267,20 +466,19 @@ export function getUniqueFieldValues(records = [], field) {
     .map(([value, count]) => ({ value, count }))
 }
 
-/**
- * 根据顶部筛选条件过滤记录，所有条件为 AND 关系
- * @param {Array} records - 采样记录数组
- * @param {Object} filters - 筛选条件
- * @param {string} [filters.institution] - 机构
- * @param {string} [filters.ship] - 调查船
- * @param {string} [filters.cruise] - 航次
- * @param {string} [filters.device] - 设备
- * @param {string} [filters.yearStart] - 起始年份
- * @param {string} [filters.yearEnd] - 结束年份
- * @returns {Array} 过滤后的记录数组
- */
 export function filterByTopFilters(records = [], filters = {}) {
-  const { mggid, title, institution, ship, cruise, device, yearStart, yearEnd } = filters
+  const {
+    mggid,
+    title,
+    institution,
+    ship,
+    cruise,
+    categoryGroup,
+    category,
+    device,
+    yearStart,
+    yearEnd,
+  } = filters
 
   return records.filter((record) => {
     if (mggid && getGeologyFieldValue(record, 'mggid') !== mggid) return false
@@ -288,6 +486,8 @@ export function filterByTopFilters(records = [], filters = {}) {
     if (institution && getGeologyFieldValue(record, 'institution') !== institution) return false
     if (ship && getGeologyFieldValue(record, 'ship') !== ship) return false
     if (cruise && getGeologyFieldValue(record, 'cruise') !== cruise) return false
+    if (categoryGroup && getGeologyCategoryGroup(record).key !== categoryGroup) return false
+    if (category && getGeologyCategory(record).key !== category) return false
     if (device && getGeologyFieldValue(record, 'device') !== device) return false
 
     if (yearStart || yearEnd) {
@@ -300,17 +500,8 @@ export function filterByTopFilters(records = [], filters = {}) {
   })
 }
 
-/**
- * 构建层级筛选树（机构 → 船只 → 航次 → 样品）
- * @param {Array} records - 采样记录数组
- * @param {Object} [topFilters] - 顶部筛选条件，同 filterByTopFilters 的 filters 参数
- * @returns {Array} 层级树节点数组
- */
 export function buildGeologyHierarchicalTree(records = [], topFilters = {}) {
-  // 先根据顶部筛选条件过滤记录
   const filtered = filterByTopFilters(records, topFilters)
-
-  // 按 institution → ship → cruise 三级分组
   const institutionMap = new Map()
 
   for (const record of filtered) {
@@ -334,7 +525,6 @@ export function buildGeologyHierarchicalTree(records = [], topFilters = {}) {
     cruiseMap.get(cruiseValue).push(record)
   }
 
-  // 构建树形结构
   return Array.from(institutionMap.entries())
     .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
     .map(([instValue, shipMap]) => {
@@ -344,9 +534,7 @@ export function buildGeologyHierarchicalTree(records = [], topFilters = {}) {
           const shipChildren = Array.from(cruiseMap.entries())
             .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
             .map(([cruiseValue, cruiseRecords]) => {
-              // 取该航次下第一条记录的年份作为航次年份
               const year = extractYearFromYearmoda(cruiseRecords[0]?.yearmoda)
-
               const sampleChildren = cruiseRecords.map(record => ({
                 id: `sample-${record.mggid || record.pointId || ''}`,
                 type: 'sample',

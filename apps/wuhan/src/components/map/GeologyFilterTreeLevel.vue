@@ -38,6 +38,18 @@
           <span v-else-if="node.rawCount" class="tree-node-tags">
             <span class="tag tag-raw">原始</span>
           </span>
+          <span v-if="nodeCategorySummary(node).length" class="tree-node-categories">
+            <span
+              v-for="cat in nodeCategorySummary(node)"
+              :key="cat.key"
+              class="cat-badge"
+              :style="{ '--cat-color': cat.color }"
+              :title="cat.label + ' ' + cat.count + '条'"
+            >
+              <i :class="cat.icon"></i>
+              {{ cat.count }}
+            </span>
+          </span>
           <button
             class="focus-btn"
             :title="`只看${focusLabel(node.type)}`"
@@ -70,6 +82,14 @@
       >
         <i class="fa-solid fa-location-dot sample-icon"></i>
         <span class="tree-sample-label">{{ node.label }}</span>
+        <span
+          class="cat-tag"
+          :style="{ '--cat-color': sampleCategory(node).color }"
+          :title="sampleCategory(node).label"
+        >
+          <i :class="sampleCategory(node).icon"></i>
+          {{ sampleCategory(node).label }}
+        </span>
         <span class="tag" :class="node.datasetType === 'processed' ? 'tag-processed' : 'tag-raw'">
           {{ node.datasetType === 'processed' ? '处理后' : '原始' }}
         </span>
@@ -99,6 +119,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import TreeLevel from './GeologyFilterTreeLevel.vue'
+import {
+  getGeologyCategory,
+  getGeologyCategoryGroupSummary,
+} from '../../utils/geologySampling'
 
 const props = defineProps({
   nodes: { type: Array, default: () => [] },
@@ -171,6 +195,23 @@ function buildFocusPayload(node) {
   if (node.type === 'ship') filters.ship = node.label
   if (node.type === 'cruise') filters.cruise = node.label
   return { type: node.type, label: node.label, filters }
+}
+
+/** 获取叶子节点的语义大类 */
+function sampleCategory(node) {
+  return getGeologyCategory(node.record)
+}
+
+/** 获取非叶子节点下所有记录的大类分布（递归收集叶子记录） */
+function collectRecords(node) {
+  if (node.type === 'sample') return node.record ? [node.record] : []
+  if (!node.children) return []
+  return node.children.flatMap(child => collectRecords(child))
+}
+
+function nodeCategorySummary(node) {
+  if (node.type === 'sample') return []
+  return getGeologyCategoryGroupSummary(collectRecords(node))
 }
 </script>
 
@@ -449,5 +490,50 @@ function buildFocusPayload(node) {
   font-size: 12px;
   color: #94a3b8;
   text-align: center;
+}
+
+/* ─── 语义大类标签（叶子节点） ─── */
+.cat-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 3px;
+  line-height: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--cat-color) 12%, transparent);
+  color: var(--cat-color);
+}
+
+.cat-tag > i {
+  font-size: 9px;
+}
+
+/* ─── 语义大类徽章（非叶子节点汇总） ─── */
+.tree-node-categories {
+  display: inline-flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--cat-color) 10%, transparent);
+  color: var(--cat-color);
+}
+
+.cat-badge > i {
+  font-size: 8px;
 }
 </style>
