@@ -186,6 +186,7 @@ const active3DViewPresetKey = ref(DEFAULT_3D_PRESET_KEY)
 const currentMapMode = computed(() => props.mapMode || store.mapMode || '3D')
 const is2DMode = computed(() => currentMapMode.value === '2D')
 const is3DMode = computed(() => currentMapMode.value === '3D')
+const geologyViewRestoreState = ref(null)
 
 // 鍥惧眰鍙鎬?
 const layerVisibility = computed(() => store.layerVisibility)
@@ -203,7 +204,8 @@ const mapRenderSpec = computed(() => buildMapRenderSpec({
     rawColorBy: store.geology.rawColorBy,
     processedColorBy: store.geology.processedColorBy,
     activeMggid: store.geology.activeMggid,
-    activePointId: store.geology.activePointId
+    activePointId: store.geology.activePointId,
+    hasViewRestoreTarget: Boolean(geologyViewRestoreState.value),
   }
 }))
 
@@ -1006,6 +1008,85 @@ function clearGeologyTransientUi() {
   }
   resetCesiumHoverOverlay()
   closeCesiumPopup()
+}
+
+function captureGeologyViewRestoreState() {
+  if (is3DMode.value && viewer) {
+    geologyViewRestoreState.value = {
+      mode: '3D',
+      destination: viewer.camera.positionWC?.clone?.() || viewer.camera.position.clone(),
+      heading: viewer.camera.heading,
+      pitch: viewer.camera.pitch,
+      roll: viewer.camera.roll,
+    }
+    return
+  }
+
+  if (map) {
+    const center = map.getCenter()
+    geologyViewRestoreState.value = {
+      mode: '2D',
+      center: [center.lat, center.lng],
+      zoom: map.getZoom(),
+    }
+  }
+}
+
+function setPopupRestoreButtonEnabled(enabled, rootElement = null) {
+  const scope = rootElement || document
+  scope.querySelectorAll?.('.geology-popup-card__action[data-popup-action="restore-view"]')?.forEach?.((button) => {
+    if (!(button instanceof HTMLButtonElement)) return
+    button.disabled = !enabled
+  })
+}
+
+function zoomToGeologyPoint(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+  captureGeologyViewRestoreState()
+
+  if (is3DMode.value && viewer) {
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(lng, lat, 260000),
+      orientation: {
+        heading: viewer.camera.heading,
+        pitch: CesiumMath.toRadians(-68),
+        roll: 0,
+      },
+      duration: 1.2,
+    })
+    viewer.scene.requestRender()
+    return
+  }
+
+  if (map) {
+    const baseZoom = map.getZoom() || props.zoom || 0
+    const nextZoom = Math.min(Math.max(baseZoom + 2, 10), 11)
+    map.flyTo([lat, lng], nextZoom, { duration: 0.9 })
+  }
+}
+
+function restorePreviousGeologyView() {
+  const state = geologyViewRestoreState.value
+  if (!state) return
+
+  if (state.mode === '3D' && viewer) {
+    viewer.camera.flyTo({
+      destination: state.destination,
+      orientation: {
+        heading: state.heading,
+        pitch: state.pitch,
+        roll: state.roll,
+      },
+      duration: 1.2,
+    })
+    viewer.scene.requestRender()
+  } else if (state.mode === '2D' && map && Array.isArray(state.center)) {
+    map.flyTo(state.center, state.zoom, { duration: 0.9 })
+  }
+
+  geologyViewRestoreState.value = null
+  setPopupRestoreButtonEnabled(false)
 }
 
 async function initCesium() {
@@ -2225,6 +2306,36 @@ function handlePopupMetadataLinkClick(event) {
   return true
 }
 
+function handlePopupViewActionClick(event) {
+  const target = event?.target
+  if (!(target instanceof Element)) return false
+
+  const actionButton = target.closest('.geology-popup-card__action')
+  if (!(actionButton instanceof HTMLButtonElement)) return false
+
+  const action = actionButton.getAttribute('data-popup-action')
+  if (!action) return false
+
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (action === 'zoom-point') {
+    const lat = Number(actionButton.getAttribute('data-lat'))
+    const lng = Number(actionButton.getAttribute('data-lng'))
+    zoomToGeologyPoint(lat, lng)
+    setPopupRestoreButtonEnabled(true, actionButton.closest('.geology-popup-card'))
+    return true
+  }
+
+  if (action === 'restore-view') {
+    if (actionButton.disabled) return true
+    restorePreviousGeologyView()
+    return true
+  }
+
+  return false
+}
+
 function handlePopupCloseButtonClick(event, onClose) {
   const target = event?.target
   if (!(target instanceof Element)) return false
@@ -2242,13 +2353,17 @@ function bindLeafletPopupCloseButton(popup) {
   const popupElement = popup?.getElement?.()
   if (!popupElement) return
 
+  setPopupRestoreButtonEnabled(Boolean(geologyViewRestoreState.value), popupElement)
+
   popupElement.addEventListener('click', (event) => {
+    if (handlePopupViewActionClick(event)) return
     if (handlePopupMetadataLinkClick(event)) return
     handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
   })
 }
 
 function handleCesiumPopupContentClick(event) {
+  if (handlePopupViewActionClick(event)) return
   if (handlePopupMetadataLinkClick(event)) return
   handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
 }
@@ -3088,6 +3203,15 @@ watch(currentMapMode, (nm) => {
   }
 })
 
+watch(
+  () => [cesiumPopupOverlay.value.visible, cesiumPopupOverlay.value.html, geologyViewRestoreState.value],
+  async () => {
+    await nextTick()
+    if (!cesiumPopupRef.value) return
+    setPopupRestoreButtonEnabled(Boolean(geologyViewRestoreState.value), cesiumPopupRef.value)
+  }
+)
+
 function getViewBounds() {
   if (is2DMode.value && map) {
     const b = map.getBounds()
@@ -3460,7 +3584,7 @@ onUnmounted(() => {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(125, 211, 252, 0.42) transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.18) transparent;
 }
 
 :deep(.geology-popup-card__value.is-compound) {
@@ -3469,50 +3593,52 @@ onUnmounted(() => {
 }
 
 :deep(.geology-popup-card__compound-value) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
+  display: block;
   width: 100%;
-}
-
-:deep(.geology-popup-card__compound-text) {
-  min-width: 0;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(125, 211, 252, 0.42) transparent;
+  scrollbar-color: rgba(148, 163, 184, 0.18) transparent;
 }
 
-:deep(.geology-popup-card__compound-text::-webkit-scrollbar) {
-  height: 6px;
+:deep(.geology-popup-card__compound-value::-webkit-scrollbar) {
+  height: 4px;
 }
 
-:deep(.geology-popup-card__compound-text::-webkit-scrollbar-thumb) {
+:deep(.geology-popup-card__compound-value::-webkit-scrollbar-button) {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+:deep(.geology-popup-card__compound-value::-webkit-scrollbar-thumb) {
   border-radius: 999px;
-  background: rgba(125, 211, 252, 0.34);
+  background: rgba(148, 163, 184, 0.18);
 }
 
 :deep(.geology-popup-card__value::-webkit-scrollbar) {
-  height: 6px;
+  height: 4px;
+}
+
+:deep(.geology-popup-card__value::-webkit-scrollbar-button) {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 :deep(.geology-popup-card__value::-webkit-scrollbar-thumb) {
   border-radius: 999px;
-  background: rgba(125, 211, 252, 0.34);
+  background: rgba(148, 163, 184, 0.18);
 }
 
 :deep(.geology-popup-card__meta-link) {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  flex: 0 0 auto;
+  display: inline-block;
+  min-width: max-content;
   color: #fb7185;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
-  line-height: 1.4;
+  line-height: 1.5;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -3520,14 +3646,12 @@ onUnmounted(() => {
 }
 
 :deep(.geology-popup-card__processed-link) {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  flex: 0 0 auto;
+  display: inline-block;
+  min-width: max-content;
   color: #22c55e;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
-  line-height: 1.4;
+  line-height: 1.5;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -3561,6 +3685,58 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   margin-top: -4px;
+}
+
+:deep(.geology-popup-card__actions) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+:deep(.geology-popup-card__action) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+:deep(.geology-popup-card__action--primary) {
+  background: rgba(14, 165, 233, 0.16);
+  color: #bae6fd;
+}
+
+:deep(.geology-popup-card__action--ghost) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+}
+
+:deep(.geology-popup-card__action:hover:not(:disabled)) {
+  transform: translateY(-1px);
+}
+
+:deep(.geology-popup-card__action--primary:hover:not(:disabled)) {
+  border-color: rgba(125, 211, 252, 0.42);
+  background: rgba(14, 165, 233, 0.22);
+}
+
+:deep(.geology-popup-card__action--ghost:hover:not(:disabled)) {
+  border-color: rgba(226, 232, 240, 0.26);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:deep(.geology-popup-card__action:disabled) {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 :deep(.geology-popup-card__cat-tag) {

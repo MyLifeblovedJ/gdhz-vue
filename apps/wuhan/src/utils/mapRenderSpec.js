@@ -50,7 +50,6 @@ function buildGeologyMetadataLinkHtml(record) {
 
   return `
     <span class="geology-popup-card__compound-value">
-      <span class="geology-popup-card__compound-text">${escapePopupHtml(mggid)}</span>
       <a
         class="geology-popup-card__meta-link"
         href="#"
@@ -60,7 +59,7 @@ function buildGeologyMetadataLinkHtml(record) {
         data-institution="${escapePopupHtml(institution)}"
         data-cruise="${escapePopupHtml(cruise)}"
         data-device="${escapePopupHtml(device)}"
-      >(原始数据链接)</a>
+      >${escapePopupHtml(mggid)}</a>
     </span>
   `.trim()
 }
@@ -79,7 +78,6 @@ function buildGeologyProcessedLinkHtml(record) {
 
   return `
     <span class="geology-popup-card__compound-value">
-      <span class="geology-popup-card__compound-text">${escapePopupHtml(excelName)}</span>
       <a
         class="geology-popup-card__processed-link"
         href="#"
@@ -95,12 +93,35 @@ function buildGeologyProcessedLinkHtml(record) {
         data-focus-pdf-name="${escapePopupHtml(sourcePdfName)}"
         data-focus-excel="${escapePopupHtml(excelName)}"
         data-focus-template="${escapePopupHtml(templateName)}"
-      >(处理后数据链接)</a>
+      >${escapePopupHtml(excelName)}</a>
     </span>
   `.trim()
 }
 
-function buildGeologyPopupHtml(title, rows, categoryTag = null) {
+function buildGeologyPopupActionsHtml(record, hasViewRestoreTarget = false) {
+  const lat = Number.isFinite(record?.latitude) ? record.latitude : record?.lat
+  const lng = Number.isFinite(record?.longitude) ? record.longitude : record?.lng
+
+  return `
+    <div class="geology-popup-card__actions">
+      <button
+        class="geology-popup-card__action geology-popup-card__action--primary"
+        type="button"
+        data-popup-action="zoom-point"
+        data-lat="${escapePopupHtml(lat)}"
+        data-lng="${escapePopupHtml(lng)}"
+      >放大到采样点</button>
+      <button
+        class="geology-popup-card__action geology-popup-card__action--ghost"
+        type="button"
+        data-popup-action="restore-view"
+        ${hasViewRestoreTarget ? '' : 'disabled'}
+      >回到上一个视角</button>
+    </div>
+  `.trim()
+}
+
+function buildGeologyPopupHtml(title, rows, categoryTag = null, actionsHtml = '') {
   const renderedRows = rows.map(({ label, value, valueHtml, valueClass = '' }) => `
     <div class="geology-popup-card__row">
       <span class="geology-popup-card__label">${escapePopupHtml(label)}</span>
@@ -121,6 +142,7 @@ function buildGeologyPopupHtml(title, rows, categoryTag = null) {
       <header class="geology-popup-card__title">${escapePopupHtml(title)}</header>
       ${categoryHtml ? `<div class="geology-popup-card__cat-row">${categoryHtml}</div>` : ''}
       <div class="geology-popup-card__body">${renderedRows}</div>
+      ${actionsHtml}
     </section>
   `.trim()
 }
@@ -524,6 +546,7 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
           `\u6837\u54c1\u7f16\u53f7\uff1a${record.sample || record.pointId || '--'}`,
           popupRows,
           category,
+          buildGeologyPopupActionsHtml(record, Boolean(geologyStyle.hasViewRestoreTarget)),
         ),
       }
     })
