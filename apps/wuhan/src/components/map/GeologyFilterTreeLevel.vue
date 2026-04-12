@@ -33,29 +33,28 @@
               v-if="getNodeSummary(node).visible.length"
               class="tree-node-summary-wrap"
             >
-              <div
-                class="tree-node-summary"
-                :class="{ 'has-overflow': getNodeSummary(node).hiddenCount > 0 }"
-              >
+              <div class="tree-node-summary">
                 <template v-for="(item, index) in getNodeSummary(node).visible" :key="item.key">
                   <span class="summary-item" :class="item.variant ? `is-${item.variant}` : ''">
                     {{ item.inline }}
                   </span>
                   <span v-if="index < getNodeSummary(node).visible.length - 1" class="summary-sep">/</span>
                 </template>
-                <span v-if="getNodeSummary(node).hiddenCount > 0" class="summary-more">
-                  另 {{ getNodeSummary(node).hiddenCount }} 项
-                </span>
-              </div>
+                <span v-if="getNodeSummary(node).hiddenCount > 0" class="summary-more-trigger">
+                  <span class="summary-more">
+                    另 {{ getNodeSummary(node).hiddenCount }} 项
+                  </span>
 
-              <div v-if="getNodeSummary(node).hiddenCount > 0" class="tree-node-tooltip">
-                <div
-                  v-for="item in getNodeSummary(node).details"
-                  :key="item.key"
-                  class="tree-node-tooltip__line"
-                >
-                  {{ item.full }}
-                </div>
+                  <div class="tree-node-tooltip">
+                    <div
+                      v-for="item in getNodeSummary(node).details"
+                      :key="item.key"
+                      class="tree-node-tooltip__line"
+                    >
+                      {{ item.full }}
+                    </div>
+                  </div>
+                </span>
               </div>
             </div>
           </div>
@@ -504,6 +503,13 @@ function getSampleSummary(node) {
   display: inline-block;
 }
 
+.summary-more-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
 .tree-node-tooltip {
   position: absolute;
   left: 0;
@@ -526,12 +532,12 @@ function getSampleSummary(node) {
   transition: opacity 0.15s, transform 0.15s;
 }
 
-.tree-node-summary-wrap:hover .tree-node-tooltip {
+.summary-more-trigger:hover .tree-node-tooltip {
   opacity: 1;
   transform: translateY(0);
 }
 
-.tree-node-summary.has-overflow:hover .summary-more {
+.summary-more-trigger:hover .summary-more {
   visibility: hidden;
 }
 
@@ -564,7 +570,7 @@ function getSampleSummary(node) {
 }
 
 .focus-btn {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
@@ -578,10 +584,15 @@ function getSampleSummary(node) {
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
   margin-top: 1px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .tree-node-header:hover .focus-btn {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .focus-btn:hover {
