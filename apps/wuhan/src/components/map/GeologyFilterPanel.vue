@@ -121,11 +121,32 @@
     </div>
 
     <div class="tree-area">
+      <div class="tree-toolbar">
+        <span class="tree-toolbar__label">浏览视角</span>
+        <div class="tree-toolbar__switch">
+          <button
+            class="view-btn"
+            :class="{ active: browseView === 'institution' }"
+            @click="setBrowseView('institution')"
+          >
+            按机构
+          </button>
+          <button
+            class="view-btn"
+            :class="{ active: browseView === 'category' }"
+            @click="setBrowseView('category')"
+          >
+            按研究分类
+          </button>
+        </div>
+      </div>
+
       <TreeLevel
         :nodes="treeData"
         :level="0"
         :default-show-count="5"
         :expanded-map="expandedMap"
+        :browse-view="browseView"
         @toggle="toggleNode"
         @sample-click="handleSampleClick"
         @focus-node="handleFocusNode"
@@ -143,6 +164,7 @@
 import { computed, reactive, ref } from 'vue'
 import { useAppStore } from '../../stores/app'
 import {
+  buildGeologyCategoryTree,
   buildGeologyHierarchicalTree,
   filterByTopFilters,
   getGeologyCategoryGroupSummary,
@@ -167,6 +189,7 @@ const filters = reactive({
   dateEnd: '',
 })
 
+const browseView = ref('institution')
 const expandedMap = ref({})
 
 const baseRecords = computed(() => {
@@ -271,11 +294,22 @@ const dateRange = computed(() => {
 })
 
 const focusTypeLabel = computed(() => {
-  const labels = { institution: '机构', ship: '调查船', cruise: '航次' }
+  const labels = {
+    institution: '机构',
+    ship: '调查船',
+    cruise: '航次',
+    categoryGroup: '研究大类',
+    category: '具体分类',
+  }
   return labels[store.geology.focusFilter?.type] || ''
 })
 
-const treeData = computed(() => buildGeologyHierarchicalTree(baseRecords.value, effectiveFilters.value))
+const treeData = computed(() => {
+  if (browseView.value === 'category') {
+    return buildGeologyCategoryTree(baseRecords.value, effectiveFilters.value)
+  }
+  return buildGeologyHierarchicalTree(baseRecords.value, effectiveFilters.value)
+})
 
 function onFilterChange() {
   const validMggids = new Set(mggidOptions.value.map(option => option.value))
@@ -307,6 +341,12 @@ function clearFilters() {
   filters.device = ''
   filters.dateStart = ''
   filters.dateEnd = ''
+  expandedMap.value = {}
+}
+
+function setBrowseView(view) {
+  if (browseView.value === view) return
+  browseView.value = view
   expandedMap.value = {}
 }
 
@@ -505,6 +545,51 @@ function resetFocus() {
   flex: 1;
   overflow-y: auto;
   padding: 6px 0;
+}
+
+.tree-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 12px 8px;
+}
+
+.tree-toolbar__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+
+.tree-toolbar__switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.view-btn {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-btn:hover {
+  color: #0f172a;
+}
+
+.view-btn.active {
+  background: #fff;
+  color: #0369a1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 .tree-empty {

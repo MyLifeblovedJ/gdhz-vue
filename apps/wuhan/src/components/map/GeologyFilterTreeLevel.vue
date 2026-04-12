@@ -1,6 +1,5 @@
 <template>
   <div class="tree-level" :class="`level-${level}`">
-    <!-- 搜索框（仅在 level < 2 时展示） -->
     <div v-if="level < 2 && nodes.length > 3" class="tree-search">
       <i class="fa-solid fa-magnifying-glass"></i>
       <input
@@ -14,9 +13,7 @@
       </button>
     </div>
 
-    <!-- 节点列表 -->
     <template v-for="node in displayedNodes" :key="node.id">
-      <!-- 非叶子节点（机构/船只/航次） -->
       <div
         v-if="node.type !== 'sample'"
         class="tree-node"
@@ -25,31 +22,45 @@
         <div class="tree-node-header" @click="$emit('toggle', node.id)">
           <i class="tree-node-arrow fa-solid" :class="isExpanded(node.id) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
           <i :class="nodeIcon(node)"></i>
-          <span class="tree-node-label">{{ node.label }}</span>
-          <span v-if="node.year" class="tree-node-year">{{ node.year }}</span>
-          <span class="tree-node-count">{{ node.count }} 条</span>
-          <span v-if="node.rawCount && node.processedCount" class="tree-node-tags">
-            <span class="tag tag-raw">原{{ node.rawCount }}</span>
-            <span class="tag tag-processed">处{{ node.processedCount }}</span>
-          </span>
-          <span v-else-if="node.processedCount" class="tree-node-tags">
-            <span class="tag tag-processed">处理后</span>
-          </span>
-          <span v-else-if="node.rawCount" class="tree-node-tags">
-            <span class="tag tag-raw">原始</span>
-          </span>
-          <span v-if="nodeCategorySummary(node).length" class="tree-node-categories">
-            <span
-              v-for="cat in nodeCategorySummary(node)"
-              :key="cat.key"
-              class="cat-badge"
-              :style="{ '--cat-color': cat.color }"
-              :title="cat.label + ' ' + cat.count + '条'"
+
+          <div class="tree-node-main">
+            <div class="tree-node-title">
+              <span class="tree-node-label">{{ node.label }}</span>
+              <span v-if="node.year" class="tree-node-year">{{ node.year }}</span>
+            </div>
+
+            <div
+              v-if="getNodeSummary(node).visible.length"
+              class="tree-node-summary-wrap"
             >
-              <i :class="cat.icon"></i>
-              {{ cat.count }}
-            </span>
-          </span>
+              <div
+                class="tree-node-summary"
+                :class="{ 'has-overflow': getNodeSummary(node).hiddenCount > 0 }"
+              >
+                <template v-for="(item, index) in getNodeSummary(node).visible" :key="item.key">
+                  <span class="summary-item" :class="item.variant ? `is-${item.variant}` : ''">
+                    {{ item.inline }}
+                  </span>
+                  <span v-if="index < getNodeSummary(node).visible.length - 1" class="summary-sep">/</span>
+                </template>
+                <span v-if="getNodeSummary(node).hiddenCount > 0" class="summary-more">
+                  另 {{ getNodeSummary(node).hiddenCount }} 项
+                </span>
+              </div>
+
+              <div v-if="getNodeSummary(node).hiddenCount > 0" class="tree-node-tooltip">
+                <div
+                  v-for="item in getNodeSummary(node).details"
+                  :key="item.key"
+                  class="tree-node-tooltip__line"
+                >
+                  {{ item.full }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <span class="tree-node-count">{{ node.count }} 条</span>
           <button
             class="focus-btn"
             :title="`只看${focusLabel(node.type)}`"
@@ -59,13 +70,13 @@
           </button>
         </div>
 
-        <!-- 展开后递归渲染子层级 -->
         <div v-if="isExpanded(node.id)" class="tree-node-children">
           <TreeLevel
             :nodes="node.children || []"
             :level="level + 1"
             :default-show-count="defaultShowCount"
             :expanded-map="expandedMap"
+            :browse-view="browseView"
             :parent-context="currentContext(node)"
             @toggle="(id) => $emit('toggle', id)"
             @sample-click="(record) => $emit('sample-click', record)"
@@ -74,32 +85,29 @@
         </div>
       </div>
 
-      <!-- 叶子节点（样品） -->
       <div
         v-else
         class="tree-node tree-sample"
         @click="$emit('sample-click', node.record)"
       >
-        <i class="fa-solid fa-location-dot sample-icon"></i>
-        <span class="tree-sample-label">{{ node.label }}</span>
-        <span
-          class="cat-tag"
-          :style="{ '--cat-color': sampleCategory(node).color }"
-          :title="sampleCategory(node).label"
-        >
-          <i :class="sampleCategory(node).icon"></i>
-          {{ sampleCategory(node).label }}
-        </span>
-        <span class="tag" :class="node.datasetType === 'processed' ? 'tag-processed' : 'tag-raw'">
-          {{ node.datasetType === 'processed' ? '处理后' : '原始' }}
-        </span>
-        <span v-if="node.record" class="tree-sample-meta">
-          {{ node.record.device }} · {{ node.record.sample }}
-        </span>
+        <div class="tree-sample-main">
+          <div class="tree-sample-title">
+            <i class="fa-solid fa-location-dot sample-icon"></i>
+            <span class="tree-sample-label">{{ node.label }}</span>
+          </div>
+
+          <div class="tree-sample-summary">
+            <template v-for="(item, index) in getSampleSummary(node)" :key="`${node.id}-${item.key}`">
+              <span class="summary-item" :class="item.variant ? `is-${item.variant}` : ''">
+                {{ item.label }}
+              </span>
+              <span v-if="index < getSampleSummary(node).length - 1" class="summary-sep">/</span>
+            </template>
+          </div>
+        </div>
       </div>
     </template>
 
-    <!-- 展开更多按钮 -->
     <button
       v-if="hasMore"
       class="tree-show-more"
@@ -109,9 +117,8 @@
       展开更多（剩余 {{ filteredNodes.length - defaultShowCount }} 项）
     </button>
 
-    <!-- 无搜索结果 -->
     <div v-if="searchText && !filteredNodes.length" class="tree-no-match">
-      未找到 "{{ searchText }}"
+      未找到“{{ searchText }}”
     </div>
   </div>
 </template>
@@ -129,6 +136,7 @@ const props = defineProps({
   level: { type: Number, default: 0 },
   defaultShowCount: { type: Number, default: 5 },
   expandedMap: { type: Object, default: () => ({}) },
+  browseView: { type: String, default: 'institution' },
   parentContext: { type: Object, default: () => ({}) },
 })
 
@@ -138,20 +146,18 @@ const searchText = ref('')
 const showAll = ref(false)
 
 const searchPlaceholder = computed(() => {
-  const labels = { 0: '搜索机构...', 1: '搜索船只...' }
+  const labels = props.browseView === 'category'
+    ? { 0: '搜索研究大类...', 1: '搜索具体分类...' }
+    : { 0: '搜索机构...', 1: '搜索调查船...' }
   return labels[props.level] || '搜索...'
 })
 
-// 搜索过滤
 const filteredNodes = computed(() => {
   if (!searchText.value) return props.nodes
   const keyword = searchText.value.toLowerCase()
-  return props.nodes.filter(node =>
-    node.label?.toLowerCase().includes(keyword),
-  )
+  return props.nodes.filter(node => node.label?.toLowerCase().includes(keyword))
 })
 
-// 默认折叠，只显示 defaultShowCount 条
 const displayedNodes = computed(() => {
   if (showAll.value || filteredNodes.value.length <= props.defaultShowCount) {
     return filteredNodes.value
@@ -172,12 +178,20 @@ function nodeIcon(node) {
     institution: 'fa-solid fa-building-columns',
     ship: 'fa-solid fa-ship',
     cruise: 'fa-solid fa-folder',
+    categoryGroup: 'fa-solid fa-layer-group',
+    category: 'fa-solid fa-tags',
   }
   return icons[node.type] || 'fa-solid fa-circle'
 }
 
 function focusLabel(type) {
-  const labels = { institution: '机构', ship: '调查船', cruise: '航次' }
+  const labels = {
+    institution: '机构',
+    ship: '调查船',
+    cruise: '航次',
+    categoryGroup: '研究大类',
+    category: '具体分类',
+  }
   return labels[type] || ''
 }
 
@@ -186,6 +200,8 @@ function currentContext(node) {
   if (node.type === 'institution') ctx.institution = node.label
   if (node.type === 'ship') ctx.ship = node.label
   if (node.type === 'cruise') ctx.cruise = node.label
+  if (node.type === 'categoryGroup') ctx.categoryGroup = node.categoryGroupKey
+  if (node.type === 'category') ctx.category = node.categoryKey
   return ctx
 }
 
@@ -194,24 +210,94 @@ function buildFocusPayload(node) {
   if (node.type === 'institution') filters.institution = node.label
   if (node.type === 'ship') filters.ship = node.label
   if (node.type === 'cruise') filters.cruise = node.label
+  if (node.type === 'categoryGroup') filters.categoryGroup = node.categoryGroupKey
+  if (node.type === 'category') filters.category = node.categoryKey
   return { type: node.type, label: node.label, filters }
 }
 
-/** 获取叶子节点的语义大类 */
-function sampleCategory(node) {
+function getSampleCategory(node) {
   return getGeologyCategory(node.record)
 }
 
-/** 获取非叶子节点下所有记录的大类分布（递归收集叶子记录） */
+function getDatasetLabel(datasetType) {
+  return datasetType === 'processed' ? '处理后' : '原始'
+}
+
 function collectRecords(node) {
   if (node.type === 'sample') return node.record ? [node.record] : []
   if (!node.children) return []
   return node.children.flatMap(child => collectRecords(child))
 }
 
-function nodeCategorySummary(node) {
-  if (node.type === 'sample') return []
-  return getGeologyCategoryGroupSummary(collectRecords(node))
+function getNodeSummary(node) {
+  const details = []
+
+  if (node.rawCount) {
+    details.push({
+      key: `${node.id}-raw`,
+      inline: node.processedCount ? `原始 ${node.rawCount}` : '全部原始',
+      full: `原始数据 ${node.rawCount} 条`,
+      variant: 'raw',
+    })
+  }
+
+  if (node.processedCount) {
+    details.push({
+      key: `${node.id}-processed`,
+      inline: node.rawCount ? `处理后 ${node.processedCount}` : '全部处理后',
+      full: `处理后数据 ${node.processedCount} 条`,
+      variant: 'processed',
+    })
+  }
+
+  if (props.browseView !== 'category') {
+    const groups = getGeologyCategoryGroupSummary(collectRecords(node))
+    for (const item of groups) {
+      details.push({
+        key: `${node.id}-${item.key}`,
+        inline: `${item.label} ${item.count}`,
+        full: `${item.label} ${item.count} 条`,
+        variant: '',
+      })
+    }
+  }
+
+  const visibleLimit = props.browseView === 'category' ? 2 : 3
+  return {
+    details,
+    visible: details.slice(0, visibleLimit),
+    hiddenCount: Math.max(details.length - visibleLimit, 0),
+  }
+}
+
+function getSampleSummary(node) {
+  const items = []
+  const category = getSampleCategory(node)
+
+  if (props.browseView !== 'category' && category.key !== 'other') {
+    items.push({
+      key: 'category',
+      label: category.label,
+      variant: '',
+    })
+  }
+
+  items.push({
+    key: 'dataset',
+    label: getDatasetLabel(node.datasetType),
+    variant: node.datasetType === 'processed' ? 'processed' : 'raw',
+  })
+
+  const metaText = [node.record?.device, node.record?.sample].filter(Boolean).join(' · ')
+  if (metaText) {
+    items.push({
+      key: 'meta',
+      label: metaText,
+      variant: '',
+    })
+  }
+
+  return items
 }
 </script>
 
@@ -233,7 +319,6 @@ function nodeCategorySummary(node) {
   padding-left: 8px;
 }
 
-/* ─── 搜索框 ─── */
 .tree-search {
   display: flex;
   align-items: center;
@@ -287,16 +372,14 @@ function nodeCategorySummary(node) {
   color: #ef4444;
 }
 
-/* ─── 树节点（非叶子） ─── */
 .tree-node-header {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
   cursor: pointer;
-  font-size: 13px;
   color: #334155;
-  border-radius: 4px;
+  border-radius: 6px;
   margin: 0 4px;
   transition: background 0.12s;
   user-select: none;
@@ -308,7 +391,6 @@ function nodeCategorySummary(node) {
 
 .tree-node.expanded > .tree-node-header {
   background: rgba(14, 165, 233, 0.05);
-  font-weight: 600;
 }
 
 .tree-node-arrow {
@@ -317,7 +399,7 @@ function nodeCategorySummary(node) {
   flex-shrink: 0;
   width: 12px;
   text-align: center;
-  transition: transform 0.15s;
+  margin-top: 2px;
 }
 
 .tree-node-header > i:nth-child(2) {
@@ -325,6 +407,7 @@ function nodeCategorySummary(node) {
   width: 16px;
   text-align: center;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .node-institution > .tree-node-header > i:nth-child(2) {
@@ -339,12 +422,36 @@ function nodeCategorySummary(node) {
   color: #f59e0b;
 }
 
-.tree-node-label {
+.node-categoryGroup > .tree-node-header > i:nth-child(2) {
+  color: #0ea5e9;
+}
+
+.node-category > .tree-node-header > i:nth-child(2) {
+  color: #f97316;
+}
+
+.tree-node-main {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tree-node-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tree-node-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .tree-node-year {
@@ -353,16 +460,109 @@ function nodeCategorySummary(node) {
   flex-shrink: 0;
 }
 
-.tree-node-count {
-  font-size: 11px;
-  color: #94a3b8;
-  flex-shrink: 0;
-  background: #f1f5f9;
-  padding: 1px 6px;
-  border-radius: 8px;
+.tree-node-summary-wrap {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
 }
 
-/* ─── 只看按钮 ─── */
+.tree-node-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.summary-item {
+  white-space: nowrap;
+}
+
+.summary-item.is-raw {
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.summary-item.is-processed {
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.summary-sep {
+  color: #cbd5e1;
+}
+
+.summary-more {
+  color: #64748b;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.tree-node-tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 200px;
+  max-width: 300px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid #dbe7f3;
+  color: #1e293b;
+  font-size: 12px;
+  line-height: 1.65;
+  font-weight: 500;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.tree-node-summary-wrap:hover .tree-node-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tree-node-summary.has-overflow:hover .summary-more {
+  visibility: hidden;
+}
+
+.tree-node-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  background: #fbfdff;
+  border-left: 1px solid #dbe7f3;
+  border-top: 1px solid #dbe7f3;
+  transform: rotate(45deg);
+}
+
+.tree-node-tooltip__line + .tree-node-tooltip__line {
+  margin-top: 3px;
+}
+
+.tree-node-count {
+  font-size: 11px;
+  color: #64748b;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
 .focus-btn {
   display: none;
   align-items: center;
@@ -377,6 +577,7 @@ function nodeCategorySummary(node) {
   font-size: 10px;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
+  margin-top: 1px;
 }
 
 .tree-node-header:hover .focus-btn {
@@ -388,48 +589,17 @@ function nodeCategorySummary(node) {
   color: #fff;
 }
 
-/* ─── 来源标签 ─── */
-.tree-node-tags {
-  display: inline-flex;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.tag {
-  font-size: 10px;
-  padding: 0 4px;
-  border-radius: 3px;
-  line-height: 16px;
-  font-weight: 600;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.tag-raw {
-  background: rgba(14, 165, 233, 0.1);
-  color: #0284c7;
-}
-
-.tag-processed {
-  background: rgba(249, 115, 22, 0.1);
-  color: #c2410c;
-}
-
-/* ─── 子节点容器 ─── */
 .tree-node-children {
   border-left: 1px solid #e2e8f0;
   margin-left: 17px;
 }
 
-/* ─── 叶子节点（样品） ─── */
 .tree-sample {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 6px 12px;
   margin: 0 4px;
-  font-size: 12px;
-  color: #475569;
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.12s;
@@ -439,6 +609,21 @@ function nodeCategorySummary(node) {
   background: rgba(14, 165, 233, 0.06);
 }
 
+.tree-sample-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tree-sample-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .sample-icon {
   font-size: 11px;
   color: #0ea5e9;
@@ -446,21 +631,23 @@ function nodeCategorySummary(node) {
 }
 
 .tree-sample-label {
-  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  color: #475569;
 }
 
-.tree-sample-meta {
+.tree-sample-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   font-size: 11px;
   color: #94a3b8;
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
-/* ─── 展开更多 ─── */
 .tree-show-more {
   display: flex;
   align-items: center;
@@ -484,56 +671,10 @@ function nodeCategorySummary(node) {
   font-size: 10px;
 }
 
-/* ─── 无搜索结果 ─── */
 .tree-no-match {
   padding: 12px 16px;
   font-size: 12px;
   color: #94a3b8;
   text-align: center;
-}
-
-/* ─── 语义大类标签（叶子节点） ─── */
-.cat-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  padding: 0 5px;
-  border-radius: 3px;
-  line-height: 16px;
-  font-weight: 600;
-  flex-shrink: 0;
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--cat-color) 12%, transparent);
-  color: var(--cat-color);
-}
-
-.cat-tag > i {
-  font-size: 9px;
-}
-
-/* ─── 语义大类徽章（非叶子节点汇总） ─── */
-.tree-node-categories {
-  display: inline-flex;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.cat-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 10px;
-  padding: 0 4px;
-  border-radius: 3px;
-  line-height: 16px;
-  font-weight: 600;
-  white-space: nowrap;
-  background: color-mix(in srgb, var(--cat-color) 10%, transparent);
-  color: var(--cat-color);
-}
-
-.cat-badge > i {
-  font-size: 8px;
 }
 </style>

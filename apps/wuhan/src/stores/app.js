@@ -19,6 +19,8 @@ import {
   buildGeologyColorLegendItems,
   buildGeologyFilterTreeItems,
   filterGeologyRecords,
+  getGeologyCategory,
+  getGeologyCategoryGroup,
 } from '../utils/geologySampling'
 
 export const useAppStore = defineStore('app', () => {
@@ -169,6 +171,8 @@ export const useAppStore = defineStore('app', () => {
         if (focus.filters.institution && (record.institution || '') !== focus.filters.institution) return false
         if (focus.filters.ship && (record.ship || '') !== focus.filters.ship) return false
         if (focus.filters.cruise && (record.cruise || '') !== focus.filters.cruise) return false
+        if (focus.filters.categoryGroup && getGeologyCategoryGroup(record).key !== focus.filters.categoryGroup) return false
+        if (focus.filters.category && getGeologyCategory(record).key !== focus.filters.category) return false
         return true
       })
     }

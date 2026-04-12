@@ -588,3 +588,96 @@ export function buildGeologyHierarchicalTree(records = [], topFilters = {}) {
       }
     })
 }
+
+function sortByLocale(left, right) {
+  return String(left).localeCompare(String(right), 'zh-CN')
+}
+
+function buildSampleNode(record) {
+  return {
+    id: `sample-${record.mggid || record.pointId || ''}`,
+    type: 'sample',
+    label: getGeologyFieldValue(record, 'title'),
+    datasetType: record.datasetType || 'raw',
+    record,
+  }
+}
+
+function buildDatasetCountSummary(records = []) {
+  const rawCount = records.filter(record => record.datasetType !== 'processed').length
+  return {
+    rawCount,
+    processedCount: records.length - rawCount,
+  }
+}
+
+export function buildGeologyCategoryTree(records = [], topFilters = {}) {
+  const filtered = filterByTopFilters(records, topFilters)
+  const groupMap = new Map()
+
+  for (const record of filtered) {
+    const group = getGeologyCategoryGroup(record)
+    const category = getGeologyCategory(record)
+
+    if (!groupMap.has(group.key)) {
+      groupMap.set(group.key, {
+        group,
+        categories: new Map(),
+      })
+    }
+
+    const categoryMap = groupMap.get(group.key).categories
+    if (!categoryMap.has(category.key)) {
+      categoryMap.set(category.key, {
+        category,
+        records: [],
+      })
+    }
+
+    categoryMap.get(category.key).records.push(record)
+  }
+
+  return Array.from(groupMap.values())
+    .sort((left, right) => sortByLocale(left.group.label, right.group.label))
+    .map(({ group, categories }) => {
+      const categoryChildren = Array.from(categories.values())
+        .sort((left, right) => sortByLocale(left.category.label, right.category.label))
+        .map(({ category, records: categoryRecords }) => {
+          const summary = buildDatasetCountSummary(categoryRecords)
+          const sampleChildren = [...categoryRecords]
+            .sort((left, right) => sortByLocale(
+              getGeologyFieldValue(left, 'title'),
+              getGeologyFieldValue(right, 'title'),
+            ))
+            .map(record => buildSampleNode(record))
+
+          return {
+            id: `category-${group.key}-${category.key}`,
+            type: 'category',
+            label: category.label,
+            count: categoryRecords.length,
+            rawCount: summary.rawCount,
+            processedCount: summary.processedCount,
+            categoryKey: category.key,
+            categoryGroupKey: group.key,
+            children: sampleChildren,
+          }
+        })
+
+      const groupRecords = categoryChildren.flatMap(child =>
+        child.children.map(sampleNode => sampleNode.record),
+      )
+      const summary = buildDatasetCountSummary(groupRecords)
+
+      return {
+        id: `category-group-${group.key}`,
+        type: 'categoryGroup',
+        label: group.label,
+        count: groupRecords.length,
+        rawCount: summary.rawCount,
+        processedCount: summary.processedCount,
+        categoryGroupKey: group.key,
+        children: categoryChildren,
+      }
+    })
+}
