@@ -1465,6 +1465,733 @@ function closeActiveGeologyPopup() {
   viewer?.scene?.requestRender()
 }
 
+function escapeMetadataHtml(value) {
+  return String(value ?? '--')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device }) {
+  const safeMggid = mggid || '--'
+  const safeSample = sample || '--'
+  const safeTitle = title || '--'
+  const safeInstitution = institution || '--'
+  const safeCruise = cruise || '--'
+  const safeDevice = device || '--'
+  const createProcessedPairs = (prefix, count) => Array.from({ length: count }, (_, index) => ({
+    excel: `${prefix}_processed_${String(index + 1).padStart(2, '0')}.xlsx`,
+    template: `${prefix}_template_${String(index + 1).padStart(2, '0')}.xlsx`,
+  }))
+
+  const pdfOverviewPrefix = `${safeMggid}_metadata_overview`
+  const pdfStationLogPrefix = `${safeMggid}_${safeSample}_station_log`
+  const pdfFgdcPrefix = `${safeMggid}_fgdc_record`
+
+  return {
+    rootName: safeMggid,
+    summary: {
+      title: safeTitle,
+      sample: safeSample,
+      institution: safeInstitution,
+      cruise: safeCruise,
+      device: safeDevice,
+    },
+    directories: {
+      root: {
+        key: 'root',
+        label: safeMggid,
+        path: [safeMggid],
+        items: [
+          { name: 'PDF', type: '文件夹', size: '--', modified: '2025-03-12 10:18', kind: 'folder', dirKey: 'pdf' },
+          { name: 'JPG', type: '文件夹', size: '--', modified: '2025-03-12 10:20', kind: 'folder', dirKey: 'jpg' },
+        ],
+      },
+      pdf: {
+        key: 'pdf',
+        label: 'PDF',
+        path: [safeMggid, 'PDF'],
+        items: [
+          {
+            id: 'pdf-overview',
+            name: `${pdfOverviewPrefix}.pdf`,
+            type: 'PDF',
+            size: '2.4 MB',
+            modified: '2025-03-12 10:18',
+            kind: 'file',
+            processedPairs: createProcessedPairs(pdfOverviewPrefix, 3),
+          },
+          {
+            id: 'pdf-station-log',
+            name: `${pdfStationLogPrefix}.pdf`,
+            type: 'PDF',
+            size: '1.1 MB',
+            modified: '2025-03-12 10:19',
+            kind: 'file',
+            processedPairs: createProcessedPairs(pdfStationLogPrefix, 2),
+          },
+          {
+            id: 'pdf-fgdc',
+            name: `${pdfFgdcPrefix}.pdf`,
+            type: 'PDF',
+            size: '786 KB',
+            modified: '2025-03-12 10:21',
+            kind: 'file',
+            processedPairs: createProcessedPairs(pdfFgdcPrefix, 1),
+          },
+        ],
+      },
+      jpg: {
+        key: 'jpg',
+        label: 'JPG',
+        path: [safeMggid, 'JPG'],
+        items: [
+          { name: `${safeMggid}_${safeSample}_overview.jpg`, type: 'JPG', size: '5.8 MB', modified: '2025-03-12 10:20', kind: 'file' },
+          { name: `${safeMggid}_${safeSample}_core_photo.jpg`, type: 'JPG', size: '8.2 MB', modified: '2025-03-12 10:22', kind: 'file' },
+          { name: `${safeMggid}_station_map.jpg`, type: 'JPG', size: '1.9 MB', modified: '2025-03-12 10:24', kind: 'file' },
+        ],
+      },
+    },
+  }
+}
+
+function serializeMetadataData(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+}
+
+function openGeologyMetadataWindow({ mggid, sample, title, institution, cruise, device }) {
+  if (typeof window === 'undefined') return
+
+  const popupWindow = window.open('', '_blank', 'width=980,height=720')
+  if (!popupWindow) return
+
+  popupWindow.opener = null
+  const explorerData = buildMetadataExplorerData({ mggid, sample, title, institution, cruise, device })
+  const serializedData = serializeMetadataData(explorerData)
+
+  popupWindow.document.write(`
+    <!doctype html>
+    <html lang="zh-CN">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${escapeMetadataHtml(mggid)} 元数据目录</title>
+        <style>
+          :root {
+            color-scheme: light;
+            --bg: #f3f5f8;
+            --panel: #ffffff;
+            --line: #d8dee6;
+            --text: #1f2937;
+            --muted: #5f6b7a;
+            --accent: #245fbc;
+            --soft: #eef3f8;
+            --active: #e8eef9;
+            --tree-line: #c9d3df;
+          }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+          }
+          .metadata-page {
+            min-height: 100vh;
+            padding: 18px;
+          }
+          .metadata-panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+          }
+          .metadata-windowbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #dde4ec;
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
+          }
+          .metadata-windowbar__title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #344256;
+          }
+          .metadata-windowbar__title span:last-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .metadata-windowbar__icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+            border: 1px solid #9ec5fe;
+          }
+          .metadata-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #e3e9f0;
+            background: #fbfcfe;
+          }
+          .metadata-breadcrumb {
+            color: #425266;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .metadata-toolbar__label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+          }
+          .metadata-layout {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            min-height: 560px;
+          }
+          .metadata-sidebar {
+            border-right: 1px solid #e6ebf1;
+            background: #fafbfd;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+          }
+          .metadata-sidebar__title {
+            margin: 0 0 10px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+          .metadata-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1 1 auto;
+          }
+          .metadata-tree__group {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+          }
+          .metadata-tree__item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: #2b394b;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+          }
+          .metadata-tree__item:hover {
+            background: var(--soft);
+          }
+          .metadata-tree__item.is-active {
+            background: var(--active);
+            border-color: #cfdcf8;
+            color: var(--accent);
+          }
+          .metadata-tree__item--child {
+            margin-left: 20px;
+            position: relative;
+          }
+          .metadata-tree__item--child::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: -8px;
+            bottom: 50%;
+            width: 1px;
+            background: var(--tree-line);
+          }
+          .metadata-tree__item--child::after {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            width: 10px;
+            height: 1px;
+            background: var(--tree-line);
+          }
+          .metadata-tree__icon {
+            flex: 0 0 auto;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            color: #76869b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .metadata-tree__icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+          .metadata-tree__toggle {
+            flex: 0 0 auto;
+            width: 10px;
+            color: #7a8899;
+            font-size: 11px;
+          }
+          .metadata-content {
+            min-width: 0;
+          }
+          .metadata-abstract {
+            margin-top: 20px;
+            padding: 12px;
+            border: 1px solid #e6ebf1;
+            border-radius: 8px;
+            background: #f9fbfd;
+          }
+          .metadata-abstract__title {
+            margin: 0 0 8px;
+            color: #445569;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+          }
+          .metadata-abstract__grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          .metadata-abstract__item {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: 72px minmax(0, 1fr);
+            align-items: start;
+            column-gap: 10px;
+            padding: 7px 8px;
+            border: 1px solid #e7edf4;
+            border-radius: 6px;
+            background: #ffffff;
+          }
+          .metadata-abstract__label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.6;
+            white-space: nowrap;
+          }
+          .metadata-abstract__value {
+            color: #263445;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+          .metadata-files {
+            padding: 14px 16px 18px;
+          }
+          .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+          }
+          .metadata-table thead th {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e6edf6;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-align: left;
+          }
+          .metadata-table tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #edf2f8;
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.45;
+            vertical-align: middle;
+          }
+          .metadata-table tbody tr:hover {
+            background: #f9fbfe;
+          }
+          .metadata-table tbody tr.is-processed-row {
+            background: #fcfdff;
+          }
+          .metadata-table tbody tr.is-processed-row td {
+            color: #445569;
+            font-size: 13px;
+          }
+          .metadata-file {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+          }
+          .metadata-file__icon {
+            flex: 0 0 auto;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: #eef2f7;
+            color: #5b6a7c;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+          }
+          .metadata-file__icon.is-pdf {
+            background: #fee2e2;
+            color: #b91c1c;
+          }
+          .metadata-file__icon.is-xlsx {
+            background: #dcfce7;
+            color: #15803d;
+          }
+          .metadata-file__icon.is-jpg {
+            background: #eff6ff;
+            color: #2563eb;
+          }
+          .metadata-file__icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+          }
+          .metadata-file__name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .metadata-file__name.is-link {
+            color: var(--accent);
+            cursor: pointer;
+          }
+          .metadata-file__ops {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: 10px;
+            flex: 0 0 auto;
+          }
+          .metadata-file__button {
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 9px;
+            border: 1px solid #cfd8e3;
+            border-radius: 6px;
+            background: #fff;
+            color: #35506f;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+          }
+          .metadata-file__button.is-active {
+            border-color: #b9cae3;
+            background: #edf4ff;
+            color: var(--accent);
+          }
+          .metadata-file__hint {
+            color: #708096;
+            font-size: 12px;
+            font-weight: 600;
+          }
+          .metadata-file__indent {
+            width: 18px;
+            flex: 0 0 auto;
+          }
+          .metadata-kind {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+          }
+          .metadata-note {
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: 13px;
+          }
+          .metadata-note strong {
+            color: var(--accent);
+          }
+          @media (max-width: 960px) {
+            .metadata-layout {
+              grid-template-columns: 1fr;
+            }
+            .metadata-sidebar {
+              border-right: none;
+              border-bottom: 1px solid #e8eef6;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <main class="metadata-page">
+          <section class="metadata-panel">
+            <div class="metadata-windowbar">
+              <div class="metadata-windowbar__title">
+                <span class="metadata-windowbar__icon"></span>
+                <span>${escapeMetadataHtml(mggid)} - 元数据资源管理器</span>
+              </div>
+            </div>
+            <div class="metadata-toolbar">
+              <span class="metadata-toolbar__label">当前位置</span>
+              <div class="metadata-breadcrumb" id="metadata-breadcrumb"></div>
+            </div>
+            <div class="metadata-layout">
+              <aside class="metadata-sidebar">
+                <div class="metadata-sidebar__title">目录树</div>
+                <div class="metadata-tree">
+                  <div class="metadata-tree__group">
+                    <button type="button" class="metadata-tree__item" data-dir-key="root">
+                      <span class="metadata-tree__toggle">▾</span>
+                      <span class="metadata-tree__icon">📁</span>
+                      <span>${escapeMetadataHtml(mggid)}</span>
+                    </button>
+                    <button type="button" class="metadata-tree__item metadata-tree__item--child" data-dir-key="pdf">
+                      <span class="metadata-tree__toggle"></span>
+                      <span class="metadata-tree__icon">📄</span>
+                      <span>PDF</span>
+                    </button>
+                    <button type="button" class="metadata-tree__item metadata-tree__item--child" data-dir-key="jpg">
+                      <span class="metadata-tree__toggle"></span>
+                      <span class="metadata-tree__icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M6.5 16l4.2-4.2 3.1 3.1 2.7-2.7 1.5 1.5"></path></svg>
+                      </span>
+                      <span>JPG</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="metadata-abstract">
+                  <div class="metadata-abstract__title">摘要</div>
+                  <div class="metadata-abstract__grid">
+                    <div class="metadata-abstract__item">
+                      <div class="metadata-abstract__label">数据集</div>
+                      <div class="metadata-abstract__value" id="metadata-title"></div>
+                    </div>
+                    <div class="metadata-abstract__item">
+                      <div class="metadata-abstract__label">样品号</div>
+                      <div class="metadata-abstract__value" id="metadata-sample"></div>
+                    </div>
+                    <div class="metadata-abstract__item">
+                      <div class="metadata-abstract__label">机构</div>
+                      <div class="metadata-abstract__value" id="metadata-institution"></div>
+                    </div>
+                    <div class="metadata-abstract__item">
+                      <div class="metadata-abstract__label">航次</div>
+                      <div class="metadata-abstract__value" id="metadata-cruise"></div>
+                    </div>
+                    <div class="metadata-abstract__item">
+                      <div class="metadata-abstract__label">设备</div>
+                      <div class="metadata-abstract__value" id="metadata-device"></div>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+              <section class="metadata-content">
+                <div class="metadata-files">
+                  <table class="metadata-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 52%;">名称</th>
+                        <th style="width: 16%;">类型</th>
+                        <th style="width: 14%;">大小</th>
+                        <th style="width: 18%;">修改时间</th>
+                      </tr>
+                    </thead>
+                    <tbody id="metadata-file-rows"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </section>
+          <p class="metadata-note"><strong>说明：</strong>当前目录树只保留顶级 MGGID 与其下两个平级目录：PDF、JPG。</p>
+        </main>
+        <script>
+          const explorerData = ${serializedData};
+          const dirButtons = Array.from(document.querySelectorAll('[data-dir-key]'));
+          const breadcrumbEl = document.getElementById('metadata-breadcrumb');
+          const fileRowsEl = document.getElementById('metadata-file-rows');
+          const titleEl = document.getElementById('metadata-title');
+          const sampleEl = document.getElementById('metadata-sample');
+          const institutionEl = document.getElementById('metadata-institution');
+          const cruiseEl = document.getElementById('metadata-cruise');
+          const deviceEl = document.getElementById('metadata-device');
+          const expandedProcessed = new Set();
+          let activeDirKey = 'root';
+
+          titleEl.textContent = explorerData.summary.title;
+          sampleEl.textContent = explorerData.summary.sample;
+          institutionEl.textContent = explorerData.summary.institution;
+          cruiseEl.textContent = explorerData.summary.cruise;
+          deviceEl.textContent = explorerData.summary.device;
+
+          function getItemIconMarkup(item) {
+            if (item.kind === 'folder') return '<span class="metadata-file__icon">📁</span>';
+            if (item.type === 'PDF') return '<span class="metadata-file__icon is-pdf">PDF</span>';
+            if (item.type === 'JPG') {
+              return '<span class="metadata-file__icon is-jpg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><circle cx="9" cy="10" r="1.5"></circle><path d="M6.5 16l4.2-4.2 3.1 3.1 2.7-2.7 1.5 1.5"></path></svg></span>';
+            }
+            if (item.type === 'XLSX') return '<span class="metadata-file__icon is-xlsx">XLS</span>';
+            return '<span class="metadata-file__icon">TXT</span>';
+          }
+
+          function buildFileRow(item, options) {
+            const isDirOpen = item.kind === 'folder' && item.dirKey;
+            const rowClass = options.rowClass ? ' class="' + options.rowClass + '"' : '';
+            const nameClass = isDirOpen ? 'metadata-file__name is-link' : 'metadata-file__name';
+            const opsHtml = options.opsHtml ? '<span class="metadata-file__ops">' + options.opsHtml + '</span>' : '';
+            const kindHtml = options.kindHtml ? options.kindHtml : '';
+
+            return '<tr' + rowClass + '>' +
+              '<td>' +
+                '<div class="metadata-file">' +
+                  (options.indent ? '<span class="metadata-file__indent"></span>' : '') +
+                  getItemIconMarkup(item) +
+                  '<span class="' + nameClass + '"' + (isDirOpen ? ' data-open-dir="' + item.dirKey + '"' : '') + '>' + item.name + '</span>' +
+                  kindHtml +
+                  opsHtml +
+                '</div>' +
+              '</td>' +
+              '<td>' + item.type + '</td>' +
+              '<td>' + item.size + '</td>' +
+              '<td>' + item.modified + '</td>' +
+            '</tr>';
+          }
+
+          function renderPdfRows(items) {
+            return items.map((item) => {
+              const processedCount = Array.isArray(item.processedPairs) ? item.processedPairs.length : 0;
+              const isExpanded = expandedProcessed.has(item.id);
+              const buttonHtml = processedCount
+                ? '<button type="button" class="metadata-file__button' + (isExpanded ? ' is-active' : '') + '" data-toggle-processed="' + item.id + '">处理后数据</button><span class="metadata-file__hint">' + processedCount + ' 组</span>'
+                : '';
+              const parentRow = buildFileRow(item, { opsHtml: buttonHtml });
+
+              if (!isExpanded || !processedCount) return parentRow;
+
+              const childRows = item.processedPairs.flatMap((pair, index) => {
+                const excelItem = {
+                  name: pair.excel,
+                  type: 'XLSX',
+                  size: (96 + index * 8) + ' KB',
+                  modified: '2025-03-14 09:' + String(10 + index).padStart(2, '0'),
+                  kind: 'file',
+                };
+                const templateItem = {
+                  name: pair.template,
+                  type: 'XLSX',
+                  size: (84 + index * 7) + ' KB',
+                  modified: '2025-03-14 09:' + String(30 + index).padStart(2, '0'),
+                  kind: 'file',
+                };
+
+                return [
+                  buildFileRow(excelItem, { indent: true, rowClass: 'is-processed-row', kindHtml: '<span class="metadata-kind">处理后</span>' }),
+                  buildFileRow(templateItem, { indent: true, rowClass: 'is-processed-row', kindHtml: '<span class="metadata-kind">模板</span>' }),
+                ];
+              }).join('');
+
+              return parentRow + childRows;
+            }).join('');
+          }
+
+          function renderRows(directory) {
+            if (directory.key === 'pdf') return renderPdfRows(directory.items);
+            return directory.items.map((item) => buildFileRow(item, {})).join('');
+          }
+
+          function renderDirectory(dirKey) {
+            const directory = explorerData.directories[dirKey] || explorerData.directories.root;
+            activeDirKey = directory.key;
+            breadcrumbEl.textContent = directory.path.join(' / ');
+            fileRowsEl.innerHTML = renderRows(directory);
+            dirButtons.forEach((button) => {
+              button.classList.toggle('is-active', button.getAttribute('data-dir-key') === directory.key);
+            });
+          }
+
+          dirButtons.forEach((button) => {
+            button.addEventListener('click', () => renderDirectory(button.getAttribute('data-dir-key')));
+          });
+
+          fileRowsEl.addEventListener('click', (event) => {
+            const toggleButton = event.target.closest('[data-toggle-processed]');
+            if (toggleButton) {
+              const pdfId = toggleButton.getAttribute('data-toggle-processed');
+              if (expandedProcessed.has(pdfId)) expandedProcessed.delete(pdfId)
+              else expandedProcessed.add(pdfId)
+              renderDirectory(activeDirKey);
+              return;
+            }
+
+            const dirLink = event.target.closest('[data-open-dir]');
+            if (dirLink) {
+              const nextDir = dirLink.getAttribute('data-open-dir');
+              if (nextDir) renderDirectory(nextDir);
+            }
+          });
+
+          renderDirectory('root');
+        <\/script>
+      </body>
+    </html>
+  `)
+  popupWindow.document.close()
+}
+
+function handlePopupMetadataLinkClick(event) {
+  const target = event?.target
+  if (!(target instanceof Element)) return false
+
+  const metadataLink = target.closest('.geology-popup-card__meta-link')
+  if (!metadataLink) return false
+
+  event.preventDefault()
+  event.stopPropagation()
+  openGeologyMetadataWindow({
+    mggid: metadataLink.getAttribute('data-mggid') || '--',
+    sample: metadataLink.getAttribute('data-sample') || '--',
+    title: metadataLink.getAttribute('data-title') || '--',
+    institution: metadataLink.getAttribute('data-institution') || '--',
+    cruise: metadataLink.getAttribute('data-cruise') || '--',
+    device: metadataLink.getAttribute('data-device') || '--',
+  })
+  return true
+}
+
 function handlePopupCloseButtonClick(event, onClose) {
   const target = event?.target
   if (!(target instanceof Element)) return false
@@ -1483,11 +2210,13 @@ function bindLeafletPopupCloseButton(popup) {
   if (!popupElement) return
 
   popupElement.addEventListener('click', (event) => {
+    if (handlePopupMetadataLinkClick(event)) return
     handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
   })
 }
 
 function handleCesiumPopupContentClick(event) {
+  if (handlePopupMetadataLinkClick(event)) return
   handlePopupCloseButtonClick(event, () => closeActiveGeologyPopup())
 }
 
@@ -2685,6 +3414,30 @@ onUnmounted(() => {
   font-weight: 700;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+:deep(.geology-popup-card__meta-link) {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  color: #fb7185;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+:deep(.geology-popup-card__meta-link:hover) {
+  color: #fda4af;
+  transform: translateY(-1px);
+}
+
+:deep(.geology-popup-card__meta-link:focus-visible) {
+  outline: 1px solid rgba(251, 113, 133, 0.55);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 :deep(.geology-popup-card__cat-row) {

@@ -40,11 +40,34 @@ function formatCoordinateValue(value) {
   return Number(value).toFixed(6)
 }
 
+function buildGeologyMetadataLinkHtml(record) {
+  const mggid = record?.mggid || '--'
+  const sample = record?.sample || record?.pointId || '--'
+  const title = record?.title || '--'
+  const institution = record?.institution || '--'
+  const cruise = record?.cruise || '--'
+  const device = record?.device || '--'
+
+  return `
+    <span>${escapePopupHtml(mggid)}</span>
+    <a
+      class="geology-popup-card__meta-link"
+      href="#"
+      data-mggid="${escapePopupHtml(mggid)}"
+      data-sample="${escapePopupHtml(sample)}"
+      data-title="${escapePopupHtml(title)}"
+      data-institution="${escapePopupHtml(institution)}"
+      data-cruise="${escapePopupHtml(cruise)}"
+      data-device="${escapePopupHtml(device)}"
+    >(原始数据链接)</a>
+  `.trim()
+}
+
 function buildGeologyPopupHtml(title, rows, categoryTag = null) {
-  const renderedRows = rows.map(({ label, value }) => `
+  const renderedRows = rows.map(({ label, value, valueHtml }) => `
     <div class="geology-popup-card__row">
       <span class="geology-popup-card__label">${escapePopupHtml(label)}</span>
-      <span class="geology-popup-card__value">${escapePopupHtml(value)}</span>
+      <span class="geology-popup-card__value">${valueHtml || escapePopupHtml(value)}</span>
     </div>
   `).join('')
 
@@ -418,7 +441,7 @@ export function buildGeologyRenderSpec(records = [], geologyStyle = {}) {
       const categoryGroup = getGeologyCategoryGroup(record)
       const popupRows = [
         { label: '\u6570\u636e\u96c6', value: record.title || '--' },
-        { label: 'MGGID', value: record.mggid || '--' },
+        { label: 'MGGID', valueHtml: buildGeologyMetadataLinkHtml(record) },
         { label: '\u6570\u636e\u6e90', value: datasetLabel },
         { label: '\u7814\u7a76\u5927\u7c7b', value: categoryGroup.label },
         { label: '\u5177\u4f53\u5206\u7c7b', value: category.label },
