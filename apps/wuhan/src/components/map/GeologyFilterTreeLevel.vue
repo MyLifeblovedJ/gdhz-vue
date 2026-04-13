@@ -324,7 +324,7 @@ function getSampleSummary(node) {
   gap: 6px;
   margin: 4px 10px 6px;
   padding: 0 8px;
-  height: 28px;
+  height: 32px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -337,7 +337,7 @@ function getSampleSummary(node) {
 }
 
 .tree-search i {
-  font-size: 11px;
+  font-size: 12px;
   color: #94a3b8;
   flex-shrink: 0;
 }
@@ -346,7 +346,7 @@ function getSampleSummary(node) {
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   color: #334155;
   outline: none;
   min-width: 0;
@@ -362,7 +362,7 @@ function getSampleSummary(node) {
   color: #94a3b8;
   cursor: pointer;
   padding: 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   transition: color 0.15s;
 }
@@ -375,7 +375,7 @@ function getSampleSummary(node) {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 8px 10px;
   cursor: pointer;
   color: #334155;
   border-radius: 6px;
@@ -393,7 +393,7 @@ function getSampleSummary(node) {
 }
 
 .tree-node-arrow {
-  font-size: 10px;
+  font-size: 11px;
   color: #94a3b8;
   flex-shrink: 0;
   width: 12px;
@@ -402,7 +402,7 @@ function getSampleSummary(node) {
 }
 
 .tree-node-header > i:nth-child(2) {
-  font-size: 13px;
+  font-size: 14px;
   width: 16px;
   text-align: center;
   flex-shrink: 0;
@@ -449,12 +449,12 @@ function getSampleSummary(node) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .tree-node-year {
-  font-size: 11px;
+  font-size: 12px;
   color: #94a3b8;
   flex-shrink: 0;
 }
@@ -471,7 +471,7 @@ function getSampleSummary(node) {
   flex-wrap: wrap;
   gap: 4px;
   max-width: 100%;
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
 }
 
@@ -517,13 +517,13 @@ function getSampleSummary(node) {
   z-index: 20;
   min-width: 200px;
   max-width: 300px;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: 10px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border: 1px solid #dbe7f3;
   color: #1e293b;
-  font-size: 12px;
-  line-height: 1.65;
+  font-size: 13px;
+  line-height: 1.7;
   font-weight: 500;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
   opacity: 0;
@@ -559,13 +559,13 @@ function getSampleSummary(node) {
 }
 
 .tree-node-count {
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
   flex-shrink: 0;
   background: #f1f5f9;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: 700;
   margin-top: 1px;
 }
 
@@ -576,11 +576,11 @@ function getSampleSummary(node) {
   border: none;
   background: rgba(14, 165, 233, 0.08);
   color: #0ea5e9;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
   margin-top: 1px;
@@ -609,7 +609,7 @@ function getSampleSummary(node) {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 7px 12px;
   margin: 0 4px;
   border-radius: 4px;
   cursor: pointer;
@@ -636,7 +636,7 @@ function getSampleSummary(node) {
 }
 
 .sample-icon {
-  font-size: 11px;
+  font-size: 12px;
   color: #0ea5e9;
   flex-shrink: 0;
 }
@@ -646,7 +646,7 @@ function getSampleSummary(node) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 13px;
   color: #475569;
 }
 
@@ -655,7 +655,7 @@ function getSampleSummary(node) {
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: #94a3b8;
 }
 
@@ -663,12 +663,12 @@ function getSampleSummary(node) {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 7px 12px;
   margin: 2px 4px 4px;
   border: none;
   background: none;
   color: #0ea5e9;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   border-radius: 4px;
   transition: background 0.15s;
@@ -679,12 +679,12 @@ function getSampleSummary(node) {
 }
 
 .tree-show-more i {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .tree-no-match {
   padding: 12px 16px;
-  font-size: 12px;
+  font-size: 13px;
   color: #94a3b8;
   text-align: center;
 }

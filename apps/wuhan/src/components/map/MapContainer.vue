@@ -3475,7 +3475,7 @@ onUnmounted(() => {
   overflow: hidden;
   border: none;
   border-radius: 22px;
-  background: rgba(15, 23, 42, 0.22);
+  background: rgba(15, 23, 42, 0.34);
   box-shadow: none;
 }
 
@@ -3535,13 +3535,13 @@ onUnmounted(() => {
 :deep(.geology-popup-card__title) {
   margin: 0;
   padding: 0 32px 10px 0;
-  border-bottom: 1px solid rgba(125, 211, 252, 0.18);
-  color: #7dd3fc;
-  font-size: 17px;
+  border-bottom: 1px solid rgba(125, 211, 252, 0.24);
+  color: #bae6fd;
+  font-size: 19px;
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.4;
   letter-spacing: 0.02em;
-  text-shadow: 0 0 10px rgba(125, 211, 252, 0.14);
+  text-shadow: 0 0 10px rgba(125, 211, 252, 0.18);
 }
 
 :deep(.geology-popup-card__body) {
@@ -3555,20 +3555,20 @@ onUnmounted(() => {
   grid-template-columns: 88px minmax(0, 1fr);
   align-items: start;
   column-gap: 12px;
-  padding: 9px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.1);
+  line-height: 1.55;
   backdrop-filter: blur(8px);
 }
 
 :deep(.geology-popup-card__label) {
-  color: rgba(186, 230, 253, 0.82);
-  font-size: 12px;
+  color: rgba(224, 242, 254, 0.92);
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  line-height: 1.8;
+  line-height: 1.85;
   white-space: nowrap;
 }
 
@@ -3576,10 +3576,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #fef3c7;
-  font-size: 14px;
+  color: #fffbeb;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -3636,9 +3636,9 @@ onUnmounted(() => {
   display: inline-block;
   min-width: max-content;
   color: #fb7185;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -3649,9 +3649,9 @@ onUnmounted(() => {
   display: inline-block;
   min-width: max-content;
   color: #22c55e;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -3691,18 +3691,18 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 :deep(.geology-popup-card__action) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 15px;
   border-radius: 9px;
   border: 1px solid rgba(148, 163, 184, 0.28);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;

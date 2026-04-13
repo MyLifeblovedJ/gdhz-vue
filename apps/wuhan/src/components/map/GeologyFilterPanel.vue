@@ -395,33 +395,33 @@ function resetFocus() {
 .filter-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .filter-cell {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
 }
 
 .filter-label {
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.03em;
-  line-height: 1;
+  line-height: 1.15;
 }
 
 .filter-select,
 .filter-input {
-  height: 30px;
+  height: 34px;
   border: 1px solid #d1d5db;
   border-radius: 5px;
   background: #fff;
-  font-size: 12px;
+  font-size: 13px;
   color: #334155;
-  padding: 0 6px;
+  padding: 0 8px;
   cursor: pointer;
   transition: border-color 0.15s;
   width: 100%;
@@ -444,13 +444,13 @@ function resetFocus() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 8px;
-  padding-top: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid #f1f5f9;
 }
 
 .summary-text {
-  font-size: 12px;
+  font-size: 13px;
   color: #64748b;
 }
 
@@ -462,7 +462,7 @@ function resetFocus() {
 .summary-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .clear-btn {
@@ -472,9 +472,9 @@ function resetFocus() {
   border: none;
   background: none;
   color: #ef4444;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 4px;
   transition: background 0.15s;
 }
@@ -490,11 +490,11 @@ function resetFocus() {
   border: none;
   background: rgba(14, 165, 233, 0.08);
   color: #0ea5e9;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: 700;
   transition: background 0.15s;
 }
 
@@ -506,17 +506,17 @@ function resetFocus() {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
-  padding: 5px 8px;
+  margin-top: 8px;
+  padding: 7px 9px;
   background: rgba(14, 165, 233, 0.06);
   border: 1px solid rgba(14, 165, 233, 0.2);
   border-radius: 5px;
-  font-size: 12px;
+  font-size: 13px;
   color: #0369a1;
 }
 
 .focus-indicator > i {
-  font-size: 11px;
+  font-size: 12px;
   color: #0ea5e9;
   flex-shrink: 0;
 }
@@ -532,7 +532,7 @@ function resetFocus() {
   color: #94a3b8;
   cursor: pointer;
   padding: 0 2px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
   transition: color 0.15s;
 }
@@ -544,7 +544,7 @@ function resetFocus() {
 .tree-area {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 .tree-toolbar {
@@ -552,11 +552,11 @@ function resetFocus() {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 12px 8px;
+  padding: 6px 12px 10px;
 }
 
 .tree-toolbar__label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #64748b;
   letter-spacing: 0.04em;
@@ -574,9 +574,9 @@ function resetFocus() {
   border: none;
   background: transparent;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 11px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -599,11 +599,11 @@ function resetFocus() {
   gap: 8px;
   padding: 32px 16px;
   color: #94a3b8;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .tree-empty i {
-  font-size: 24px;
+  font-size: 26px;
   opacity: 0.5;
 }
 </style>

@@ -388,6 +388,12 @@ watch(
         const legendId = getLegendIdForLayer(key)
         if (legendId && !legendOrder.value.includes(legendId)) {
           legendOrder.value.push(legendId)
+          if (props.embedded) {
+            if (!(legendId in collapsedLegends.value)) {
+              collapsedLegends.value[legendId] = false
+            }
+            return
+          }
 
           Object.keys(collapsedLegends.value).forEach((id) => {
             if (id !== legendId) {
