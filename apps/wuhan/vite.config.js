@@ -4,9 +4,11 @@ import cesium from 'vite-plugin-cesium'
 
 const devHost = process.env.VITE_HOST || '0.0.0.0'
 const devPort = Number.parseInt(process.env.VITE_PORT || '2888', 10)
+const base = process.env.VITE_BASE_PATH || '/'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   plugins: [vue(), cesium()],
   server: {
     host: devHost,

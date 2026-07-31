@@ -54,6 +54,20 @@ function buildBridgeRequestId(name) {
   return `${name}${Math.random().toString(16).slice(2, 10)}`
 }
 
+function decodeJwtExpiresAt(token) {
+  try {
+    const [, payload] = String(token || '').split('.')
+    if (!payload) return 0
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const data = safeJsonParse(Buffer.from(padded, 'base64').toString('utf8'))
+    const exp = Number(data?.exp || 0)
+    return Number.isFinite(exp) && exp > 0 ? exp * 1000 : 0
+  } catch {
+    return 0
+  }
+}
+
 function buildGeminiGoogleAuthModel(useModel = 'default') {
   return {
     id: 'gemini-placeholder',
@@ -72,6 +86,7 @@ export class AionUiClient {
 
     this.cookieJar = new Map()
     this.token = ''
+    this.tokenExpiresAt = 0
     this.csrfToken = ''
 
     this.socket = null
@@ -93,8 +108,21 @@ export class AionUiClient {
   }
 
   async ensureAuthenticated() {
-    if (this.token) return
+    if (this.token && !this.isTokenExpiringSoon()) return
+    this.clearAuthState()
     await this.login()
+  }
+
+  isTokenExpiringSoon(skewMs = 60_000) {
+    if (!this.token) return true
+    if (!this.tokenExpiresAt) return false
+    return Date.now() + skewMs >= this.tokenExpiresAt
+  }
+
+  clearAuthState() {
+    this.token = ''
+    this.tokenExpiresAt = 0
+    this.cookieJar.clear()
   }
 
   async login() {
@@ -118,6 +146,7 @@ export class AionUiClient {
       }
 
       this.token = response.token
+      this.tokenExpiresAt = decodeJwtExpiresAt(response.token)
       return this.token
     })().finally(() => {
       this.loginPromise = null
@@ -131,7 +160,8 @@ export class AionUiClient {
 
     this.refreshPromise = (async () => {
       try {
-        if (!this.token) {
+        if (!this.token || this.isTokenExpiringSoon()) {
+          this.clearAuthState()
           await this.login()
           return this.token
         }
@@ -142,13 +172,16 @@ export class AionUiClient {
         })
 
         if (!response?.success || !response?.token) {
+          this.clearAuthState()
           await this.login()
           return this.token
         }
 
         this.token = response.token
+        this.tokenExpiresAt = decodeJwtExpiresAt(response.token)
         return this.token
       } catch {
+        this.clearAuthState()
         await this.login()
         return this.token
       }
@@ -160,8 +193,16 @@ export class AionUiClient {
   }
 
   async ensureWebSocket() {
-    if (this.socket?.readyState === WebSocket.OPEN) {
+    if (this.socket?.readyState === WebSocket.OPEN && !this.isTokenExpiringSoon()) {
       return
+    }
+    if (this.socket) {
+      try {
+        this.socket.close()
+      } catch {
+        // noop
+      }
+      this.socket = null
     }
 
     if (this.connectingPromise) {
@@ -575,6 +616,7 @@ export class AionUiClient {
 
   async ask({ conversationId, input, timeouts }) {
     const msgId = createId()
+    const startedAt = Date.now()
 
     const replyPromise = this.waitForReply({
       conversationId,
@@ -618,11 +660,16 @@ export class AionUiClient {
       throw new Error(message)
     }
 
-    return replyPromise
+    return this.resolveReplyWithPersistedFallback({
+      conversationId,
+      startedAt,
+      replyPromise,
+    })
   }
 
   async askStream({ conversationId, input, timeouts, onChunk, onEvent }) {
     const msgId = createId()
+    const startedAt = Date.now()
 
     const replyPromise = this.waitForReply({
       conversationId,
@@ -668,7 +715,81 @@ export class AionUiClient {
       throw new Error(message)
     }
 
-    return replyPromise
+    return this.resolveReplyWithPersistedFallback({
+      conversationId,
+      startedAt,
+      replyPromise,
+    })
+  }
+
+  async resolveReplyWithPersistedFallback({ conversationId, startedAt, replyPromise }) {
+    const reply = await replyPromise
+    if (String(reply || '').trim()) {
+      return reply
+    }
+
+    const persistedReply = await this.fetchLatestPersistedAssistantReply({
+      conversationId,
+      sinceMs: startedAt,
+    }).catch(() => '')
+
+    return persistedReply || reply
+  }
+
+  async fetchLatestPersistedAssistantReply({ conversationId, sinceMs = 0 }) {
+    if (!conversationId) return ''
+
+    const messages = await this.invokeBridgeProvider(
+      'database.get-conversation-messages',
+      {
+        conversation_id: conversationId,
+        page: 0,
+        pageSize: 200,
+      },
+      {
+        timeoutMs: 10_000,
+        waitForCallback: true,
+      }
+    )
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return ''
+    }
+
+    const minCreatedAt = Number(sinceMs || 0) - 2_000
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const message = messages[i]
+      if (!message || typeof message !== 'object') continue
+      if (message.conversation_id && message.conversation_id !== conversationId) continue
+      if (message.position && message.position !== 'left') continue
+
+      const createdAt = Number(message.createdAt || message.created_at || 0)
+      if (minCreatedAt > 0 && createdAt > 0 && createdAt < minCreatedAt) continue
+
+      const text = this.extractPersistedMessageText(message).trim()
+      if (text) {
+        return text
+      }
+    }
+
+    return ''
+  }
+
+  extractPersistedMessageText(message) {
+    if (!message || typeof message !== 'object') return ''
+    const content = message.content
+    if (typeof content === 'string') return content
+    if (content && typeof content === 'object') {
+      if (typeof content.content === 'string') return content.content
+      if (typeof content.text === 'string') return content.text
+      if (typeof content.message === 'string') return content.message
+    }
+    if (typeof message.data === 'string') return message.data
+    if (message.data && typeof message.data === 'object') {
+      if (typeof message.data.content === 'string') return message.data.content
+      if (typeof message.data.text === 'string') return message.data.text
+    }
+    return ''
   }
 
   async confirmMessage({ conversationId, msgId, callId, data }) {
